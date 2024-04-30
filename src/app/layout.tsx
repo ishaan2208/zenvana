@@ -1,6 +1,7 @@
 import { Inter, Lexend } from 'next/font/google'
 import clsx from 'clsx'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import { Analytics } from '@vercel/analytics/react'
 
 import '@/styles/tailwind.css'
 import { type Metadata } from 'next'
@@ -40,7 +41,10 @@ export default function RootLayout({
         lexend.variable,
       )}
     >
-      <body className="flex h-full flex-col">{children}</body>
+      <body className="flex h-full flex-col">
+        <Analytics />
+        {children}
+      </body>
       <GoogleAnalytics gaId="AW-16548808937" />
     </html>
   )
