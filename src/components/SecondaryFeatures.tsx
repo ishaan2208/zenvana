@@ -6,9 +6,9 @@ import { Tab } from '@headlessui/react'
 import clsx from 'clsx'
 
 import { Container } from '@/components/Container'
-import screenshotContacts from '@/images/screenshots/ss6.png'
-import screenshotInventory from '@/images/screenshots/ss3.png'
-import screenshotProfitLoss from '@/images/screenshots/ss5.png'
+import screenshotContacts from '@/images/screenshots/ss11.png'
+import screenshotInventory from '@/images/screenshots/ss7.png'
+import screenshotProfitLoss from '@/images/screenshots/ss8.png'
 
 interface Feature {
   name: React.ReactNode
