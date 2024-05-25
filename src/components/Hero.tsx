@@ -50,9 +50,10 @@ export function Hero() {
       <p className="mx-auto mt-12 max-w-5xl text-lg tracking-tight text-slate-700">
         StaySystems is designed to revolutionize property management by
         empowering your front office team with intuitive tools that simplify
-        their daily tasks. Our innovative software ensures a smooth operational
-        flow, preventing revenue leakage and reducing the risk of theft through
-        stringent security protocols. By streamlining administrative processes,
+        their daily tasks.Bring big brands level tech into your hotel. Our
+        innovative software ensures a smooth operational flow, preventing
+        revenue leakage and reducing the risk of theft through stringent
+        security protocols. By streamlining administrative processes,
         StaySystems allows your staff to focus more on what truly
         matters—enhancing guest experiences. As a result, not only does our
         system facilitate a more efficient work environment, but it also sets
