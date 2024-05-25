@@ -146,9 +146,9 @@ export function Pricing() {
             href="/register"
             features={[
               'Cloud based software',
-              'Can add unlimited rooms',
               'Can add unlimited guests',
               'Can add unlimited employees',
+              'Front office ativity tracking',
               'Advance Analytics',
               '24/7 Support',
             ]}
@@ -160,9 +160,9 @@ export function Pricing() {
             href="/register"
             features={[
               'Cloud based software',
-              'Can add unlimited rooms',
               'Can add unlimited guests',
               'Can add unlimited employees',
+              'Front office ativity tracking',
               'Advance Analytics',
               '24/7 Support',
             ]}
@@ -177,7 +177,7 @@ export function Pricing() {
               'Can add upto 10 properties',
               'Admin Console',
               'Cloud based software',
-              'Can add unlimited rooms',
+              'Front office ativity tracking',
               'Can add unlimited guests',
               'Can add unlimited employees',
               'Advance Analytics',
