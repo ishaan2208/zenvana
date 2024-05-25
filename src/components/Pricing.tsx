@@ -155,7 +155,7 @@ export function Pricing() {
           <Plan
             featured
             name="Starter"
-            price="199 per room for a month"
+            price="₹199 per room for a month"
             description="Good for anyone who wants to get started."
             href="/register"
             features={[
