@@ -5,6 +5,10 @@ import { Container } from '@/components/Container'
 import logoLaravel from '@/images/logos/svg4.svg'
 import logoMirage from '@/images/logos/svg1.svg'
 import logoStatamic from '@/images/logos/svg3.svg'
+import { track } from '@vercel/analytics'
+
+// Call this function when a user clicks a button or performs an action you want to track
+
 // import logoStaticKit from '@/images/logos/statickit.svg'
 // import logoTransistor from '@/images/logos/transistor.svg'
 // import logoTuple from '@/images/logos/tuple.svg'
@@ -42,7 +46,13 @@ export function Hero() {
         </span>{' '}
         Call
       </h1>
-      <Button color="blue" className=" mt-4">
+      <Button
+        onClick={() => {
+          track('clicked_call_button')
+        }}
+        color="blue"
+        className=" mt-4"
+      >
         <a href="tel:+91 9084702208" className="text-white">
           +91 9084702208
         </a>
@@ -62,7 +72,14 @@ export function Hero() {
         new heights.
       </p>
       <div className="mt-10 flex justify-center gap-x-6">
-        <Button href="/register">Get 3 months free </Button>
+        <Button
+          onClick={() => {
+            track('clicked_get_3_months_free_button')
+          }}
+          href="/register"
+        >
+          Get 3 months free{' '}
+        </Button>
         {/* <Button
           href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
           variant="outline"
