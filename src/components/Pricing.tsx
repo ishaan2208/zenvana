@@ -170,11 +170,11 @@ export function Pricing() {
 
           <Plan
             name="Enterprise"
-            price="₹4999 per year"
+            price="₹5999 per year"
             description="Good for anyone who wants to manage multiple from single console."
             href="/register"
             features={[
-              'Can add upto 10 properties',
+              'Can add upto 10 users',
               'Admin Console',
               'Cloud based software',
               'Front office ativity tracking',
