@@ -25,7 +25,7 @@ export default function Page() {
           </svg>
           <span className="relative">Thank You</span>
         </span>{' '}
-        for submitting the form.We'll try to get back to you as soon as
+        for submitting the form.We will try to get back to you as soon as
         possible.
       </h1>
     </div>
