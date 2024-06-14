@@ -55,7 +55,7 @@ export function Hero() {
         className=" mt-4"
       >
         <a href="tel:+91 9084702208" className="text-white">
-          Call Now
+          +91 9084702208
         </a>
       </Button>
       <p className="mx-auto mt-12 max-w-5xl text-lg tracking-tight text-slate-700">
