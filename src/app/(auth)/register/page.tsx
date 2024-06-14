@@ -8,14 +8,21 @@ import { type Metadata } from 'next'
 import { useState } from 'react'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
-import { set } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 
 // export const metadata: Metadata = {
 //   title: 'Sign Up',
 // }
 
 export default function Register() {
-  // const form = useForm({})
+  const form = useForm({
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      phone: '',
+      email: '',
+    },
+  })
 
   const [firstname, setFirstname] = useState('')
   const [lastname, setLastname] = useState('')
@@ -24,23 +31,18 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const router = useRouter()
 
-  const onSubmit = (e: any) => {
+  const onSubmit = (values: any) => {
     setLoading(true)
-    e.preventDefault()
-    // router.push('/thankyou')
+
     axios
       .post(`${process.env.NEXT_PUBLIC_API_URL}/leads`, {
-        firstName: firstname,
-        lastName: lastname,
-        phone,
-        email,
+        first_name: values.first_name,
+        last_name: values.last_name,
+        phone: values.phone,
+        email: values.email,
       })
       .then((res) => {
-        console.log(res)
-        setFirstname('')
-        setLastname('')
-        setPhone('')
-        setEmail('')
+        form.reset()
         router.push('/thankyou')
       })
       .finally(() => {
@@ -85,64 +87,89 @@ export default function Register() {
             <form
               action="#"
               className="mt-10 grid w-full grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2"
+              onSubmit={form.handleSubmit(onSubmit)}
             >
-              <TextField
-                label="First name"
-                name="first_name"
-                type="text"
-                autoComplete="given-name"
-                required
-                value={firstname}
-                onChange={(e) => setFirstname(e.target.value)}
-              />
-              <TextField
-                label="Last name"
-                name="last_name"
-                type="text"
-                autoComplete="family-name"
-                value={lastname}
-                onChange={(e) => setLastname(e.target.value)}
-                required
-              />
-              <TextField
-                className="col-span-full"
-                label="Phone number"
-                type="tel"
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-              />
-              <TextField
-                className="col-span-full"
-                label="Email address"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              {/* <TextField
-          className="col-span-full"
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-        /> */}
-              {/* <SelectField
-          className="col-span-full"
-          label="How did you hear about us?"
-          name="referral_source"
-        >
-          <option>AltaVista search</option>
-          <option>Super Bowl commercial</option>
-          <option>Our route 34 city bus ad</option>
-          <option>The “Never Use This” podcast</option>
-        </SelectField> */}
+              <div className=" w-full">
+                <label htmlFor="first_name">First Name</label>
+                <input
+                  className="w-full rounded-md border border-gray-300 p-2"
+                  type="text"
+                  {...form.register('first_name', {
+                    required: 'This field is required',
+                    maxLength: {
+                      value: 20,
+                      message:
+                        'First name should not be more than 20 characters',
+                    },
+                  })}
+                />
+                <p className=" text-red-500">
+                  {form.formState.errors.first_name?.message &&
+                    form.formState.errors.first_name?.message}
+                </p>
+              </div>
+              <div className=" w-full">
+                <label htmlFor="last_name">Last Name</label>
+                <input
+                  className="w-full rounded-md border border-gray-300 p-2"
+                  type="text"
+                  {...form.register('last_name', {
+                    required: 'This field is required',
+                    maxLength: {
+                      value: 20,
+                      message:
+                        'Last name should not be more than 20 characters',
+                    },
+                  })}
+                />
+                <p className=" text-red-500">
+                  {form.formState.errors.last_name?.message &&
+                    form.formState.errors.last_name?.message}
+                </p>
+              </div>
+              <div className=" col-span-2 w-full">
+                <label htmlFor="phone">Phone</label>
+                <input
+                  className="w-full rounded-md border border-gray-300 p-2"
+                  type="text"
+                  {...form.register('phone', {
+                    required: 'This field is required',
+                    maxLength: {
+                      value: 10,
+                      message: 'Phone number should be 10 digits',
+                    },
+                    pattern: {
+                      value: /^[0-9]{10}$/,
+                      message: 'Invalid phone number',
+                    },
+                  })}
+                />
+                <p className=" text-red-500">
+                  {form.formState.errors.phone?.message &&
+                    form.formState.errors.phone?.message}
+                </p>
+              </div>
+              <div className=" col-span-2 w-full">
+                <label htmlFor="email">Email</label>
+                <input
+                  className="w-full rounded-md border border-gray-300 p-2"
+                  type="email"
+                  {...form.register('email', {
+                    required: 'This field is required',
+                    pattern: {
+                      value: /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/,
+                      message: 'Invalid email address',
+                    },
+                  })}
+                />
+                <p className=" text-red-500">
+                  {form.formState.errors.email?.message &&
+                    form.formState.errors.email?.message}
+                </p>
+              </div>
               <div className="col-span-full">
                 <Button
-                  onClick={onSubmit}
+                  // onClick={onSubmit}
                   type="submit"
                   variant="solid"
                   color="blue"
@@ -158,5 +185,28 @@ export default function Register() {
         </>
       )}
     </SlimLayout>
+  )
+}
+
+function Input({
+  label,
+  className,
+  type = 'text',
+  error,
+  ...props
+}: {
+  label: string
+  className: string
+  type: string
+  error: string
+}) {
+  return (
+    <div>
+      <label htmlFor="first_name">First Name</label>
+      <input type={type} id="first_name" {...props} />
+      <p id="error" className=" h-8 text-red-500">
+        {error && <span>{error}</span>}
+      </p>
+    </div>
   )
 }
