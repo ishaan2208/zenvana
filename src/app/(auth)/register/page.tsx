@@ -36,8 +36,8 @@ export default function Register() {
 
     axios
       .post(`${process.env.NEXT_PUBLIC_API_URL}/leads`, {
-        first_name: values.first_name,
-        last_name: values.last_name,
+        firstName: values.first_name,
+        lastName: values.last_name,
         phone: values.phone,
         email: values.email,
       })
