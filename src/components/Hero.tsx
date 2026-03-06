@@ -19,17 +19,17 @@ export function Hero() {
     track('clicked sign up', {
       location: 'header',
     })
-    window.location.href = 'https://app.staysystems.in/signup' // or history.push('/signup'); for internal navigation
+    window.location.href = '/hotels' // Book your stay
   }
   return (
     <Container className="pb-16 pt-20 text-center lg:pt-32">
       <h1 className="mx-auto max-w-4xl font-display text-5xl font-medium tracking-tight text-slate-900 sm:text-7xl">
         Efficient Hotel Management{' '}
-        <span className="relative whitespace-nowrap text-blue-600">
+        <span className="relative whitespace-nowrap text-primary">
           <svg
             aria-hidden="true"
             viewBox="0 0 418 42"
-            className="absolute left-0 top-2/3 h-[0.58em] w-full fill-blue-300/70"
+            className="absolute left-0 top-2/3 h-[0.58em] w-full fill-primary/30"
             preserveAspectRatio="none"
           >
             <path d="M203.371.916c-26.013-2.078-76.686 1.963-124.73 9.946L67.3 12.749C35.421 18.062 18.2 21.766 6.004 25.934 1.244 27.561.828 27.778.874 28.61c.07 1.214.828 1.121 9.595-1.176 9.072-2.377 17.15-3.92 39.246-7.496C123.565 7.986 157.869 4.492 195.942 5.046c7.461.108 19.25 1.696 19.17 2.582-.107 1.183-7.874 4.31-25.75 10.366-21.992 7.45-35.43 12.534-36.701 13.884-2.173 2.308-.202 4.407 4.442 4.734 2.654.187 3.263.157 15.593-.78 35.401-2.686 57.944-3.488 88.365-3.143 46.327.526 75.721 2.23 130.788 7.584 19.787 1.924 20.814 1.98 24.557 1.332l.066-.011c1.201-.203 1.53-1.825.399-2.335-2.911-1.31-4.893-1.604-22.048-3.261-57.509-5.556-87.871-7.36-132.059-7.842-23.239-.254-33.617-.116-50.627.674-11.629.54-42.371 2.494-46.696 2.967-2.359.259 8.133-3.625 26.504-9.81 23.239-7.825 27.934-10.149 28.304-14.005.417-4.348-3.529-6-16.878-7.066Z" />
@@ -40,11 +40,11 @@ export function Hero() {
       </h1>
       <h1 className=" mt-16 uppercase">
         To get
-        <span className="relative whitespace-nowrap text-blue-600">
+        <span className="relative whitespace-nowrap text-primary">
           <svg
             aria-hidden="true"
             viewBox="0 0 418 42"
-            className="absolute left-0 top-2/3 h-[0.58em] w-full fill-blue-300/70"
+            className="absolute left-0 top-2/3 h-[0.58em] w-full fill-primary/30"
             preserveAspectRatio="none"
           >
             <path d="M203.371.916c-26.013-2.078-76.686 1.963-124.73 9.946L67.3 12.749C35.421 18.062 18.2 21.766 6.004 25.934 1.244 27.561.828 27.778.874 28.61c.07 1.214.828 1.121 9.595-1.176 9.072-2.377 17.15-3.92 39.246-7.496C123.565 7.986 157.869 4.492 195.942 5.046c7.461.108 19.25 1.696 19.17 2.582-.107 1.183-7.874 4.31-25.75 10.366-21.992 7.45-35.43 12.534-36.701 13.884-2.173 2.308-.202 4.407 4.442 4.734 2.654.187 3.263.157 15.593-.78 35.401-2.686 57.944-3.488 88.365-3.143 46.327.526 75.721 2.23 130.788 7.584 19.787 1.924 20.814 1.98 24.557 1.332l.066-.011c1.201-.203 1.53-1.825.399-2.335-2.911-1.31-4.893-1.604-22.048-3.261-57.509-5.556-87.871-7.36-132.059-7.842-23.239-.254-33.617-.116-50.627.674-11.629.54-42.371 2.494-46.696 2.967-2.359.259 8.133-3.625 26.504-9.81 23.239-7.825 27.934-10.149 28.304-14.005.417-4.348-3.529-6-16.878-7.066Z" />
@@ -58,35 +58,25 @@ export function Hero() {
           onClick={() => {
             track('clicked_call_button')
           }}
-          color="blue"
+          color="primary"
           className=""
         >
-          <a href="tel:+91 9084702208" className="text-white">
+          <a href="tel:+919084702208" className="text-primary-foreground">
             +91 9084702208
           </a>
         </Button>
         <span>Or</span>
-        <Button onClick={handleSignUpClick} color="blue" className=" ">
+        <Button onClick={handleSignUpClick} color="primary" className=" ">
           Sign Up to get 15 days free
         </Button>
       </div>
-      <p className="mx-auto mt-12 max-w-5xl text-lg tracking-tight text-slate-700">
-        StaySystems is designed to revolutionize property management by
-        empowering your front office team with intuitive tools that simplify
-        their daily tasks.Bring big brands level tech into your hotel.
-        {/* Our
-        innovative software ensures a smooth operational flow, preventing
-        revenue leakage and reducing the risk of theft through stringent
-        security protocols. By streamlining administrative processes,
-        StaySystems allows your staff to focus more on what truly
-        matters—enhancing guest experiences. As a result, not only does our
-        system facilitate a more efficient work environment, but it also sets
-        the stage for increased revenue generation and superior guest
-        satisfaction. Choose StaySystems to elevate your property management to
-        new heights. */}
+      <p className="mx-auto mt-12 max-w-5xl text-lg tracking-tight text-muted-foreground">
+        Zenvana Hotels offers boutique and family-friendly stays with a focus on
+        comfort and calm. Book direct for the best rates and a personal touch at
+        every property.
       </p>
       <div className="mt-10 flex justify-center gap-x-6">
-        <Button onClick={handleSignUpClick}>Get 15 Days Free </Button>
+        <Button onClick={handleSignUpClick} color="primary">Get 15 Days Free </Button>
         {/* <Button
           href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
           variant="outline"

@@ -9,7 +9,7 @@ import { Button } from '@/components/Button'
 import { Container } from '@/components/Container'
 import { Logo } from '@/components/Logo'
 import { NavLink } from '@/components/NavLink'
-import { track } from '@vercel/analytics'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 function MobileNavLink({
   href,
@@ -52,10 +52,6 @@ function MobileNavIcon({ open }: { open: boolean }) {
   )
 }
 
-const handleAppClick = () => {
-  window.location.href = 'https://app.staysystems.in/login' // or history.push('/login'); for internal navigation
-}
-
 function MobileNavigation() {
   return (
     <Popover>
@@ -90,18 +86,11 @@ function MobileNavigation() {
             as="div"
             className="absolute inset-x-0 top-full mt-4 flex origin-top flex-col rounded-2xl bg-white p-4 text-lg tracking-tight text-slate-900 shadow-xl ring-1 ring-slate-900/5"
           >
-            <MobileNavLink href="https://app.staysystems.in/login">
-              PMS Login
-            </MobileNavLink>
-            <MobileNavLink href="https://admin.staysystems.in/login">
-              Admin Login
-            </MobileNavLink>
-            <MobileNavLink href="#features">Features</MobileNavLink>
-            {/* <MobileNavLink href="#testimonials">Testimonials</MobileNavLink> */}
-            <MobileNavLink href="#pricing">Pricing</MobileNavLink>
+            <MobileNavLink href="/hotels">Hotels</MobileNavLink>
+            <MobileNavLink href="/offers">Offers</MobileNavLink>
+            <MobileNavLink href="/about">About</MobileNavLink>
+            <MobileNavLink href="/contact">Contact</MobileNavLink>
             <MobileNavLink href="/privacypolicy">Privacy Policy</MobileNavLink>
-            <hr className="m-2 border-slate-300/40" />
-            <MobileNavLink href="/register">Register</MobileNavLink>
           </Popover.Panel>
         </Transition.Child>
       </Transition.Root>
@@ -109,47 +98,32 @@ function MobileNavigation() {
   )
 }
 
-const handleSignUpClick = () => {
-  track('clicked sign up', {
-    location: 'header',
-  })
-  window.location.href = 'https://app.staysystems.in/signup' // or history.push('/signup'); for internal navigation
-}
-
 export function Header() {
   return (
-    <header className="py-10">
+    <header className="border-b border-border bg-background py-10">
       <Container>
         <nav className="relative z-50 flex justify-between">
           <div className="flex items-center md:gap-x-12">
             <Link
               className=" flex items-center space-x-2"
-              href="#"
+              href="/"
               aria-label="Home"
             >
               <Logo className=" h-20 w-auto" />
-              {/* <h1 className=" font-bold">StaySystems</h1> */}
             </Link>
             <div className="hidden md:flex md:gap-x-6">
-              <NavLink href="https://app.staysystems.in/login">
-                PMS Login
-              </NavLink>
-              <NavLink href="https://admin.staysystems.in/login">
-                Admin Login
-              </NavLink>
-              <NavLink href="#features">Features</NavLink>
-              {/* <NavLink href="#testimonials">Testimonials</NavLink> */}
-              <NavLink href="#pricing">Pricing</NavLink>
+              <NavLink href="/hotels">Hotels</NavLink>
+              <NavLink href="/offers">Offers</NavLink>
+              <NavLink href="/about">About</NavLink>
+              <NavLink href="/contact">Contact</NavLink>
               <NavLink href="/privacypolicy">Privacy Policy</NavLink>
             </div>
           </div>
-          <div className="flex items-center gap-x-5 md:gap-x-8">
-            {/* <div className="hidden md:block">
-              <NavLink href="/login">Sign in</NavLink>
-            </div> */}
-            <Button onClick={handleSignUpClick} color="blue">
+          <div className="flex items-center gap-x-3 md:gap-x-6">
+            <ThemeToggle />
+            <Button href="/hotels" color="primary">
               <span>
-                Get started <span className="hidden lg:inline">today</span>
+                Book a stay <span className="hidden lg:inline">→</span>
               </span>
             </Button>
             <div className="-mr-1 md:hidden">

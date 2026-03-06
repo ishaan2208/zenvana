@@ -6,14 +6,16 @@ import { GoogleTagManager } from '@next/third-parties/google'
 
 import '@/styles/tailwind.css'
 import { type Metadata } from 'next'
+import { organizationJsonLd, webSiteJsonLd } from '@/lib/structured-data'
+import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s - StaySystems',
-    default: 'StaySystems - Efficient hotel management software',
+    template: '%s | Zenvana Hotels',
+    default: 'Zenvana Hotels | Boutique & Family Stays | Book Direct',
   },
   description:
-    ' StaySystems is a hotel management software that helps you manage your hotel efficiently. It is a cloud-based software that helps you manage your hotel from anywhere in the world.',
+    'Book direct at Zenvana Hotels. Boutique and family-friendly stays with the best rates. Explore our properties and reserve your stay.',
 }
 
 const inter = Inter({
@@ -34,17 +36,35 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html
-      lang="en"
-      className={clsx(
-        'h-full scroll-smooth bg-white antialiased',
-        inter.variable,
-        lexend.variable,
-      )}
-    >
-      <body className="flex h-full flex-col">
-        <Analytics />
-        {children}
+    <html lang="en" className="h-full scroll-smooth" suppressHydrationWarning>
+      <body
+        className={clsx(
+          'flex h-full flex-col antialiased',
+          inter.variable,
+          lexend.variable,
+        )}
+      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(organizationJsonLd()),
+            }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(webSiteJsonLd()),
+            }}
+          />
+          <Analytics />
+          {children}
+        </ThemeProvider>
       </body>
       <GoogleAnalytics gaId="AW-16548808937" />
       <GoogleTagManager gtmId="GTM-NF3MGFXC" />

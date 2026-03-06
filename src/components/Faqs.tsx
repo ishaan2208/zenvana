@@ -6,49 +6,48 @@ import backgroundImage from '@/images/background-faqs.jpg'
 const faqs = [
   [
     {
-      question: 'What is StaySystems?',
+      question: 'What is Zenvana Hotels?',
       answer:
-        'StaySystems is a cutting-edge property management software designed to streamline operations, enhance guest experiences, and increase revenue for property managers and owners. It provides tools that simplify the work of front office staff and ensures the efficient management of your properties.',
+        'Zenvana Hotels is a collection of boutique and family-friendly properties. We focus on comfortable, personal stays and the best rates when you book direct with us.',
     },
     {
-      question:
-        'How does StaySystems make the front office operations easier??',
+      question: 'Why should I book direct with Zenvana?',
       answer:
-        'Our software automates many routine tasks, including reservations, guest check-in/check-out, and billing, which significantly reduces manual workload and minimizes the chance of human error. This allows front office staff to focus more on providing exceptional service to guests.',
+        'Booking direct with Zenvana gives you the best rates, no hidden fees, and a direct line to our team. We can help with special requests and make your stay more personal.',
     },
     {
-      question: 'Can StaySystems help in preventing revenue leakage and theft?',
+      question: 'What types of properties does Zenvana offer?',
       answer:
-        'Yes, StaySystems includes robust security features and detailed auditing capabilities to track all transactions and interactions. This transparency helps prevent any potential revenue leakage and theft, ensuring financial safety and integrity.',
-    },
-  ],
-  [
-    {
-      question: 'In what ways does StaySystems enhance guest experiences?',
-      answer:
-        'StaySystems enhances guest experiences by enabling seamless interactions from booking to check-out. Our platform includes features for personalized service, such as tailored recommendations and efficient issue resolution, ensuring every guest feels valued and well cared for.',
-    },
-    {
-      question: 'How can StaySystems increase our property’s revenue?',
-      answer:
-        'By improving operational efficiency and guest satisfaction, StaySystems helps increase repeat bookings and positive reviews. Additionally, our analytics tools provide insights into revenue management, helping you make data-driven decisions to optimize pricing and promotions.',
-    },
-    {
-      question: 'Is StaySystems suitable for all types of properties?',
-      answer:
-        'Absolutely! StaySystems is versatile and can be tailored to meet the needs of various types of properties, including hotels, resorts, vacation rentals, and residential complexes.',
+        'We offer boutique hotels and family-friendly stays suited to both leisure and business travellers. Each property is chosen for comfort, location, and a calm, welcoming atmosphere.',
     },
   ],
   [
     {
-      question: 'What support does StaySystems offer to its users?',
+      question: 'How do I modify or cancel my booking?',
       answer:
-        'We provide 24/7 customer support through multiple channels including phone, email, and live chat. Our dedicated team is always ready to help you with any questions or issues you may encounter.',
+        'Contact us by phone or email and we’ll help you modify or cancel your booking. Our team is available to assist with any changes.',
     },
     {
-      question: 'How can I get started with StaySystems?',
+      question: 'Does Zenvana have a loyalty or repeat-guest programme?',
       answer:
-        'Getting started is easy! Contact our sales team through our website, and we’ll guide you through the setup process. We offer a variety of training resources and support to ensure a smooth transition and successful implementation.',
+        'We value our returning guests. Ask our team about special rates and benefits when you book direct for your next stay.',
+    },
+    {
+      question: 'Are Zenvana properties suitable for families?',
+      answer:
+        'Yes. Many of our properties are family-friendly with space and amenities suited to children and longer stays. Check each property page for details.',
+    },
+  ],
+  [
+    {
+      question: 'How can I get in touch with Zenvana?',
+      answer:
+        'You can reach us by phone at +91 9084702208 or by email. We’re happy to help with bookings, questions, or special requests.',
+    },
+    {
+      question: 'How do I get started and book a stay?',
+      answer:
+        'Browse our hotels on the website, choose your dates, and book direct for the best rate. You can also call us and we’ll help you find the right property and complete your reservation.',
     },
   ],
 ]
@@ -58,7 +57,7 @@ export function Faqs() {
     <section
       id="faq"
       aria-labelledby="faq-title"
-      className="relative overflow-hidden bg-slate-50 py-20 sm:py-32"
+      className="relative overflow-hidden bg-muted py-20 sm:py-32"
     >
       <Image
         className="absolute left-1/2 top-0 max-w-none -translate-y-1/4 translate-x-[-30%]"
@@ -72,17 +71,17 @@ export function Faqs() {
         <div className="mx-auto max-w-2xl lg:mx-0">
           <h2
             id="faq-title"
-            className="font-display text-3xl tracking-tight text-slate-900 sm:text-4xl"
+            className="font-display text-3xl tracking-tight text-foreground sm:text-4xl"
           >
             Frequently asked questions
           </h2>
-          <p className="mt-4 text-lg tracking-tight text-slate-700">
-            If you can’t find what you’re looking for, email our support team at{' '}
+          <p className="mt-4 text-lg tracking-tight text-muted-foreground">
+            If you can’t find what you’re looking for, email us at{' '}
             <a
-              href="mailto:support@staysytems.in"
-              className=" italic text-indigo-500"
+              href="mailto:support@zenvana.com"
+              className="font-medium italic text-primary"
             >
-              support@staysytems.in
+              support@zenvana.com
             </a>
           </p>
         </div>
@@ -95,10 +94,10 @@ export function Faqs() {
               <ul role="list" className="flex flex-col gap-y-8">
                 {column.map((faq, faqIndex) => (
                   <li key={faqIndex}>
-                    <h3 className="font-display text-lg leading-7 text-slate-900">
+                    <h3 className="font-display text-lg leading-7 text-foreground">
                       {faq.question}
                     </h3>
-                    <p className="mt-4 text-sm text-slate-700">{faq.answer}</p>
+                    <p className="mt-4 text-sm text-muted-foreground">{faq.answer}</p>
                   </li>
                 ))}
               </ul>

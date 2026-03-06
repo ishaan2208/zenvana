@@ -10,14 +10,14 @@ import { track } from '@vercel/analytics'
 export function CallToAction() {
   const handleSignUpClick = () => {
     track('clicked sign up', {
-      location: 'header',
+      location: 'cta',
     })
-    window.location.href = 'https://app.staysystems.in/signup' // or history.push('/signup'); for internal navigation
+    window.location.href = '/hotels'
   }
   return (
     <section
       id="get-started-today"
-      className="relative overflow-hidden bg-blue-600 py-32"
+      className="relative overflow-hidden bg-primary py-32"
     >
       <Image
         className="absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-1/2"
@@ -36,14 +36,13 @@ export function CallToAction() {
         /> */}
         <div className="mx-auto max-w-lg text-center">
           <h2 className="font-display text-3xl tracking-tight text-white sm:text-4xl">
-            Get started today
+            Book your stay
           </h2>
-          <p className="mt-4 text-lg tracking-tight text-white">
-            It’s time to take control of your Hotel. Buy our software so you can
-            feel like you’re doing something productive.
+          <p className="mt-4 text-lg tracking-tight text-primary-foreground/90">
+            Zenvana Hotels offers boutique and family-friendly stays. Book direct for the best rates and a personal touch.
           </p>
           <Button onClick={handleSignUpClick} color="white" className="mt-10">
-            Get 15 days free
+            View hotels
           </Button>
         </div>
       </Container>
