@@ -211,6 +211,8 @@ export type PublicRatesWithPlansPlan = {
   label: string
   totalAmount: number
   averagePricePerNight: number
+  /** EP | CP | MAP | AP — same plan type must be used for all rooms in multi-room booking */
+  mealPlan?: string
 }
 
 export type PublicRatesWithPlansResponse = {
@@ -222,6 +224,8 @@ export type PublicRatesWithPlansResponse = {
   occupancy: number | null
   baseDirectTotal: number
   plans: PublicRatesWithPlansPlan[]
+  /** True when occupancy was requested but no rate plans exist for that guest count (show sold out). */
+  noRatePlanForOccupancy?: boolean
   currency: string
 }
 
@@ -244,4 +248,137 @@ export async function getPublicRatesWithPlans(
   if (!res.ok) return null
   const json = await res.json()
   return json?.data ?? null
+}
+
+// -----------------------------------------------------------------------------
+// Public booking creation (PMS booking at confirmation)
+// -----------------------------------------------------------------------------
+
+export type CreatePublicBookingPayload = {
+  guestName: string
+  guestPhone: string
+  guestEmail?: string
+  checkIn: string
+  checkOut: string
+  roomTypeId: number
+  totalAmount: number
+  occupancy?: number
+  payment?: { paid: boolean; transactionId?: string }
+}
+
+export type CreatePublicBookingResponse = {
+  bookingId: number
+  bookingReference: string
+  guestName: string
+  checkIn: string
+  checkOut: string
+  totalAmount: number
+  totalPaid: number
+}
+
+/** Call from client (e.g. CheckoutForm). Creates PMS booking at confirmation (legacy single-room). */
+export async function createPublicBooking(
+  slug: string,
+  payload: CreatePublicBookingPayload
+): Promise<CreatePublicBookingResponse> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }
+  )
+  const json = await res.json()
+  if (!res.ok) {
+    throw new Error(json?.error ?? json?.message ?? 'Booking failed')
+  }
+  return json?.data
+}
+
+/** Multi-room: create booking with roomLines (one line per room). Pay now uses Razorpay flow. */
+export async function createPublicBookingWithRoomLines(
+  slug: string,
+  payload: {
+    guest: { name: string; phone: string; email?: string }
+    checkIn: string
+    checkOut: string
+    roomLines: Array<{ roomTypeId: number; ratePlanId?: number; occupancy: number; tariff: number }>
+    paymentIntent: 'pay_later' | 'pay_now'
+  }
+): Promise<CreatePublicBookingResponse> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }
+  )
+  const json = await res.json()
+  if (!res.ok) {
+    throw new Error(json?.error ?? json?.message ?? 'Booking failed')
+  }
+  return json?.data
+}
+
+// -----------------------------------------------------------------------------
+// Razorpay (pay_now flow)
+// -----------------------------------------------------------------------------
+
+export async function createRazorpayOrder(
+  slug: string,
+  amountPaise: number,
+  currency = 'INR',
+  receipt?: string
+): Promise<{ orderId: string }> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/razorpay-order`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: amountPaise, currency, receipt }),
+    }
+  )
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error ?? 'Could not create payment order')
+  return json?.data
+}
+
+export type PublicBookingPayload = {
+  guest: { name: string; phone: string; email?: string }
+  checkIn: string
+  checkOut: string
+  roomLines: Array<{
+    roomTypeId: number
+    ratePlanId?: number
+    occupancy: number
+    tariff: number
+  }>
+  paymentIntent: 'pay_later' | 'pay_now'
+}
+
+export async function verifyRazorpayAndCreateBooking(
+  slug: string,
+  razorpay_order_id: string,
+  razorpay_payment_id: string,
+  razorpay_signature: string,
+  booking: PublicBookingPayload
+): Promise<CreatePublicBookingResponse> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/razorpay-verify`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+        booking,
+      }),
+    }
+  )
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error ?? 'Payment verification or booking failed')
+  return json?.data
 }

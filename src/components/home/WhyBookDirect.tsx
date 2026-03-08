@@ -1,20 +1,27 @@
+'use client'
+
+import { motion } from 'framer-motion'
+import { BadgeCheck, Headphones, Sparkles, WalletCards } from 'lucide-react'
 import { Container } from '@/components/Container'
 
 const points = [
   {
-    title: 'Best rates',
+    title: 'Better value, not fake discount drama',
     description:
-      'Booking direct means no commission markups. You get the best price we offer.',
+      'Direct booking reduces marketplace friction and helps you access the best value we can transparently offer.',
+    icon: WalletCards,
   },
   {
-    title: 'Personal service',
+    title: 'Speak to the property, not a ticket maze',
     description:
-      'Reach us directly for requests, changes, or questions. We’re here to help.',
+      'Need a request, update, or clarification? Reach the hotel team more directly and get things sorted faster.',
+    icon: Headphones,
   },
   {
-    title: 'Family-friendly',
+    title: 'A more thoughtful stay',
     description:
-      'Our properties are chosen with families and longer stays in mind.',
+      'Zenvana properties are chosen for comfort, practicality, and warmth — useful for both couples and families.',
+    icon: BadgeCheck,
   },
 ]
 
@@ -22,32 +29,76 @@ export function WhyBookDirect() {
   return (
     <section
       id="why-book-direct"
-      aria-label="Why book with Zenvana"
-      className="border-t border-slate-200 bg-white py-16 sm:py-20"
+      aria-label="Why book direct with Zenvana"
+      className="border-t border-border/60 bg-background py-16 sm:py-20"
     >
       <Container>
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="font-display text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-            Why book with us
-          </h2>
-          <p className="mt-3 text-slate-600">
-            Simple, honest hospitality. No hidden fees, no runaround.
-          </p>
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-end">
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-accent" />
+              Why book direct
+            </div>
+
+            <h2 className="mt-5 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              Premium hospitality should feel simple, not bureaucratic.
+            </h2>
+
+            <p className="mt-4 text-base leading-7 text-muted-foreground sm:text-lg">
+              The point of direct booking is not just price. It is clarity,
+              speed, less friction, and a more human experience before you even
+              arrive.
+            </p>
+          </div>
+
+          <div className="rounded-[2rem] border border-border/60 bg-card/80 p-6 shadow-soft backdrop-blur">
+            <p className="text-sm leading-7 text-muted-foreground">
+              Zenvana is positioned best when the homepage feels less like a
+              discount portal and more like a calm invitation into a reliable,
+              beautifully-run hospitality system.
+            </p>
+          </div>
         </div>
-        <ul
-          role="list"
-          className="mx-auto mt-12 grid max-w-4xl gap-8 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {points.map((item) => (
-            <li
-              key={item.title}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 p-6"
-            >
-              <h3 className="font-semibold text-slate-900">{item.title}</h3>
-              <p className="mt-2 text-sm text-slate-600">{item.description}</p>
-            </li>
-          ))}
-        </ul>
+
+        <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          {points.map((item, index) => {
+            const Icon = item.icon
+
+            return (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ duration: 0.5, delay: index * 0.08 }}
+                className="group relative overflow-hidden rounded-[1.75rem] border border-border/60 bg-card/80 p-6 shadow-soft transition duration-300 hover:-translate-y-1 hover:shadow-card"
+              >
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-24 opacity-70"
+                  style={{
+                    background:
+                      'linear-gradient(180deg, rgba(219,230,76,0.12), rgba(219,230,76,0))',
+                  }}
+                />
+
+                <div className="relative">
+                  <div className="inline-flex rounded-2xl border border-border/60 bg-background p-3">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+
+                  <h3 className="mt-5 text-lg font-semibold tracking-tight text-foreground">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
       </Container>
     </section>
   )

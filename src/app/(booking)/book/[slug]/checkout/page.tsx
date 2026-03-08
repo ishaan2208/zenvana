@@ -1,12 +1,13 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getPublicPropertyBySlug } from '@/lib/api'
-import { Button } from '@/components/Button'
 import CheckoutForm from './CheckoutForm'
+import MultiRoomCheckoutForm from './MultiRoomCheckoutForm'
 
 type Props = {
   params: Promise<{ slug: string }>
   searchParams: Promise<{
+    multiRoom?: string
     checkIn?: string
     checkOut?: string
     roomTypeId?: string
@@ -23,15 +24,36 @@ type Props = {
 export default async function CheckoutPage({ params, searchParams }: Props) {
   const { slug } = await params
   const q = await searchParams
+  const isMultiRoom = q.multiRoom === '1'
+
+  const property = await getPublicPropertyBySlug(slug)
+  if (!property) notFound()
+
+  if (isMultiRoom) {
+    return (
+      <div className="max-w-2xl">
+        <h1 className="font-display text-2xl font-semibold text-slate-900">
+          Checkout — {property.publicName}
+        </h1>
+        <MultiRoomCheckoutForm
+          slug={slug}
+          propertyName={property.publicName}
+          primaryPhone={property.primaryPhone}
+        />
+        <p className="mt-8">
+          <Link href={`/book/${slug}/rooms`} className="text-sm text-blue-600 hover:underline">
+            ← Back to rooms
+          </Link>
+        </p>
+      </div>
+    )
+  }
 
   const required = ['checkIn', 'checkOut', 'roomTypeId', 'roomTypeName', 'nights', 'totalAmount']
   const missing = required.filter((k) => !q[k as keyof typeof q])
   if (missing.length > 0) {
     redirect(`/book/${slug}/rooms?checkIn=${q.checkIn ?? ''}&checkOut=${q.checkOut ?? ''}`)
   }
-
-  const property = await getPublicPropertyBySlug(slug)
-  if (!property) notFound()
 
   const checkIn = q.checkIn!
   const checkOut = q.checkOut!
@@ -90,6 +112,9 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
         roomTypeName={roomTypeName}
         nights={nights}
         totalAmount={totalAmount}
+        numRooms={numRooms}
+        ratePlan={q.ratePlan}
+        occupancy={q.occupancy ? parseInt(q.occupancy, 10) : undefined}
       />
 
       <p className="mt-8">

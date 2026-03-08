@@ -12,6 +12,10 @@ type Props = {
     roomTypeName?: string
     occupancy?: string
     availableRooms?: string
+    rooms?: string
+    guests?: string
+    ratePlan?: string
+    ratePlanLabel?: string
   }>
 }
 
@@ -22,7 +26,14 @@ export default async function RatePlanPage({ params, searchParams }: Props) {
   const required = ['checkIn', 'checkOut', 'roomTypeId', 'roomTypeName']
   const missing = required.filter((k) => !q[k as keyof typeof q])
   if (missing.length > 0) {
-    redirect(`/book/${slug}/rooms?checkIn=${q.checkIn ?? ''}&checkOut=${q.checkOut ?? ''}&occupancy=${q.occupancy ?? ''}`)
+    const roomParams = new URLSearchParams({
+      checkIn: q.checkIn ?? '',
+      checkOut: q.checkOut ?? '',
+    })
+    if (q.occupancy) roomParams.set('occupancy', q.occupancy)
+    if (q.rooms) roomParams.set('rooms', q.rooms)
+    if (q.guests) roomParams.set('guests', q.guests)
+    redirect(`/book/${slug}/rooms?${roomParams}`)
   }
 
   const property = await getPublicPropertyBySlug(slug)
@@ -68,11 +79,20 @@ export default async function RatePlanPage({ params, searchParams }: Props) {
         occupancy={q.occupancy ?? ''}
         plans={ratesWithPlans.plans}
         availableRooms={Math.max(1, parseInt(q.availableRooms ?? '1', 10) || 1)}
+        requestedRooms={Math.max(1, parseInt(q.rooms ?? '1', 10) || 1)}
+        initialRatePlan={q.ratePlan ?? undefined}
+        initialRatePlanLabel={q.ratePlanLabel ?? undefined}
       />
 
       <p className="mt-8">
         <Link
-          href={`/book/${slug}/rooms?checkIn=${encodeURIComponent(q.checkIn!)}&checkOut=${encodeURIComponent(q.checkOut!)}&occupancy=${q.occupancy ?? ''}`}
+          href={`/book/${slug}/rooms?${new URLSearchParams({
+            checkIn: q.checkIn!,
+            checkOut: q.checkOut!,
+            ...(q.occupancy && { occupancy: q.occupancy }),
+            ...(q.rooms && { rooms: q.rooms }),
+            ...(q.guests && { guests: q.guests }),
+          })}`}
           className="text-sm text-blue-600 hover:underline"
         >
           ← Back to room types

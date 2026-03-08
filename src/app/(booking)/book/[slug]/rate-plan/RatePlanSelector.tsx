@@ -15,6 +15,9 @@ type Props = {
   occupancy: string
   plans: PublicRatesWithPlansPlan[]
   availableRooms: number
+  requestedRooms?: number
+  initialRatePlan?: string
+  initialRatePlanLabel?: string
 }
 
 export function RatePlanSelector({
@@ -27,12 +30,15 @@ export function RatePlanSelector({
   occupancy,
   plans,
   availableRooms,
+  requestedRooms = 1,
+  initialRatePlan,
 }: Props) {
-  const maxRooms = Math.max(1, availableRooms)
+  const maxRooms = Math.min(Math.max(1, availableRooms), Math.max(1, requestedRooms))
+  const initialPlan = initialRatePlan ? plans.find((p) => p.plan === initialRatePlan) : null
   const [selectedPlan, setSelectedPlan] = useState<PublicRatesWithPlansPlan | null>(
-    plans.length === 1 ? plans[0] : null
+    initialPlan ?? (plans.length === 1 ? plans[0] : null)
   )
-  const [numRooms, setNumRooms] = useState(1)
+  const [numRooms, setNumRooms] = useState(Math.min(requestedRooms, maxRooms) || 1)
 
   const totalAmount = selectedPlan ? Math.round(selectedPlan.totalAmount * numRooms * 100) / 100 : 0
 

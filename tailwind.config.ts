@@ -1,12 +1,17 @@
-import formsPlugin from '@tailwindcss/forms'
-import headlessuiPlugin from '@headlessui/tailwindcss'
-import tailwindcssAnimate from 'tailwindcss-animate'
-import { type Config } from 'tailwindcss'
+import type { Config } from 'tailwindcss'
+import animate from 'tailwindcss-animate'
 
-export default {
-  darkMode: 'class',
+const config: Config = {
+  darkMode: ['class'],
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   theme: {
+    container: {
+      center: true,
+      padding: '1rem',
+      screens: {
+        '2xl': '1400px',
+      },
+    },
     fontSize: {
       xs: ['0.75rem', { lineHeight: '1rem' }],
       sm: ['0.875rem', { lineHeight: '1.5rem' }],
@@ -23,12 +28,6 @@ export default {
       '9xl': ['8rem', { lineHeight: '1' }],
     },
     extend: {
-      borderRadius: {
-        '4xl': '2rem',
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
-      },
       fontFamily: {
         sans: 'var(--font-inter)',
         display: 'var(--font-lexend)',
@@ -70,8 +69,56 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
+        },
+        info: {
+          DEFAULT: 'hsl(var(--info))',
+          foreground: 'hsl(var(--info-foreground))',
+        },
+        brand: {
+          white: '#F6F7ED',
+          spring: '#DBE64C',
+          midnight: '#001F3F',
+          mantis: '#74C365',
+          green: '#00804C',
+          nuit: '#1E488F',
+        },
+      },
+      borderRadius: {
+        '4xl': '2rem',
+        xl: 'calc(var(--radius) - 4px)',
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 6px)',
+      },
+      boxShadow: {
+        soft: '0 8px 30px rgba(0, 31, 63, 0.08)',
+        card: '0 10px 30px rgba(0, 31, 63, 0.10)',
+      },
+      backgroundImage: {
+        'brand-gradient':
+          'linear-gradient(135deg, #001F3F 0%, #1E488F 55%, #00804C 100%)',
+        'accent-gradient': 'linear-gradient(135deg, #DBE64C 0%, #74C365 100%)',
+      },
+      keyframes: {
+        'accordion-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
+        },
+        'accordion-up': {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
+        },
+      },
+      animation: {
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
       },
     },
   },
-  plugins: [formsPlugin, headlessuiPlugin, tailwindcssAnimate],
-} satisfies Config
+  plugins: [animate],
+}
+
+export default config

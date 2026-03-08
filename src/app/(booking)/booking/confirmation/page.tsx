@@ -13,24 +13,32 @@ type Props = {
     checkOut?: string
     roomTypeName?: string
     totalAmount?: string
+    bookingReference?: string
   }>
 }
 
 export default async function ConfirmationPage({ searchParams }: Props) {
   const q = await searchParams
   const hasDetails = q.propertyName && q.checkIn && q.checkOut && q.roomTypeName && q.totalAmount
+  const hasRef = !!q.bookingReference
 
   return (
     <div className="max-w-lg">
       <h1 className="font-display text-2xl font-semibold text-slate-900">
-        Booking request received
+        {hasRef ? 'Booking confirmed' : 'Booking request received'}
       </h1>
       <p className="mt-2 text-slate-600">
-        Thank you for your interest in staying with Zenvana. We will confirm your
-        reservation and send details to your email shortly.
+        {hasRef
+          ? 'Your reservation is confirmed. We will send the details to your email shortly.'
+          : 'Thank you for your interest in staying with Zenvana. We will confirm your reservation and send details to your email shortly.'}
       </p>
       {hasDetails && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          {hasRef && (
+            <p className="mb-2 text-sm font-medium text-slate-700">
+              Reference: <span className="font-mono">{q.bookingReference}</span>
+            </p>
+          )}
           <p className="font-medium text-slate-900">{q.propertyName}</p>
           <p className="mt-1 text-sm text-slate-600">
             {q.roomTypeName} · {q.checkIn} to {q.checkOut}

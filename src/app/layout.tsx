@@ -1,10 +1,7 @@
 import { Inter, Lexend } from 'next/font/google'
 import clsx from 'clsx'
-import { GoogleAnalytics } from '@next/third-parties/google'
-import { Analytics } from '@vercel/analytics/react'
-import { GoogleTagManager } from '@next/third-parties/google'
 
-import '@/styles/tailwind.css'
+import './globals.css'
 import { type Metadata } from 'next'
 import { organizationJsonLd, webSiteJsonLd } from '@/lib/structured-data'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -62,13 +59,9 @@ export default function RootLayout({
               __html: JSON.stringify(webSiteJsonLd()),
             }}
           />
-          <Analytics />
           {children}
         </ThemeProvider>
       </body>
-      <GoogleAnalytics gaId="AW-16548808937" />
-      <GoogleTagManager gtmId="GTM-NF3MGFXC" />
-      <GoogleTagManager gtmId="GTM-WM48VD8D" />
     </html>
   )
 }
