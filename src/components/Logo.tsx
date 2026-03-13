@@ -12,18 +12,14 @@ export function Logo({
       {...props}
     >
       <Image
-        src="/zenvana-logo.svg"
-        alt=""
+        src="/Zenvana%20logo/zenvana_exact_match.svg"
+        alt="Zenvana"
         width={120}
         height={48}
         className="h-10 w-auto object-contain sm:h-12"
         priority
       />
-      {showText && (
-        <span className="font-display text-lg font-semibold text-primary sm:text-xl">
-          Zenvana
-        </span>
-      )}
+
     </div>
   )
 }

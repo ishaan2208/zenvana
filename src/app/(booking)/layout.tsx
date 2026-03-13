@@ -1,24 +1,16 @@
-import Link from 'next/link'
-import { Logo } from '@/components/Logo'
+import { Header } from '@/components/Header'
 
-/**
- * Minimal layout for booking flow: no marketing header/footer.
- */
 export default function BookingLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
-          <Link href="/" aria-label="Zenvana home">
-            <Logo className="h-8" />
-          </Link>
-        </div>
-      </header>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">{children}</div>
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+      <Header />
+      <main className="flex-1">
+        <div className=" w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">{children}</div>
+      </main>
     </div>
   )
 }

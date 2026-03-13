@@ -1,413 +1,469 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import type { LucideIcon } from 'lucide-react'
 import {
-  BriefcaseBusiness,
+  ArrowRight,
+  BadgeCheck,
+  Check,
+  Clock3,
+  Coffee,
   MapPin,
-  MapPinned,
-  PartyPopper,
-  Star,
-  UtensilsCrossed,
+  Mountain,
+  MoonStar,
+  ShieldCheck,
+  Sparkles,
+  Trees,
+  Users,
 } from 'lucide-react'
-import { RoomsCarousel } from '@/components/RoomsCarousel'
+
+import { getPublicProperties } from '@/lib/api'
+import { HeroBookBar } from './HeroBookBar'
 
 export const metadata: Metadata = {
   title: 'Zenvana Hotels | Dehradun stays, book direct',
   description:
-    'Discover boutique and family-friendly stays on Rajpur Road, Dehradun. Book direct with Zenvana for calmer stays, better value, and thoughtful hospitality.',
+    'Thoughtfully located stays in Dehradun, shaped by foothill calm, warm hospitality, and the ease of booking direct.',
 }
 
-export default function HomePage() {
+const principles: {
+  icon: LucideIcon
+  title: string
+  text: string
+}[] = [
+    {
+      icon: Sparkles,
+      title: 'Considered stays',
+      text: 'Thoughtfully located, quietly designed, and made to feel easy from the first glance.',
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Warm hospitality',
+      text: 'Service that feels attentive, personal, and never overdone.',
+    },
+    {
+      icon: Trees,
+      title: 'Book direct',
+      text: 'Clear communication, straightforward value, and a smoother arrival from the outset.',
+    },
+  ]
+
+const narrativeMoments: {
+  number: string
+  icon: LucideIcon
+  title: string
+  text: string
+}[] = [
+    {
+      number: '01',
+      icon: MapPin,
+      title: 'Rajpur Road',
+      text: "Close to the city's best-known address, where cafés, movement, and everyday Dehradun life come together.",
+    },
+    {
+      number: '02',
+      icon: MoonStar,
+      title: 'Foothill calm',
+      text: 'A softer rhythm of mornings, greener edges, and stays that feel a little more unhurried.',
+    },
+    {
+      number: '03',
+      icon: Clock3,
+      title: 'Easy arrival',
+      text: 'Clear directions, responsive teams, and a booking journey that feels polished from the start.',
+    },
+    {
+      number: '04',
+      icon: Coffee,
+      title: 'Longer exhale',
+      text: 'Well suited to weekends, family stays, and trips that ask for comfort without excess.',
+    },
+  ]
+
+const directReasons: {
+  icon: LucideIcon
+  title: string
+  text: string
+}[] = [
+    {
+      icon: BadgeCheck,
+      title: 'Direct benefits',
+      text: 'A clearer booking experience, with value presented simply and well.',
+    },
+    {
+      icon: Check,
+      title: 'Better coordination',
+      text: 'Special requests and arrival details are easier to handle when you book directly.',
+    },
+    {
+      icon: Users,
+      title: 'More personal service',
+      text: 'A more direct connection to the team before you arrive.',
+    },
+    {
+      icon: Mountain,
+      title: 'Local perspective',
+      text: 'Stays shaped by the mood of Dehradun, from city access to foothill quiet.',
+    },
+    {
+      icon: Sparkles,
+      title: 'Thoughtful value',
+      text: 'Offers and rates that feel considered rather than noisy.',
+    },
+    {
+      icon: ShieldCheck,
+      title: 'A calmer process',
+      text: 'Less friction, less confusion, and more confidence from booking to check-in.',
+    },
+  ]
+
+const faqs = [
+  {
+    q: 'Why book direct with Zenvana?',
+    a: 'Booking direct gives you a smoother line to the property team, clearer communication before arrival, and access to selected direct-only offers when available.',
+  },
+  {
+    q: 'Are Zenvana stays suited to families?',
+    a: 'Yes. Many guests choose Zenvana for stays that feel comfortable, practical, and easy to settle into with family.',
+  },
+  {
+    q: 'Do you offer seasonal or extended-stay rates?',
+    a: 'Selected dates and stays may include seasonal offers or longer-stay value. The latest options are available on the booking journey.',
+  },
+]
+
+export default async function HomePage() {
+  const properties = await getPublicProperties()
+  const heroProperties = properties.map((p) => ({
+    slug: p.slug,
+    publicName: p.publicName,
+  }))
+
   return (
-    <>
-      <HeroSection />
-      <RoomsSection />
-      <SpecialOffersSection />
-      <DiningSection />
-      <EventsSection />
-      <GallerySection />
-      <TestimonialsSection />
-      <LocationSection />
-      <BookingCtaSection />
-    </>
+    <main className="bg-background text-foreground">
+      <HeroSection properties={heroProperties} />
+      <div className="hidden lg:block">
+        <EditorialPreludeSection />
+        <VisualEssaySection />
+        <NarrativeSection />
+        <DirectBookingSection />
+      </div>
+      <OfferStripSection />
+      <FaqSection />
+    </main>
   )
 }
 
-function HeroSection() {
+function HeroSection({
+  properties,
+}: {
+  properties: { slug: string; publicName: string }[]
+}) {
   return (
-    <section className="relative min-h-[92svh] overflow-hidden">
+    <section className="relative min-h-[100svh] overflow-hidden bg-[#08111f] text-white">
       <div className="absolute inset-0">
         <Image
           src="/images/dehradun/dehradun-hero.jpg"
           alt="Dehradun foothills and Rajpur Road atmosphere at golden hour"
           fill
           priority
-          className="object-cover"
+          className="object-cover object-center"
         />
-        <div className="hero-overlay absolute inset-0" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.22] mix-blend-soft-light">
-          <div className="h-full w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.16),_transparent_60%),repeating-linear-gradient(135deg,_rgba(255,255,255,0.09),_rgba(255,255,255,0.09)_1px,_transparent_1px,_transparent_10px)]" />
-        </div>
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,12,22,0.24)_0%,rgba(6,12,22,0.40)_30%,rgba(6,12,22,0.72)_72%,rgba(6,12,22,0.92)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(219,230,76,0.12),transparent_28%),radial-gradient(circle_at_80%_16%,rgba(116,195,101,0.10),transparent_24%)]" />
       </div>
 
-      <div className="container-shell relative flex min-h-[92svh] flex-col justify-between pb-10 pt-32 sm:pb-12 lg:pb-24">
-          <div className="relative z-10 max-w-5xl pl-0 md:pl-[6%] lg:pl-[8%] text-white">
-          <div className="relative space-y-5 sm:space-y-6 lg:space-y-7">
-            <h1 className="max-w-3xl font-serif text-3xl font-semibold leading-tight tracking-[-0.05em] sm:text-4xl lg:text-5xl">
-              Discover the Best Hotels in Dehradun with Zenvana
-            </h1>
+      <div className="relative z-10 mx-auto flex min-h-[80svh] w-full flex-col justify-end px-4 pb-6 pt-4 sm:px-6 sm:pb-10 sm:pt-6 lg:px-8 lg:pb-10">
+        <div className="max-w-[920px]">
+          <h1 className="mt-3 max-w-[980px] font-serif text-[clamp(2.5rem,6vw,7rem)] leading-[0.92] tracking-[-0.05em] text-white sm:mt-5">
+            A better way
+            <span className="block text-white">to stay in</span>
+            <span className="block text-white">Dehradun.</span>
+          </h1>
 
-            <p className="max-w-xl text-sm leading-7 text-white/85 sm:text-base lg:text-lg">
-              Zenvana brings together Dehradun-rooted stays shaped by Rajpur Road,
-              foothill calm, family comfort, and direct-booking ease.
-            </p>
-          </div>
-        </div>
-
-        <div className="relative z-10 mt-10 max-w-6xl px-4 mx-auto">
-          <div className="relative rounded-3xl border border-white/25 bg-black/30 p-4 shadow-2xl backdrop-blur-xl sm:p-5">
-            <div className="flex flex-col items-stretch justify-center gap-4 text-white md:flex-row md:items-center md:gap-6">
-              <div className="flex-1 min-w-[140px]">
-                <div className="text-xs font-medium uppercase tracking-[0.16em] text-white/70 text-center">
-                  Choose a property
-                </div>
-                <input
-                  className="book-input mt-1 w-full border-b border-white/40 bg-transparent px-0 pb-1 text-center text-sm text-white placeholder:text-white/60 focus:border-white focus:outline-none"
-                  placeholder="Choose a property"
-                />
-              </div>
-
-              <div className="flex-1 min-w-[140px]">
-                <div className="text-xs font-medium uppercase tracking-[0.16em] text-white/70 whitespace-nowrap text-center">
-                  Check-in — Check-out
-                </div>
-                <input
-                  className="book-input mt-1 w-full border-b border-white/40 bg-transparent px-0 pb-1 text-center text-sm text-white placeholder:text-white/60 focus:border-white focus:outline-none"
-                  placeholder="Check-in — Check-out"
-                />
-              </div>
-
-              <div className="flex-1 min-w-[120px]">
-                <div className="text-xs font-medium uppercase tracking-[0.16em] text-white/70 text-center">
-                  Guests & rooms
-                </div>
-                <input
-                  className="book-input mt-1 w-full border-b border-white/40 bg-transparent px-0 pb-1 text-center text-sm text-white placeholder:text-white/60 focus:border-white focus:outline-none"
-                  placeholder="Guests & rooms"
-                />
-              </div>
-
-              <div className="mt-2 w-full min-w-[140px] md:mt-0 md:w-auto">
-                <button className="site-button-dark h-11 w-full rounded-2xl px-6 text-sm font-semibold uppercase tracking-[0.18em] md:w-auto">
-                  Book now
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function RoomsSection() {
-  const rooms = [
-    {
-      name: 'Deluxe Room',
-      description: 'A calm, light-filled room with plush comfort and an easy city rhythm.',
-    },
-    {
-      name: 'Twin Room',
-      description: 'Designed for friends and families with practical layout and warm details.',
-    },
-    {
-      name: 'Premium Suite',
-      description: 'More space, softer lighting, and a slower pace for longer stays.',
-    },
-    {
-      name: 'Mountain View',
-      description: 'Framed views of the hills with morning light and quieter evenings.',
-    },
-    {
-      name: 'City View',
-      description: 'Watch the city move from a higher, calmer vantage point.',
-    },
-  ]
-
-  return (
-    <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="max-w-2xl">
-          <div className="eyebrow">Accommodation</div>
-          <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-            Rooms shaped for comfort, not clutter.
-          </h2>
-          <p className="body-copy mt-5 max-w-xl">
-            Explore a small collection of room types designed around rest, calm lighting, and
-            practical space.
+          <p className="mt-4 max-w-[700px] text-sm leading-7 text-white sm:mt-6 sm:text-base sm:leading-8 lg:text-lg">
+            Thoughtfully located stays, warm hospitality, and the ease of booking direct.
           </p>
+
         </div>
 
-        <RoomsCarousel rooms={rooms} autoplayMs={4500} />
-      </div>
-    </section>
-  )
-}
-
-function SpecialOffersSection() {
-  const offers = [
-    {
-      title: 'Early Booking Discount',
-      highlight: 'Save up to 15%',
-      description: 'Plan ahead and enjoy quieter value when you reserve early.',
-    },
-    {
-      title: 'Weekend Getaway Offer',
-      highlight: 'City-to-hills reset',
-      description: 'A short stay designed for late checkouts and slower mornings.',
-    },
-    {
-      title: 'Dining Special Offer',
-      highlight: 'Taste-led stays',
-      description: 'A curated add-on that makes meals feel like part of the trip.',
-    },
-  ]
-
-  return (
-    <section className="section-rule bg-muted/20">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <div className="eyebrow">Special offers</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              Value that feels curated, not noisy.
-            </h2>
-            <p className="body-copy mt-5 max-w-xl">
-              Limited-time offers designed to improve the stay, not complicate it.
-            </p>
-          </div>
-
-          <Link href="/offers" className="site-button-dark w-fit">
-            View offers
-          </Link>
-        </div>
-
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {offers.map((offer) => (
-            <article
-              key={offer.title}
-              className="quiet-card group overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              <div className="p-6">
-                <div className="inline-flex rounded-full bg-accent/20 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-accent-foreground">
-                  {offer.highlight}
-                </div>
-                <h3 className="mt-4 text-xl font-semibold tracking-tight text-foreground">
-                  {offer.title}
-                </h3>
-                <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  {offer.description}
-                </p>
-                <div className="mt-6">
-                  <Link href="/offers" className="site-link">
-                    View Offer
-                  </Link>
-                </div>
-              </div>
-              <div className="h-1 bg-gradient-to-r from-primary/30 via-accent/25 to-primary/30 opacity-0 transition group-hover:opacity-100" />
-            </article>
-          ))}
+        <div className="mt-6 w-full max-w-[920px] sm:mt-10">
+          <HeroBookBar properties={properties} />
         </div>
       </div>
     </section>
   )
 }
 
-function DiningSection() {
+function EditorialPreludeSection() {
   return (
-    <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
-          <div className="lg:col-span-7">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[2rem] bg-muted">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.12))]" />
-              <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                Dining image placeholder
-              </div>
-            </div>
+    <section className="border-t border-border/60 bg-background">
+      <div className="mx-auto grid w-full max-w-[1440px] gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:py-24">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            The Zenvana way
           </div>
-
-          <div className="lg:col-span-5">
-            <div className="eyebrow">Dining</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              Gourmet dining with a rooftop mood.
-            </h2>
-            <p className="body-copy mt-5">
-              A dining experience designed around relaxed evenings, thoughtful plating, and
-              a menu that feels seasonal and clean.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/restaurant" className="site-button-dark inline-flex items-center gap-2">
-                <UtensilsCrossed className="h-4 w-4" />
-                Explore Dining
-              </Link>
-              <Link href="/contact" className="site-button-light">
-                Enquire
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function EventsSection() {
-  const events = [
-    {
-      title: 'Wedding events',
-      icon: <PartyPopper className="h-5 w-5" />,
-      text: 'Celebrate with warm hospitality, beautiful light, and flexible spaces.',
-    },
-    {
-      title: 'Corporate meetings',
-      icon: <BriefcaseBusiness className="h-5 w-5" />,
-      text: 'Focused setups for workshops, retreats, and clean, well-run sessions.',
-    },
-    {
-      title: 'Private celebrations',
-      icon: <PartyPopper className="h-5 w-5" />,
-      text: 'Birthdays, anniversaries, and dinners with a calmer, elevated mood.',
-    },
-  ]
-
-  return (
-    <section className="section-rule bg-muted/10">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="max-w-2xl">
-          <div className="eyebrow">Events</div>
-          <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-            Celebrations that feel effortless.
+          <h2 className="mt-4 max-w-[620px] font-serif text-4xl leading-[0.95] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">
+            Hospitality with a calmer point of view.
           </h2>
-          <p className="body-copy mt-5 max-w-xl">
-            Flexible spaces for weddings, meetings, and private gatherings — designed for flow.
-          </p>
         </div>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {events.map((item) => (
-            <div key={item.title} className="quiet-card p-6">
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/20 text-accent-foreground">
-                {item.icon}
-              </div>
-              <h3 className="mt-4 text-lg font-semibold tracking-tight text-foreground">
-                {item.title}
-              </h3>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.text}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function GallerySection() {
-  const tiles = Array.from({ length: 8 }, (_, i) => i + 1)
-
-  return (
-    <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <div className="eyebrow">Gallery</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              A visual feel for the stay.
-            </h2>
-            <p className="body-copy mt-5 max-w-xl">
-              A small grid preview — with hover motion — to set the tone without noise.
-            </p>
-          </div>
-
-          <Link href="/hotels" className="site-button-light w-fit">
-            View Full Gallery
-          </Link>
-        </div>
-
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {tiles.map((n) => (
-            <div
-              key={n}
-              className="group relative aspect-[4/3] overflow-hidden rounded-[1.6rem] bg-muted"
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))] transition duration-300 group-hover:opacity-80" />
-              <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55 transition duration-300 group-hover:scale-[1.03]">
-                Image {n}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function TestimonialsSection() {
-  const testimonials = [
-    {
-      name: 'Guest review',
-      text: 'A calm stay with thoughtful details — everything felt easy and well-considered.',
-      stars: 5,
-    },
-    {
-      name: 'Guest review',
-      text: 'Beautiful atmosphere, clean rooms, and a smooth booking experience from start to finish.',
-      stars: 5,
-    },
-    {
-      name: 'Guest review',
-      text: 'Great for families — practical comfort and a quieter, boutique feeling throughout.',
-      stars: 4,
-    },
-  ]
-
-  return (
-    <section className="section-rule bg-muted/15">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="max-w-2xl">
-          <div className="eyebrow">Testimonials</div>
-          <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-            Guests remember the feeling.
-          </h2>
-          <p className="body-copy mt-5 max-w-xl">
-            A swipeable carousel layout that works without copying any external content.
-          </p>
-        </div>
-
-        <div className="mt-10 flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {testimonials.map((t, idx) => (
-            <article
-              key={idx}
-              className="quiet-card min-w-[280px] max-w-[360px] flex-1 snap-start p-6 sm:min-w-[340px]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-full bg-muted" />
-                <div>
-                  <div className="text-sm font-semibold text-foreground">{t.name}</div>
-                  <div className="mt-1 flex items-center gap-1 text-amber-500">
-                    {Array.from({ length: 5 }, (_, s) => (
-                      <Star
-                        key={s}
-                        className={
-                          s < t.stars ? 'h-4 w-4 fill-current' : 'h-4 w-4 opacity-30'
-                        }
-                      />
-                    ))}
+        <div className="grid gap-4">
+          {principles.map((item) => {
+            const Icon = item.icon
+            return (
+              <div
+                key={item.title}
+                className="rounded-[2rem] border border-border/60 bg-card/70 p-6 text-card-foreground shadow-[0_18px_50px_rgba(8,17,31,0.05)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 dark:bg-card/50"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-medium tracking-tight text-foreground">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 max-w-[640px] text-sm leading-7 text-muted-foreground">
+                      {item.text}
+                    </p>
                   </div>
                 </div>
               </div>
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">{t.text}</p>
-            </article>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function VisualEssaySection() {
+  return (
+    <section className="border-t border-border/60 bg-background">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        <div className="max-w-[860px]">
+          <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            A sense of place
+          </div>
+          <h2 className="mt-4 font-serif text-4xl leading-[0.95] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">
+            From Rajpur Road to the lower hills, Dehradun reveals itself in layers.
+          </h2>
+        </div>
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-12">
+          <EditorialImageCard
+            className="lg:col-span-7"
+            image="/images/dehradun/rajpur-road-editorial.jpg"
+            eyebrow="Rajpur Road"
+            title="Where the city feels most alive."
+            text="A familiar address shaped by cafés, movement, and the everyday rhythm of Dehradun."
+            aspect="aspect-[4/5] lg:aspect-[16/18]"
+          />
+
+          <div className="grid gap-5 lg:col-span-5">
+            <EditorialImageCard
+              image="/images/dehradun/foothills-editorial.jpg"
+              eyebrow="Foothill quiet"
+              title="A gentler side of the city."
+              text="Greener surroundings, softer mornings, and a slower mood of stay."
+              aspect="aspect-[16/10]"
+            />
+            <EditorialImageCard
+              image="/images/dehradun/family-stay-editorial.jpg"
+              eyebrow="Easy stays"
+              title="Comfort that feels natural."
+              text="Warm, practical, and well suited to weekends, family trips, and longer pauses."
+              aspect="aspect-[16/10]"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function NarrativeSection() {
+  return (
+    <section className="border-t border-white/10 bg-[#0a1421] text-white">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        <div className="grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-white/45">
+              The experience
+            </div>
+            <h2 className="mt-4 max-w-[560px] font-serif text-4xl leading-[0.95] tracking-[-0.05em] text-white sm:text-5xl lg:text-6xl">
+              Stay close to the city, a little closer to calm.
+            </h2>
+            <p className="mt-6 max-w-[560px] text-base leading-8 text-white/68">
+              Zenvana brings together stays that feel connected to Dehradun while still leaving
+              room to slow down.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {narrativeMoments.map((item) => {
+              const Icon = item.icon
+              return (
+                <div
+                  key={item.number}
+                  className="rounded-[1.8rem] border border-white/10 bg-white/[0.05] p-6 transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.07]"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] uppercase tracking-[0.28em] text-white/42">
+                      {item.number}
+                    </span>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.07] text-[#dbe64c]">
+                      <Icon className="h-4.5 w-4.5" />
+                    </div>
+                  </div>
+
+                  <h3 className="mt-5 text-2xl font-medium tracking-tight text-white">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-white/68">{item.text}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function DirectBookingSection() {
+  return (
+    <section className="border-t border-border/60 bg-background">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        <div className="grid gap-10 lg:grid-cols-[1fr_1.02fr] lg:items-center">
+          <div className="order-2 lg:order-1">
+            <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+              Book direct
+            </div>
+            <h2 className="mt-4 max-w-[620px] font-serif text-4xl leading-[0.95] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">
+              Book direct. Arrive easier.
+            </h2>
+            <p className="mt-5 max-w-[620px] text-base leading-8 text-muted-foreground">
+              A more direct booking journey means clearer communication, better coordination,
+              and a smoother start to the stay.
+            </p>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {directReasons.map((item) => {
+                const Icon = item.icon
+                return (
+                  <div
+                    key={item.title}
+                    className="rounded-[1.6rem] border border-border/60 bg-card/70 p-5 text-card-foreground shadow-[0_18px_45px_rgba(8,17,31,0.04)] transition-all duration-300 hover:-translate-y-1 dark:bg-card/50"
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-foreground text-background">
+                      <Icon className="h-4.5 w-4.5" />
+                    </div>
+                    <h3 className="mt-4 text-lg font-medium tracking-tight text-foreground">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.text}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="order-1 lg:order-2">
+            <div className="relative overflow-hidden rounded-[2.25rem]">
+              <div className="relative aspect-[4/5]">
+                <Image
+                  src="/images/dehradun/rajpur-road-editorial.jpg"
+                  alt="Editorial Rajpur Road visual"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,17,31,0.02)_0%,rgba(8,17,31,0.16)_35%,rgba(8,17,31,0.82)_100%)]" />
+              </div>
+
+              <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
+                <div className="max-w-[520px] rounded-[1.8rem] border border-white/10 bg-white/[0.08] p-5 text-white backdrop-blur-xl">
+                  <div className="text-[11px] uppercase tracking-[0.26em] text-white">
+                    A smoother start
+                  </div>
+                  <p className="mt-3 font-serif text-2xl leading-tight tracking-[-0.03em] text-white">
+                    Clear booking, thoughtful service, and a stay that begins well before arrival.
+                  </p>
+                  <div className="mt-5 flex items-center gap-2 text-sm text-white">
+                    <span>Direct booking</span>
+                    <ArrowRight className="h-4 w-4" />
+                    <span>More ease</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function OfferStripSection() {
+  return (
+    <section className="border-t border-border/60 bg-background">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-24">
+        <div className="overflow-hidden rounded-[2.4rem] bg-[linear-gradient(135deg,#08111f_0%,#10223a_48%,#17402d_100%)] px-6 py-10 text-white shadow-[0_30px_120px_rgba(8,17,31,0.18)] sm:px-8 lg:px-10 lg:py-12">
+          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div className="max-w-[800px]">
+              <div className="text-[11px] uppercase tracking-[0.3em] text-white/44">
+                Selected offers
+              </div>
+              <h2 className="mt-4 font-serif text-3xl leading-[0.95] tracking-[-0.04em] sm:text-4xl lg:text-5xl">
+                Seasonal value, presented with restraint.
+              </h2>
+              <p className="mt-4 max-w-[640px] text-sm leading-7 text-white/72 sm:text-base">
+                From time to time, selected stays may include seasonal offers and longer-stay value.
+              </p>
+            </div>
+
+            <Link
+              href="/offers"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/14 bg-white/[0.08] px-5 py-3 text-sm font-medium text-white backdrop-blur-md transition-all hover:bg-white/[0.12]"
+            >
+              Explore offers
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FaqSection() {
+  return (
+    <section className="border-t border-border/60 bg-background">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-24">
+        <div className="max-w-[760px]">
+          <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            Useful to know
+          </div>
+          <h2 className="mt-4 font-serif text-4xl leading-[0.95] tracking-[-0.05em] text-foreground sm:text-5xl">
+            A few practical details.
+          </h2>
+        </div>
+
+        <div className="mt-10 grid gap-4">
+          {faqs.map((faq) => (
+            <details
+              key={faq.q}
+              className="rounded-[1.8rem] border border-border/60 bg-card/70 p-6 text-card-foreground shadow-[0_14px_35px_rgba(8,17,31,0.04)] dark:bg-card/50"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-medium tracking-tight text-foreground">
+                <span>{faq.q}</span>
+                <span className="text-muted-foreground">+</span>
+              </summary>
+              <p className="mt-4 max-w-[900px] text-sm leading-7 text-muted-foreground">
+                {faq.a}
+              </p>
+            </details>
           ))}
         </div>
       </div>
@@ -415,78 +471,39 @@ function TestimonialsSection() {
   )
 }
 
-function LocationSection() {
-  const highlights = [
-    'Easy access to city cafés and local shopping',
-    'A short drive toward foothill viewpoints and trails',
-    'Good starting point for day trips and longer stays',
-  ]
-
+function EditorialImageCard({
+  image,
+  eyebrow,
+  title,
+  text,
+  aspect,
+  className,
+}: {
+  image: string
+  eyebrow: string
+  title: string
+  text: string
+  aspect: string
+  className?: string
+}) {
   return (
-    <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
-          <div className="lg:col-span-5">
-            <div className="eyebrow">Location</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              Where the city meets the hills.
-            </h2>
-            <p className="body-copy mt-5">
-              A clear base for exploring nearby attractions while keeping the stay calm and connected.
-            </p>
-
-            <div className="mt-7 grid gap-3">
-              {highlights.map((h) => (
-                <div key={h} className="flex items-start gap-3 text-sm leading-7 text-muted-foreground">
-                  <MapPin className="mt-1 h-4 w-4 text-primary" />
-                  <span>{h}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="lg:col-span-7">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[2rem] bg-muted">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.16),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))]" />
-              <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                Map placeholder
-              </div>
-              <div className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-2xl bg-background/70 px-4 py-2 text-sm text-foreground shadow-sm backdrop-blur">
-                <MapPinned className="h-4 w-4" />
-                Nearby highlights
-              </div>
-            </div>
-          </div>
+    <article className={className}>
+      <div className={`group relative overflow-hidden rounded-[2rem] ${aspect}`}>
+        <Image
+          src={image}
+          alt={title}
+          fill
+          className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,17,31,0.04)_0%,rgba(8,17,31,0.18)_45%,rgba(8,17,31,0.86)_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6 lg:p-7">
+          <div className="text-[11px] uppercase tracking-[0.28em] text-white">{eyebrow}</div>
+          <h3 className="mt-3 max-w-[640px] font-serif text-2xl leading-tight tracking-[-0.03em] text-white sm:text-3xl">
+            {title}
+          </h3>
+          <p className="mt-3 max-w-[620px] text-sm leading-7 text-white">{text}</p>
         </div>
       </div>
-    </section>
-  )
-}
-
-function BookingCtaSection() {
-  return (
-    <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="brand-gradient overflow-hidden rounded-[2rem] px-6 py-10 text-white sm:px-8 lg:px-10">
-          <div className="max-w-3xl">
-            <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/70">
-              Booking
-            </div>
-            <h2 className="mt-4 font-serif text-3xl tracking-[-0.03em] sm:text-4xl lg:text-5xl">
-              A quieter stay starts with a clean booking.
-            </h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-white/80 sm:text-base">
-              Reserve your stay with direct support and a smoother arrival experience.
-            </p>
-
-            <div className="mt-6">
-              <Link href="/hotels" className="site-button-light border-white/20 bg-white/12 text-white hover:bg-white/16">
-                Book Your Stay
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    </article>
   )
 }

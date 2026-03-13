@@ -1,8 +1,9 @@
 /**
  * Generates valid ways to split "guests" across "rooms" where each room has 1 to maxOccupancy guests.
  * Returns unique combinations as breakdowns: e.g. { 2: 2, 3: 1 } = 2 double-share rooms + 1 triple-share.
+ * Max 3 guests per room.
  */
-const DEFAULT_MAX_OCCUPANCY = 4
+const DEFAULT_MAX_OCCUPANCY = 3
 
 export type ShareBreakdown = Record<number, number> // occupancy -> count of rooms
 
@@ -61,11 +62,11 @@ export function getShareCombinations(
     if (seen.has(key)) continue
     seen.add(key)
     const labels: string[] = []
-    const occOrder = [1, 2, 3, 4].filter((occ) => b[occ])
+    const occOrder = [1, 2, 3].filter((occ) => b[occ])
     for (const occ of occOrder) {
       const count = b[occ]
       const shareName =
-        occ === 1 ? 'single' : occ === 2 ? 'double' : occ === 3 ? 'triple' : `${occ}-share`
+        occ === 1 ? 'single' : occ === 2 ? 'double' : 'triple'
       labels.push(`${count} ${shareName} share room${count > 1 ? 's' : ''}`)
     }
     result.push({

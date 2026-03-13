@@ -70,7 +70,7 @@ export type PublicPropertyDetail = {
 export async function getPublicProperties(): Promise<PublicPropertyListItem[]> {
   try {
     const res = await fetch(`${BACKEND_URL}/public/properties`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 10 }, // shorter cache so new images show soon after save
     })
     if (!res.ok) return []
     const json = await res.json()

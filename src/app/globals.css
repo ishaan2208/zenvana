@@ -49,6 +49,13 @@
 
     --radius: 1rem;
 
+    /* react-day-picker (shadcn-style) – light */
+    --rdp-accent-color: hsl(var(--primary));
+    --rdp-background-color: hsl(var(--accent) / 0.2);
+    --rdp-selected-color: hsl(var(--primary-foreground));
+    --rdp-accent-color-dark: hsl(var(--primary));
+    --rdp-background-color-dark: hsl(var(--accent) / 0.25);
+
     color-scheme: light;
   }
 
@@ -87,6 +94,11 @@
     --border: 220 14% 18%;
     --input: 220 14% 18%;
     --ring: 64 76% 60%;
+
+    /* react-day-picker – dark theme */
+    --rdp-accent-color: hsl(var(--primary));
+    --rdp-background-color: hsl(var(--accent) / 0.2);
+    --rdp-selected-color: hsl(var(--primary-foreground));
 
     color-scheme: dark;
   }
