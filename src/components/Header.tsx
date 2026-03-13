@@ -11,10 +11,10 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 
 const nav = [
   { href: '/hotels', label: 'Hotels' },
-  { href: '/destinations', label: 'Destinations' },
+  { href: '/restaurant', label: 'Restaurant' },
   { href: '/offers', label: 'Offers' },
-  { href: '/experiences', label: 'Experiences' },
-  { href: '/about', label: 'About' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/contact', label: 'Contact' },
 ]
 
 export function Header() {
