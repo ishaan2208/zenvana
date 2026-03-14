@@ -132,24 +132,29 @@ function HeroSection({
 function RoomsSection() {
   const rooms = [
     {
-      name: 'Deluxe Room',
+      name: 'Rosewood',
       description: 'A calm, light-filled room with plush comfort and an easy city rhythm.',
     },
     {
-      name: 'Twin Room',
+      name: 'Silkwood',
       description: 'Designed for friends and families with practical layout and warm details.',
+      imageSrc: '/images/dehradun/silkwood .png',
+      imageAlt: 'best hotels in dehradun',
     },
     {
-      name: 'Premium Suite',
+      name: 'Monte Verde',
       description: 'More space, softer lighting, and a slower pace for longer stays.',
+      imageSrc: '/images/dehradun/MonteVerde.png',
     },
     {
-      name: 'Mountain View',
+      name: 'Limewood',
       description: 'Framed views of the hills with morning light and quieter evenings.',
     },
     {
-      name: 'City View',
+      name: 'Charrywood',
       description: 'Watch the city move from a higher, calmer vantage point.',
+      imageSrc: '/images/dehradun/cherrwood building pic 1.png',
+      imageAlt: 'best hotels in dehradun',
     },
   ]
 
@@ -261,10 +266,13 @@ function DiningSection() {
         <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
           <div className="lg:col-span-7">
             <div className="relative aspect-[16/10] overflow-hidden rounded-[2rem] bg-muted">
+              <Image
+                src="/images/dehradun/feasta.png"
+                alt="best hotels in dehradun"
+                fill
+                className="object-cover"
+              />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.12))]" />
-              <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                Dining image placeholder
-              </div>
             </div>
           </div>
 

@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import clsx from 'clsx'
 import { BedDouble, ChevronLeft, ChevronRight } from 'lucide-react'
 
 type Room = {
   name: string
   description: string
+  imageSrc?: string
+  imageAlt?: string
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -248,10 +251,20 @@ export function RoomsCarousel({
             )}
           >
             <div className="relative aspect-[4/3] bg-muted">
+              {room.imageSrc ? (
+                <Image
+                  src={room.imageSrc}
+                  alt={room.imageAlt ?? `${room.name} room`}
+                  fill
+                  className="object-cover"
+                />
+              ) : null}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.14),transparent_55%),linear-gradient(to_bottom,_rgba(0,0,0,0.08),rgba(0,0,0,0.08))]" />
-              <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                Room image placeholder
-              </div>
+              {!room.imageSrc ? (
+                <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
+                  Room image placeholder
+                </div>
+              ) : null}
             </div>
             <div className="p-6">
               <div className="flex items-center gap-2 text-sm text-foreground/70">

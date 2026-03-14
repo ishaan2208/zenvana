@@ -34,7 +34,7 @@ export default function ContactPage() {
               Location
             </h2>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              Example Street Address, City, Country
+              Rajpur Road, Dehradun, Uttarakhand, India.
             </p>
           </div>
 
@@ -46,7 +46,7 @@ export default function ContactPage() {
               Email
             </h2>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              example@email.com
+              admin@zenvanahotels.com
             </p>
           </div>
 
@@ -58,7 +58,7 @@ export default function ContactPage() {
               Phone
             </h2>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              +91 00000 00000
+              +91 9084702208
             </p>
           </div>
         </div>
@@ -137,15 +137,15 @@ export default function ContactPage() {
             <div className="mt-6 grid gap-3 text-sm text-muted-foreground">
               <div className="flex items-start gap-3">
                 <Phone className="mt-1 h-4 w-4 text-foreground/70" />
-                <span>+91 00000 00000</span>
+                <span>+91 9084702208</span>
               </div>
               <div className="flex items-start gap-3">
                 <Mail className="mt-1 h-4 w-4 text-foreground/70" />
-                <span>example@email.com</span>
+                <span>admin@zenvanahotels.com</span>
               </div>
               <div className="flex items-start gap-3">
                 <MapPin className="mt-1 h-4 w-4 text-foreground/70" />
-                <span>Example Street Address, City, Country</span>
+                <span>Rajpur Road, Dehradun, Uttarakhand, India.</span>
               </div>
             </div>
           </div>
@@ -166,15 +166,15 @@ export default function ContactPage() {
             <div className="mt-7 grid gap-3 text-sm leading-7 text-muted-foreground">
               <div className="flex items-start gap-3">
                 <MapPin className="mt-1 h-4 w-4 text-primary" />
-                <span>Nearby attraction placeholder</span>
+                <span>Robbers Cave, Dehradun</span>
               </div>
               <div className="flex items-start gap-3">
                 <MapPin className="mt-1 h-4 w-4 text-primary" />
-                <span>Travel highlight placeholder</span>
+                <span>Dehradun Zoo, Dehradun</span>
               </div>
               <div className="flex items-start gap-3">
                 <MapPin className="mt-1 h-4 w-4 text-primary" />
-                <span>Local tip placeholder</span>
+                <span>Buddha Temple, Dehradun</span>
               </div>
             </div>
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { Container } from '@/components/Container'
+import Image from 'next/image'
 import Link from 'next/link'
 import {
   Award,
@@ -89,8 +90,15 @@ export default function RestaurantPage() {
               <div className="relative aspect-[16/10] overflow-hidden rounded-[2rem] bg-muted">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.12))]" />
                 <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                  Restaurant image placeholder
+                  Restaurant Image
                 </div>
+                <Image
+                  src="/images/dehradun/restaurantImage.png"
+                  alt="Restaurant"
+                  fill
+                  className="object-cover"
+                  priority
+                />
               </div>
             </div>
           </div>
