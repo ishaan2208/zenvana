@@ -16,30 +16,37 @@ function resolveImageUrl(url: string | undefined): string | undefined {
 
 export function normalizeGalleryImages(images: unknown): GalleryImage[] {
   if (!Array.isArray(images)) return []
-  return images
-    .map((raw, index) => {
-      if (!raw || typeof raw !== 'object') return null
-      const item = raw as Record<string, unknown>
-      const url = resolveImageUrl(typeof item.url === 'string' ? item.url : undefined)
-      if (!url) return null
-      return {
-        url,
-        isHero: item.isHero === true,
-        sortOrder:
-          typeof item.sortOrder === 'number'
-            ? item.sortOrder
-            : Number.isFinite(Number(item.sortOrder))
-              ? Number(item.sortOrder)
-              : index,
-        classification:
-          typeof item.classification === 'string' ? item.classification : undefined,
-        tags: Array.isArray(item.tags)
-          ? item.tags.filter((t): t is string => typeof t === 'string')
-          : undefined,
-      } satisfies GalleryImage
-    })
-    .filter((item): item is GalleryImage => Boolean(item))
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+  const normalized: GalleryImage[] = []
+
+  images.forEach((raw, index) => {
+    if (!raw || typeof raw !== 'object') return
+    const item = raw as Record<string, unknown>
+    const url = resolveImageUrl(typeof item.url === 'string' ? item.url : undefined)
+    if (!url) return
+
+    const classification =
+      typeof item.classification === 'string' ? item.classification : undefined
+    const tags = Array.isArray(item.tags)
+      ? item.tags.filter((t): t is string => typeof t === 'string')
+      : undefined
+
+    const normalizedImage: GalleryImage = {
+      url,
+      isHero: item.isHero === true,
+      sortOrder:
+        typeof item.sortOrder === 'number'
+          ? item.sortOrder
+          : Number.isFinite(Number(item.sortOrder))
+            ? Number(item.sortOrder)
+            : index,
+      ...(classification ? { classification } : {}),
+      ...(tags && tags.length > 0 ? { tags } : {}),
+    }
+
+    normalized.push(normalizedImage)
+  })
+
+  return normalized.sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
 export function pickHeroAndGallery(images: unknown): {

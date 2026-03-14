@@ -5,6 +5,7 @@ import './globals.css'
 import { type Metadata } from 'next'
 import { organizationJsonLd, webSiteJsonLd } from '@/lib/structured-data'
 import { ThemeProvider } from '@/components/theme-provider'
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
   title: {
@@ -47,6 +48,7 @@ export default function RootLayout({
           // enableSystem
           disableTransitionOnChange
         >
+          <Analytics />
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{
