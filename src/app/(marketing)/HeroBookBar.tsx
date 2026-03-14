@@ -38,7 +38,7 @@ const calendarClassNames = {
   head_cell: 'rounded-md w-9 font-normal text-[0.8rem] text-muted-foreground',
   row: 'flex w-full mt-2',
   cell: 'relative p-0 text-center text-sm focus-within:relative',
-  day: 'h-9 w-9 p-0 font-normal hover:bg-accent hover:text-accent-foreground rounded-md',
+  day: 'h-9 w-9 rounded-md p-0 font-normal hover:bg-accent hover:text-accent-foreground aria-selected:bg-primary aria-selected:text-primary-foreground aria-selected:hover:bg-primary aria-selected:hover:text-primary-foreground',
 }
 
 function formatDate(d: Date): string {

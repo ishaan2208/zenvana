@@ -75,10 +75,10 @@ const calendarClassNames = {
     'w-9 rounded-md text-[0.78rem] font-normal text-muted-foreground',
   row: 'mt-2 flex w-full',
   cell: 'relative p-0 text-center text-sm focus-within:relative',
-  day: 'h-9 w-9 rounded-full p-0 font-normal text-foreground transition hover:bg-muted',
+  day: 'h-9 w-9 rounded-md p-0 font-normal text-foreground transition hover:bg-accent hover:text-accent-foreground aria-selected:bg-primary aria-selected:text-primary-foreground aria-selected:hover:bg-primary aria-selected:hover:text-primary-foreground',
   day_today: 'bg-muted text-foreground',
   day_selected:
-    'bg-foreground text-background hover:bg-foreground hover:text-background',
+    'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
   day_disabled: 'text-muted-foreground/40 opacity-50',
   day_outside: 'text-muted-foreground/35 opacity-40',
   day_hidden: 'invisible',
