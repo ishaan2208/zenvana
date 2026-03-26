@@ -10,6 +10,7 @@ import {
 import { Container } from '@/components/Container'
 import { Button } from '@/components/Button'
 import { PriceWithTax } from '@/components/PriceWithTax'
+import { DownloadConfirmationVoucherButton } from './DownloadConfirmationVoucherButton'
 
 export const metadata = {
   title: 'Booking confirmation',
@@ -148,6 +149,17 @@ export default async function ConfirmationPage({ searchParams }: Props) {
               </div>
 
               <div className="mt-6 flex flex-col gap-3 border-t border-border/60 pt-6">
+                {hasDetails && hasRef && (
+                  <DownloadConfirmationVoucherButton
+                    propertyName={q.propertyName!}
+                    bookingReference={q.bookingReference!}
+                    checkIn={q.checkIn!}
+                    checkOut={q.checkOut!}
+                    roomTypeName={q.roomTypeName!}
+                    totalAmount={Number(q.totalAmount!)}
+                  />
+                )}
+
                 <Button href="/hotels" color="blue" className="h-12 rounded-[1rem]">
                   Browse hotels
                 </Button>
