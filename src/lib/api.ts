@@ -378,6 +378,74 @@ export type PublicBookingPayload = {
   paymentIntent: 'pay_later' | 'pay_now'
 }
 
+export type PublicVoucherBookingRoom = {
+  id: number
+  occupancy: number
+  tariff: number
+  totalNight: number
+  checkIn: string
+  checkOut: string
+  checkInDate?: string | null
+  checkOutDate?: string | null
+  room_type: { name: string }
+}
+
+export type PublicVoucherBookingDetails = {
+  id: number
+  guestName: string
+  company: string | null
+  guestPhoneNumber: string
+  email: string | null
+  address: string | null
+  gstNumber: string | null
+  totalRooms: number
+  remarks: string | null
+  source: string
+  totalAmount: number
+  totalPaid: number
+  createdAt: string
+  bookingReference: string
+  BookingRoom: PublicVoucherBookingRoom[]
+  property: {
+    name: string
+    address: string | null
+    city: string | null
+    pincode: string | null
+    phone: string | null
+    email: string | null
+    logoUrl: string | null
+  }
+}
+
+export async function getPublicBookingVoucherDetails(
+  slug: string,
+  bookingReference: string
+): Promise<PublicVoucherBookingDetails> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/by-reference/${encodeURIComponent(bookingReference)}`,
+    { method: 'GET', credentials: 'include' }
+  )
+  const json = await res.json()
+  if (!res.ok) {
+    throw new Error(json?.error ?? json?.message ?? 'Failed to fetch booking voucher details')
+  }
+  return json?.data
+}
+
+export async function getPublicBookingVoucherDetailsByReference(
+  bookingReference: string
+): Promise<PublicVoucherBookingDetails> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/booking/by-reference/${encodeURIComponent(bookingReference)}`,
+    { method: 'GET', credentials: 'include' }
+  )
+  const json = await res.json()
+  if (!res.ok) {
+    throw new Error(json?.error ?? json?.message ?? 'Failed to fetch booking voucher details')
+  }
+  return json?.data
+}
+
 export async function verifyRazorpayAndCreateBooking(
   slug: string,
   razorpay_order_id: string,

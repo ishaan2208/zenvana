@@ -167,7 +167,9 @@ export default function MultiRoomCheckoutForm({
       router.push(
         `/booking/confirmation?` +
         new URLSearchParams({
+          slug,
           propertyName,
+          propertyPhone: primaryPhone ?? '',
           checkIn,
           checkOut,
           roomTypeName,

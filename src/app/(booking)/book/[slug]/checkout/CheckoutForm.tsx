@@ -219,7 +219,9 @@ export default function CheckoutForm({
     router.push(
       `/booking/confirmation?` +
       new URLSearchParams({
+        slug,
         propertyName,
+        propertyPhone: primaryPhone ?? '',
         checkIn,
         checkOut,
         roomTypeName,

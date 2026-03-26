@@ -1,21 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import React from 'react'
+import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
 import { format } from 'date-fns'
-import { pdf, Document, Page, StyleSheet, Text, View, Image } from '@react-pdf/renderer'
-import { Download } from 'lucide-react'
-
-import { Button } from '@/components/Button'
-import {
-  getPublicBookingVoucherDetails,
-  getPublicBookingVoucherDetailsByReference,
-  type PublicVoucherBookingDetails,
-} from '@/lib/api'
-
-type VoucherRequestData = {
-  slug?: string
-  bookingReference: string
-}
 
 const styles = StyleSheet.create({
   page: { padding: 30, fontFamily: 'Helvetica' },
@@ -35,11 +22,19 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   text: { fontSize: 10, marginBottom: 6, color: '#555' },
+  bulletPoint: { flexDirection: 'row', marginBottom: 4, alignItems: 'flex-start' },
+  bulletPointText: { marginLeft: 5, fontSize: 10, color: '#555' },
+  footer: {
+    marginTop: 20,
+    textAlign: 'center',
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#333',
+  },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   column: { width: '45%' },
   table: { width: 'auto', borderStyle: 'solid', borderWidth: 1, border: '1px solid #E4E4E4' },
   tableRow: { margin: 'auto', flexDirection: 'row' },
-  tableHeader: { backgroundColor: '#f2f2f2' },
   tableColHeader: {
     width: '15.00%',
     borderStyle: 'solid',
@@ -79,31 +74,67 @@ const styles = StyleSheet.create({
   },
   tableCell: { fontSize: 10, color: '#555' },
   tableCellBig: { fontSize: 10, textAlign: 'center', padding: 5 },
-  bulletPoint: { flexDirection: 'row', marginBottom: 4, alignItems: 'flex-start' },
-  bulletPointText: { marginLeft: 5, fontSize: 10, color: '#555' },
-  footer: { marginTop: 20, textAlign: 'center', fontSize: 10, fontWeight: 'bold', color: '#333' },
+  tableHeader: { backgroundColor: '#f2f2f2' },
 })
 
-function getRoomCheckInDate(room: PublicVoucherBookingDetails['BookingRoom'][number]) {
-  return room.checkInDate ?? room.checkIn
+type VoucherRoom = {
+  id: number
+  occupancy: number
+  tariff: number
+  totalNight: number
+  checkIn: string
+  checkOut: string
+  checkInDate?: string | null
+  checkOutDate?: string | null
+  room_type: { name: string }
 }
 
-function getRoomCheckOutDate(room: PublicVoucherBookingDetails['BookingRoom'][number]) {
-  return room.checkOutDate ?? room.checkOut
+type VoucherProperty = {
+  name: string
+  address: string | null
+  city: string | null
+  pincode: string | null
+  phone: string | null
+  email: string | null
 }
 
-function ConfirmationVoucherDocument({ booking }: { booking: PublicVoucherBookingDetails }) {
-  const logoUrl = booking.property.logoUrl || 'N/A'
+export type VoucherBooking = {
+  id: number
+  guestName: string
+  company: string | null
+  guestPhoneNumber: string | null
+  email: string | null
+  address: string | null
+  gstNumber: string | null
+  totalRooms: number
+  remarks: string | null
+  source: string
+  totalAmount: number
+  totalPaid: number
+  createdAt: string
+  BookingRoom: VoucherRoom[]
+  property: VoucherProperty
+}
+
+export default function ConfirmationVoucher({
+  booking,
+  logoUrl,
+}: {
+  booking: VoucherBooking
+  logoUrl: string | null
+}) {
+  const getRoomCheckInDate = (room: VoucherRoom) => room.checkInDate ?? room.checkIn
+  const getRoomCheckOutDate = (room: VoucherRoom) => room.checkOutDate ?? room.checkOut
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          {/* eslint-disable-next-line jsx-a11y/alt-text */}
-          {logoUrl !== 'N/A' && <Image style={styles.logo} src={logoUrl} />}
+          {logoUrl && logoUrl !== 'N/A' && <Image style={styles.logo} src={logoUrl} />}
           <Text style={styles.sectionTitle}>{booking.property.name}</Text>
           <Text style={styles.text}>{booking.property.address || '-'}</Text>
           <Text style={styles.text}>
-            {booking.property.city || ''} {booking.property.pincode || ''}
+            {booking.property.city || '-'} {booking.property.pincode || ''}
           </Text>
           <Text style={styles.text}>
             Phone: {booking.property.phone || '-'} Email: {booking.property.email || '-'}
@@ -115,7 +146,7 @@ function ConfirmationVoucherDocument({ booking }: { booking: PublicVoucherBookin
           <View style={styles.row}>
             <View style={styles.column}>
               <Text style={styles.text}>Guest Name: {booking.guestName}</Text>
-              <Text style={styles.text}>Guest Number: {booking.guestPhoneNumber}</Text>
+              <Text style={styles.text}>Guest Number: {booking.guestPhoneNumber || '-'}</Text>
               <Text style={styles.text}>Company: {booking.company || 'Not Available'}</Text>
               <Text style={styles.text}>GST Number: {booking.gstNumber || 'Not Available'}</Text>
               <Text style={styles.text}>
@@ -145,6 +176,7 @@ function ConfirmationVoucherDocument({ booking }: { booking: PublicVoucherBookin
               <Text style={styles.tableColHeader}>Amount</Text>
             </View>
           </View>
+
           {booking.BookingRoom.map((room) => (
             <View style={styles.tableRow} key={room.id}>
               <View style={styles.tableColBig}>
@@ -213,8 +245,8 @@ function ConfirmationVoucherDocument({ booking }: { booking: PublicVoucherBookin
           <View style={styles.bulletPoint}>
             <Text>{'\u2022'}</Text>
             <Text style={styles.bulletPointText}>
-              The hotel reserves the right to charge guests for any damages or missing items discovered
-              after checkout.
+              The hotel reserves the right to charge guests for any damages or missing items
+              discovered after checkout.
             </Text>
           </View>
         </View>
@@ -224,46 +256,5 @@ function ConfirmationVoucherDocument({ booking }: { booking: PublicVoucherBookin
         </View>
       </Page>
     </Document>
-  )
-}
-
-export function DownloadConfirmationVoucherButton({ slug, bookingReference }: VoucherRequestData) {
-  const [isDownloading, setIsDownloading] = useState(false)
-  const safeFilenameRef = useMemo(
-    () => bookingReference.replace(/[^a-zA-Z0-9-_]/g, ''),
-    [bookingReference]
-  )
-
-  async function onDownload() {
-    try {
-      setIsDownloading(true)
-      const booking = slug
-        ? await getPublicBookingVoucherDetails(slug, bookingReference)
-        : await getPublicBookingVoucherDetailsByReference(bookingReference)
-      const blob = await pdf(<ConfirmationVoucherDocument booking={booking} />).toBlob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `confirmation-voucher-${safeFilenameRef || 'booking'}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } finally {
-      setIsDownloading(false)
-    }
-  }
-
-  return (
-    <Button
-      type="button"
-      color="blue"
-      className="h-12 rounded-[1rem] gap-2"
-      onClick={onDownload}
-      disabled={isDownloading}
-    >
-      <Download className="h-4 w-4" />
-      {isDownloading ? 'Preparing voucher...' : 'Download voucher'}
-    </Button>
   )
 }

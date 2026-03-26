@@ -19,7 +19,9 @@ export const metadata = {
 
 type Props = {
   searchParams: Promise<{
+    slug?: string
     propertyName?: string
+    propertyPhone?: string
     checkIn?: string
     checkOut?: string
     roomTypeName?: string
@@ -47,12 +49,9 @@ export default async function ConfirmationPage({ searchParams }: Props) {
 
         <Container className="relative py-16 sm:py-20 lg:py-24">
           <div className="mx-auto max-w-4xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground backdrop-blur-sm">
-              <Sparkles className="h-3.5 w-3.5" />
-              Zenvana Booking
-            </div>
 
-            <div className="mt-6 inline-flex h-20 w-20 items-center justify-center rounded-full border border-border/60 bg-card text-foreground shadow-[0_18px_45px_rgba(8,17,31,0.06)] dark:bg-card/70">
+
+            <div className="mt-6 border-green-500 text-green-500 inline-flex h-20 w-20 items-center justify-center rounded-full border border-border/60 bg-card text-foreground shadow-[0_18px_45px_rgba(8,17,31,0.06)] dark:bg-card/70">
               <BadgeCheck className="h-9 w-9" />
             </div>
 
@@ -65,6 +64,11 @@ export default async function ConfirmationPage({ searchParams }: Props) {
                 ? 'Your stay has been confirmed. We will share the booking details with you shortly.'
                 : 'Thank you for choosing Zenvana. Your request has been received and the booking details will be shared with you shortly.'}
             </p>
+            {hasRef && (
+              <p className="mx-auto mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+                Confirmation email has been sent if you provided your email address while booking.
+              </p>
+            )}
           </div>
         </Container>
       </section>
@@ -143,20 +147,26 @@ export default async function ConfirmationPage({ searchParams }: Props) {
                 <p>
                   Keep your booking reference handy for any changes or assistance.
                 </p>
-                <p>
-                  For anything urgent, contact the property team directly from the hotel page.
-                </p>
+                {q.propertyPhone ? (
+                  <p>
+                    Need help? Call the property directly on{' '}
+                    <a className="font-medium text-foreground hover:underline" href={`tel:${q.propertyPhone}`}>
+                      {q.propertyPhone}
+                    </a>
+                    .
+                  </p>
+                ) : (
+                  <p>
+                    For anything urgent, contact the property team directly from the hotel page.
+                  </p>
+                )}
               </div>
 
               <div className="mt-6 flex flex-col gap-3 border-t border-border/60 pt-6">
-                {hasDetails && hasRef && (
+                {hasRef && (
                   <DownloadConfirmationVoucherButton
-                    propertyName={q.propertyName!}
+                    slug={q.slug}
                     bookingReference={q.bookingReference!}
-                    checkIn={q.checkIn!}
-                    checkOut={q.checkOut!}
-                    roomTypeName={q.roomTypeName!}
-                    totalAmount={Number(q.totalAmount!)}
                   />
                 )}
 
