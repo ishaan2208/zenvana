@@ -60,6 +60,16 @@ export default function RestaurantPage() {
     { name: 'Customer review', text: 'Rooftop mood was excellent — warm lighting and great ambience.', stars: 5 as const },
     { name: 'Customer review', text: 'Food felt thoughtfully made. A great spot for a quieter dinner.', stars: 4 as const },
   ]
+  const galleryImages = [
+    '/images/dehradun/IMG_4505.jpg',
+    '/images/dehradun/IMG_4518.jpg',
+    '/images/dehradun/IMG_4536.JPG',
+    '/images/dehradun/IMG_4542.JPG',
+    '/images/dehradun/IMG_4660.jpg',
+    '/images/dehradun/IMG_4668.jpg',
+    '/images/dehradun/feasta.png',
+    '/images/dehradun/restaurantImage.png',
+  ]
 
   return (
     <>
@@ -151,9 +161,9 @@ export default function RestaurantPage() {
               </p>
             </div>
 
-            <button type="button" className="site-button-light w-fit">
+            <Link href="/menu" className="site-button-light w-fit">
               View Full Menu
-            </button>
+            </Link>
           </div>
 
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -253,15 +263,18 @@ export default function RestaurantPage() {
           </div>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 8 }, (_, i) => (
+            {galleryImages.map((src, i) => (
               <div
-                key={i}
+                key={`${src}-${i}`}
                 className="group relative aspect-[4/3] overflow-hidden rounded-[1.6rem] bg-muted"
               >
+                <Image
+                  src={src}
+                  alt="Restaurant gallery image"
+                  fill
+                  className="object-cover transition duration-300 group-hover:scale-[1.04]"
+                />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))] transition duration-300 group-hover:opacity-80" />
-                <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55 transition duration-300 group-hover:scale-[1.04]">
-                  Image placeholder
-                </div>
               </div>
             ))}
           </div>

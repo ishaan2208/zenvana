@@ -134,6 +134,7 @@ function RoomsSection() {
     {
       name: 'Rosewood',
       description: 'A calm, light-filled room with plush comfort and an easy city rhythm.',
+      imageSrc: '/images/dehradun/Rosewood.png',
     },
     {
       name: 'Silkwood',
@@ -147,8 +148,9 @@ function RoomsSection() {
       imageSrc: '/images/dehradun/MonteVerde.png',
     },
     {
-      name: 'Limewood',
+      name: 'Silverwood',
       description: 'Framed views of the hills with morning light and quieter evenings.',
+      imageSrc: '/images/dehradun/SILVER W BUILDING PIC.png',
     },
     {
       name: 'Charrywood',
@@ -519,6 +521,7 @@ function LocationSection() {
               <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
                 Map placeholder
               </div>
+
               <div className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-2xl bg-background/70 px-4 py-2 text-sm text-foreground shadow-sm backdrop-blur">
                 <MapPinned className="h-4 w-4" />
                 Nearby highlights
