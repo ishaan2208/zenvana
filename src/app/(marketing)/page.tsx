@@ -9,8 +9,9 @@ import {
   Star,
   UtensilsCrossed,
 } from 'lucide-react'
+import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
 import { RoomsCarousel } from '@/components/RoomsCarousel'
-import { getPublicProperties } from '@/lib/api'
+import { getPublicProperties, getPublicPropertyBySlug } from '@/lib/api'
 import { HeroBookBar } from './HeroBookBar'
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const properties = await getPublicProperties()
+  const limewood = await getPublicPropertyBySlug('limewood')
   const heroProperties = properties.map((p) => ({
     slug: p.slug,
     publicName: p.publicName,
@@ -36,7 +38,11 @@ export default async function HomePage() {
       <EventsSection />
       <GallerySection />
       <TestimonialsSection />
-      <LocationSection />
+      <LocationSection
+        latitude={limewood?.latitude}
+        longitude={limewood?.longitude}
+        mapPlaceUrl={limewood?.googleMapPlaceUrl}
+      />
       <BookingCtaSection />
     </>
   )
@@ -495,7 +501,15 @@ function TestimonialsSection() {
   )
 }
 
-function LocationSection() {
+function LocationSection({
+  latitude,
+  longitude,
+  mapPlaceUrl,
+}: {
+  latitude?: number
+  longitude?: number
+  mapPlaceUrl?: string
+}) {
   const highlights = [
     'Easy access to city cafés and local shopping',
     'A short drive toward foothill viewpoints and trails',
@@ -527,10 +541,12 @@ function LocationSection() {
 
           <div className="lg:col-span-7">
             <div className="relative aspect-[16/10] overflow-hidden rounded-[2rem] bg-muted">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.16),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))]" />
-              <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                Map placeholder
-              </div>
+              <HomeLimewoodMap
+                latitude={latitude}
+                longitude={longitude}
+                mapPlaceUrl={mapPlaceUrl}
+              />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.22),transparent_58%),linear-gradient(to_bottom,_rgba(0,0,0,0.05),rgba(0,0,0,0.12))]" />
 
               <div className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-2xl bg-background/70 px-4 py-2 text-sm text-foreground shadow-sm backdrop-blur">
                 <MapPinned className="h-4 w-4" />

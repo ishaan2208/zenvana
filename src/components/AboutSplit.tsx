@@ -36,11 +36,13 @@ export function AboutSplit() {
 
         <div className="mx-auto mt-10 max-w-3xl text-center">
           <h2 className="display-title text-3xl font-semibold sm:text-4xl">
-            Designed for Memorable Stays
+            Our Commitment to You
           </h2>
           <p className="body-copy mt-4">
-            Placeholder paragraph: Add a short description about your rooms, ambience, and service
-            quality. Keep this concise and guest-focused for clarity and conversion.
+            At Zenvana, we believe hospitality should be effortless. Our team is dedicated to
+            providing attentive, unhurried service that makes you feel at home. Whether you are
+            visiting for a weekend reset, a corporate meeting, or a long-term mountain getaway, we
+            ensure your stay is defined by clean aesthetics, fresh Himalayan air, and genuine care.
           </p>
           <div className="mt-8">
             <Link href="/contact" className="site-button-dark">

@@ -15,21 +15,30 @@ export function AboutStory() {
         <div className="lg:col-span-7">
           <div className="eyebrow">About Us</div>
           <h1 className="display-title mt-4 text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
-            A stay that feels calm, warm, and thoughtfully premium.
+            About Zenvana Hotels: Redefining Hospitality in the Hills
           </h1>
 
           <div className="body-copy mt-6 space-y-5">
             <p>
-              Placeholder paragraph: Share your hotel story, values, and the atmosphere guests
-              experience from the moment they arrive.
+              Welcome to Zenvana Hotels, a premier chain of boutique properties dedicated to
+              providing the best hotels in Dehradun. Nestled between the vibrant energy of Rajpur
+              Road and the tranquil foothills of Mussoorie, Zenvana is more than just a place to
+              stay - it is a sanctuary designed for slow living, where every detail is crafted for
+              your comfort, mood, and time.
+            </p>
+            <h2 className="display-title pt-2 text-2xl font-semibold leading-tight sm:text-3xl">
+              Our Story: A Vision of Serenity
+            </h2>
+            <p>
+              Zenvana was founded with a simple goal: to create a collection of stays that feel
+              deeply rooted in Dehradun's unique charm. We recognized a need for spaces that offer
+              both modern convenience and a peaceful escape.
             </p>
             <p>
-              Placeholder paragraph: Explain your hospitality approach, service standards, and the
-              details that make every stay warm, comfortable, and memorable.
-            </p>
-            <p>
-              Placeholder paragraph: Highlight your location, your signature offerings, and what
-              makes your property ideal for both leisure and business travelers.
+              Today, our chain features seven distinct properties - Hotel Silverwood, Rosewood,
+              Monte Verde, Cherrywood, Silkwood, Limewood, and Serenewood - each offering its own
+              personality while maintaining the signature Zenvana standard of warmth and
+              excellence.
             </p>
           </div>
         </div>

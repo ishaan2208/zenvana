@@ -23,11 +23,30 @@ export default function AboutPage() {
 
       <section className="section-rule">
         <div className="container-shell py-14 text-center sm:py-16 lg:py-20">
-          <p className="body-copy mx-auto max-w-4xl sm:text-lg">
-            Placeholder paragraph: Describe the feeling of staying at your hotel, your service
-            style, and what guests can expect throughout their visit. Keep this section calm,
-            premium, and easy to read.
-          </p>
+          <h2 className="display-title mx-auto max-w-4xl text-3xl font-semibold sm:text-4xl">
+            Why Zenvana Provides the Best Hotels in Dehradun
+          </h2>
+          <div className="body-copy mx-auto mt-6 max-w-4xl space-y-5 text-left sm:text-lg">
+            <p>
+              We understand that modern travelers look for more than just a room. That is why our
+              properties are strategically located to give you the best of both worlds:
+            </p>
+            <p>
+              <strong>Prime Locations:</strong> Situated near Rajpur Road, our guests enjoy easy
+              access to Dehradun's best cafes, shopping hubs like Pacific Mall, and corporate
+              centers.
+            </p>
+            <p>
+              <strong>The Ultimate Rooftop Experience:</strong> Most of our properties feature a
+              signature rooftop cafe, offering panoramic skyline views of the valley and the
+              majestic Himalayan foothills.
+            </p>
+            <p>
+              <strong>Curated Comfort:</strong> From Monte Verde's spacious layouts for longer
+              stays to the Silkwood family suites, we provide a variety of accommodations tailored
+              to business travelers, couples, and families alike.
+            </p>
+          </div>
         </div>
       </section>
 
