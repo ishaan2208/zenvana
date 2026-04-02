@@ -195,19 +195,22 @@ function RoomsSection() {
 function SpecialOffersSection() {
   const offers = [
     {
-      title: 'Early Booking Discount',
+      title: 'Early Booking Discount - Best Hotel in Dehradun',
       highlight: 'Save up to 15%',
-      description: 'Plan ahead and enjoy quieter value when you reserve early.',
+      description:
+        'Plan ahead and unlock premium savings at the best hotel in Dehradun. Enjoy elegant stays, seamless service, and exclusive early-bird pricing when you reserve in advance.',
     },
     {
-      title: 'Weekend Getaway Offer',
+      title: 'Weekend Getaway Offer - Escape to Dehradun',
       highlight: 'City-to-hills reset',
-      description: 'A short stay designed for late checkouts and slower mornings.',
+      description:
+        'Recharge your weekends at the best hotel in Dehradun with a curated getaway. Enjoy late checkouts, slower mornings, and easy access to scenic locations.',
     },
     {
-      title: 'Dining Special Offer',
+      title: 'Dining Special Offer - Stay & Dine in Style',
       highlight: 'Taste-led stays',
-      description: 'A curated add-on that makes meals feel like part of the trip.',
+      description:
+        'Enhance your stay at the best hotel in Dehradun with curated dining experiences. From local flavors to premium meals, make every moment memorable.',
     },
   ]
 
@@ -216,17 +219,18 @@ function SpecialOffersSection() {
       <div className="container-shell py-14 sm:py-16 lg:py-20">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
-            <div className="eyebrow">Special offers</div>
+            <div className="eyebrow">SPECIAL OFFERS</div>
             <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
               Value that feels curated, not noisy.
             </h2>
             <p className="body-copy mt-5 max-w-xl">
-              Limited-time offers designed to improve the stay, not complicate it.
+              Discover exclusive deals at the best hotel in Dehradun, where every offer is
+              thoughtfully designed to elevate your stay-not complicate it.
             </p>
           </div>
 
           <Link href="/offers" className="site-button-dark w-fit">
-            View offers
+            View Offers
           </Link>
         </div>
 
@@ -279,13 +283,16 @@ function DiningSection() {
           </div>
 
           <div className="lg:col-span-5">
-            <div className="eyebrow">Dining</div>
+            <div className="eyebrow">DINING</div>
             <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              Gourmet dining with a rooftop mood.
+              Rooftop restaurant in Dehradun with a refined dining experience.
             </h2>
             <p className="body-copy mt-5">
-              A dining experience designed around relaxed evenings, thoughtful plating, and
-              a menu that feels seasonal and clean.
+              Discover a premium restaurant in Dehradun where ambiance meets exceptional
+              taste. Our rooftop dining experience is designed for relaxed evenings, elegant
+              settings, and thoughtfully curated menus. From locally inspired dishes to modern
+              cuisine, every plate is crafted to deliver a fine dining experience in Dehradun
+              that feels both elevated and welcoming.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/restaurant" className="site-button-dark inline-flex items-center gap-2">
@@ -308,30 +315,32 @@ function EventsSection() {
     {
       title: 'Wedding events',
       icon: <PartyPopper className="h-5 w-5" />,
-      text: 'Celebrate with warm hospitality, beautiful light, and flexible spaces.',
+      text: 'Celebrate your special day at one of the most elegant wedding venues in Dehradun. From intimate ceremonies to grand celebrations, our spaces are designed with warmth, beauty, and flexibility.',
     },
     {
       title: 'Corporate meetings',
       icon: <BriefcaseBusiness className="h-5 w-5" />,
-      text: 'Focused setups for workshops, retreats, and clean, well-run sessions.',
+      text: 'Host productive corporate meetings in Dehradun with well-equipped spaces tailored for workshops, conferences, and business gatherings, ensuring a smooth and professional experience.',
     },
     {
       title: 'Private celebrations',
       icon: <PartyPopper className="h-5 w-5" />,
-      text: 'Birthdays, anniversaries, and dinners with a calmer, elevated mood.',
+      text: 'Plan birthdays, anniversaries, and intimate gatherings in a refined setting. Our event spaces in Dehradun offer the perfect balance of comfort, ambiance, and personalized service.',
     },
   ]
 
   return (
     <section className="section-rule bg-muted/10">
       <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="max-w-2xl">
-          <div className="eyebrow">Events</div>
+        <div className="text-center">
+          <div className="eyebrow">EVENTS</div>
           <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-            Celebrations that feel effortless.
+            Event spaces in Dehradun designed for effortless celebrations.
           </h2>
-          <p className="body-copy mt-5 max-w-xl">
-            Flexible spaces for weddings, meetings, and private gatherings — designed for flow.
+          <p className="body-copy mt-5">
+            Host weddings, corporate events, and private gatherings at a premium venue in
+            Dehradun, where every detail is thoughtfully managed for a seamless and elegant
+            experience.
           </p>
         </div>
 
@@ -408,27 +417,27 @@ function GallerySection() {
 function TestimonialsSection() {
   const testimonials = [
     {
-      name: 'Guest review',
-      text: 'Spacious rooms, polite staff, and smooth check-in made this one of our best dehradun stay experiences.',
+      name: 'Aarav Sharma',
+      text: 'From the moment we arrived, everything felt seamless and well-organized. The rooms were spacious, clean, and thoughtfully designed for comfort. The staff was polite, responsive, and always ready to help, making our stay truly relaxing. The smooth check-in process and attention to detail made this one of the best hotel experiences in Dehradun for us.',
       stars: 5,
       imageSrc: '/images/dehradun/istockphoto-2194433569-612x612.jpg',
     },
     {
-      name: 'Guest review',
-      text: 'The ambience was elegant, the property was very clean, and service quality felt truly best dehradun level.',
+      name: 'Rahul Verma',
+      text: 'The ambiance of the hotel is elegant and calming, perfect for both short and long stays. The property is very well maintained, and cleanliness is clearly a priority here. What stood out the most was the service quality-professional yet warm-which truly reflects the standard you expect from the best hotel in Dehradun.',
       stars: 5,
       imageSrc:
         '/images/dehradun/cheerful-indian-businessman-smiling-closeup-portrait-jobs-career-campaign_53876-129417.avif',
     },
     {
-      name: 'Guest review',
-      text: 'Perfect for families and couples, with comfort, location, and hospitality that match a best dehradun hotel.',
+      name: 'Rohan Mehta',
+      text: 'A perfect place for families as well as couples looking for a comfortable and peaceful stay. The location is convenient, the rooms are cozy, and the hospitality is genuinely welcoming. Every small detail is taken care of, making it easy to relax and enjoy your time. Definitely one of the best hotel stays in Dehradun.',
       stars: 4,
       imageSrc: '/images/dehradun/istockphoto-613557584-612x612.jpg',
     },
     {
-      name: 'Guest review',
-      text: 'Excellent location and warm support throughout the trip, making it easy to recommend for best dehradun stays.',
+      name: 'Neha Kapoor',
+      text: 'We had a wonderful experience staying here. The location is excellent, with easy access to key areas of Dehradun. The staff was supportive throughout our stay, and the overall atmosphere felt warm and inviting. It is a reliable and comfortable choice for anyone searching for the best hotel in Dehradun.',
       stars: 5,
       imageSrc: '/images/dehradun/ultra-realistic-indian-ai-girl-600nw-2735385401.webp',
     },
@@ -437,13 +446,14 @@ function TestimonialsSection() {
   return (
     <section className="section-rule bg-muted/15">
       <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="max-w-2xl">
-          <div className="eyebrow">Testimonials</div>
+        <div className="text-center">
+          <div className="eyebrow">TESTIMONIALS</div>
           <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-            Guests remember the feeling.
+            Why guests call us the best hotel in Dehradun.
           </h2>
-          <p className="body-copy mt-5 max-w-xl">
-            A swipeable carousel layout that works without copying any external content.
+          <p className="body-copy mt-5">
+            Real experiences from guests who have enjoyed their stay at one of the best hotels in
+            Dehradun, known for comfort, service, and thoughtful hospitality.
           </p>
         </div>
 
@@ -539,18 +549,18 @@ function BookingCtaSection() {
     <section className="section-rule">
       <div className="container-shell py-14 sm:py-16 lg:py-20">
         <div className="brand-gradient overflow-hidden rounded-[2rem] px-6 py-10 text-white sm:px-8 lg:px-10">
-          <div className="max-w-3xl">
+          <div className="text-center">
             <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/70">
               Booking
             </div>
             <h2 className="mt-4 font-serif text-3xl tracking-[-0.03em] sm:text-4xl lg:text-5xl">
               A quieter stay starts with a clean booking.
             </h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-white/80 sm:text-base">
+            <p className="mt-4 text-sm leading-7 text-white/80 sm:text-base">
               Reserve your stay with direct support and a smoother arrival experience.
             </p>
 
-            <div className="mt-6">
+            <div className="mt-6 flex justify-center">
               <Link href="/hotels" className="site-button-light border-white/20 bg-white/12 dark:text-white hover:bg-white/16">
                 Book Your Stay
               </Link>
