@@ -11,6 +11,7 @@ type Room = {
   description: string
   imageSrc?: string
   imageAlt?: string
+  href?: string
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -276,7 +277,7 @@ export function RoomsCarousel({
               </h3>
               <p className="mt-3 text-sm leading-7 text-muted-foreground">{room.description}</p>
               <div className="mt-6">
-                <Link href="/hotels" className="site-button-light">
+                <Link href={room.href ?? '/hotels'} className="site-button-light">
                   Explore Room
                 </Link>
               </div>

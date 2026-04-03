@@ -11,7 +11,13 @@ import {
 } from 'lucide-react'
 import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
 import { RoomsCarousel } from '@/components/RoomsCarousel'
-import { getPublicProperties, getPublicPropertyBySlug } from '@/lib/api'
+import { getPublicPropertyBySlug } from '@/lib/api'
+
+/** Hero booking dropdown: fixed options (booking routes use these slugs). */
+const HERO_BOOK_PROPERTIES: { slug: string; publicName: string }[] = [
+  { slug: 'silkwood', publicName: 'Silkwood' },
+  { slug: 'monteverde', publicName: 'Monte Verde' },
+]
 import { HeroBookBar } from './HeroBookBar'
 
 export const metadata: Metadata = {
@@ -21,16 +27,11 @@ export const metadata: Metadata = {
 }
 
 export default async function HomePage() {
-  const properties = await getPublicProperties()
   const limewood = await getPublicPropertyBySlug('limewood')
-  const heroProperties = properties.map((p) => ({
-    slug: p.slug,
-    publicName: p.publicName,
-  }))
 
   return (
     <>
-      <HeroSection properties={heroProperties} />
+      <HeroSection properties={HERO_BOOK_PROPERTIES} />
       <IntroTextSection />
       <RoomsSection />
       <SpecialOffersSection />
@@ -141,28 +142,33 @@ function RoomsSection() {
       name: 'Rosewood',
       description: 'A calm, light-filled room with plush comfort and an easy city rhythm.',
       imageSrc: '/images/dehradun/Rosewood.png',
+      href: '/hotels/rosewood',
     },
     {
       name: 'Silkwood',
       description: 'Designed for friends and families with practical layout and warm details.',
       imageSrc: '/images/dehradun/silkwood .png',
       imageAlt: 'best hotels in dehradun',
+      href: '/hotels/silkwood',
     },
     {
       name: 'Monte Verde',
       description: 'More space, softer lighting, and a slower pace for longer stays.',
       imageSrc: '/images/dehradun/MonteVerde.png',
+      href: '/hotels/monteverde',
     },
     {
       name: 'Silverwood',
       description: 'Framed views of the hills with morning light and quieter evenings.',
       imageSrc: '/images/dehradun/SILVER W BUILDING PIC.png',
+      href: '/hotels/silverwood',
     },
     {
-      name: 'Charrywood',
+      name: 'Cherrywood',
       description: 'Watch the city move from a higher, calmer vantage point.',
       imageSrc: '/images/dehradun/cherrwood building pic 1.png',
       imageAlt: 'best hotels in dehradun',
+      href: '/hotels/cherrywood',
     },
   ]
 
