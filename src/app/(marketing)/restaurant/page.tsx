@@ -23,24 +23,28 @@ export const metadata: Metadata = {
 export default function RestaurantPage() {
   const features = [
     {
-      title: 'Signature Cuisine',
+      title: 'Best Signature Flavors',
       icon: <ChefHat className="h-5 w-5" />,
-      description: 'House-inspired plates with seasonal ingredients and clean flavors.',
+      description:
+        'Fresh Ingredients & Bold Himalayan Tastes. We serve house-inspired plates made with seasonal ingredients and clean flavors. It is why locals call us the best restaurant in Dehradun for a fresh, modern meal.',
     },
     {
-      title: 'Elegant Ambience',
+      title: 'Chill & Elegant Ambience',
       icon: <Sparkles className="h-5 w-5" />,
-      description: 'Warm lighting, calm music, and a layout designed for slow dinners.',
+      description:
+        'The Perfect Spot for Slow Evenings. Whether it is a coffee date or a long dinner with friends, our warm lighting and calm music create an atmosphere where you can truly relax and unwind.',
     },
     {
-      title: 'Rooftop Dining',
+      title: 'Scenic Rooftop Cafe Dehradun',
       icon: <Sunset className="h-5 w-5" />,
-      description: 'Open-air seating with skyline views and an evening breeze.',
+      description:
+        'Skyline Views & Open-Air Hangouts. Catch the evening breeze and the best valley views in town. Our deck is the top rooftop cafe destination for anyone looking to eat, drink, and enjoy the Dehradun skyline.',
     },
     {
-      title: 'Crafted Beverages',
+      title: 'Crafted Mocktails & Drinks',
       icon: <GlassWater className="h-5 w-5" />,
-      description: 'Mocktails and pours designed to pair well with a longer meal.',
+      description:
+        'Artisanal Pours for Longer Conversations. Pair your meal with our signature mocktails and house pours. Designed for sipping slowly while you soak in the mood and the music.',
     },
   ]
 
@@ -60,6 +64,16 @@ export default function RestaurantPage() {
     { name: 'Customer review', text: 'Rooftop mood was excellent — warm lighting and great ambience.', stars: 5 as const },
     { name: 'Customer review', text: 'Food felt thoughtfully made. A great spot for a quieter dinner.', stars: 4 as const },
   ]
+  const galleryImages = [
+    '/images/dehradun/IMG_4505.jpg',
+    '/images/dehradun/IMG_4518.jpg',
+    '/images/dehradun/IMG_4536.JPG',
+    '/images/dehradun/IMG_4542.JPG',
+    '/images/dehradun/IMG_4660.jpg',
+    '/images/dehradun/IMG_4668.jpg',
+    '/images/dehradun/feasta.png',
+    '/images/dehradun/restaurantImage.png',
+  ]
 
   return (
     <>
@@ -68,13 +82,16 @@ export default function RestaurantPage() {
         <div className="container-shell py-14 sm:py-16 lg:py-20">
           <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
             <div className="lg:col-span-5">
-              <div className="eyebrow">Fine Dining Experience</div>
+              <div className="eyebrow">Fine Dining Experience - Dehradun</div>
               <h1 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-                A Culinary Journey Awaits
+                Dehradun&apos;s Finest Rooftop Dining, Above the City Lights
               </h1>
               <p className="body-copy mt-5">
-                A premium restaurant experience designed for slower evenings, warm lighting,
-                and a menu that feels seasonal, clean, and quietly indulgent.
+                Celebrated as the best restaurant in Dehradun, we offer an unforgettable culinary
+                journey under open skies - slow evenings, warm candlelight, and a seasonal menu
+                crafted with mountain freshness. Experience Dehradun&apos;s most breathtaking rooftop
+                cafe with Mussoorie view - where the distant Shivalik hills meet a menu that&apos;s
+                quietly indulgent, every single evening.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <button type="button" className="site-button-dark">
@@ -111,10 +128,11 @@ export default function RestaurantPage() {
           <div className="max-w-2xl">
             <div className="eyebrow">Dining experience</div>
             <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              Crafted for mood, taste, and time.
+              The Best Restaurant in Dehradun for Great Vibes
             </h2>
             <p className="body-copy mt-5 max-w-xl">
-              Signature plates, elegant ambience, and a rooftop feel built for longer evenings.
+              Your go-to rooftop cafe for signature flavors, stunning views, and the perfect place
+              to lose track of time.
             </p>
           </div>
 
@@ -151,9 +169,9 @@ export default function RestaurantPage() {
               </p>
             </div>
 
-            <button type="button" className="site-button-light w-fit">
+            <Link href="/menu" className="site-button-light w-fit">
               View Full Menu
-            </button>
+            </Link>
           </div>
 
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -253,15 +271,18 @@ export default function RestaurantPage() {
           </div>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 8 }, (_, i) => (
+            {galleryImages.map((src, i) => (
               <div
-                key={i}
+                key={`${src}-${i}`}
                 className="group relative aspect-[4/3] overflow-hidden rounded-[1.6rem] bg-muted"
               >
+                <Image
+                  src={src}
+                  alt="Restaurant gallery image"
+                  fill
+                  className="object-cover transition duration-300 group-hover:scale-[1.04]"
+                />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))] transition duration-300 group-hover:opacity-80" />
-                <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55 transition duration-300 group-hover:scale-[1.04]">
-                  Image placeholder
-                </div>
               </div>
             ))}
           </div>

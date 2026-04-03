@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 
 import { Container } from '@/components/Container'
+import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
+import { getPublicPropertyBySlug } from '@/lib/api'
 import { Mail, MapPin, Phone } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -8,7 +10,15 @@ export const metadata: Metadata = {
   description: 'Get in touch with Zenvana Hotels.',
 }
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const limewood = await getPublicPropertyBySlug('limewood')
+  const directionsUrl =
+    limewood?.latitude != null && limewood?.longitude != null
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+          `${limewood.latitude},${limewood.longitude}`,
+        )}&travelmode=driving`
+      : limewood?.googleMapPlaceUrl
+
   return (
     <div className="section-rule bg-muted/5">
       <Container className="py-16 sm:py-20 lg:py-24">
@@ -179,18 +189,31 @@ export default function ContactPage() {
             </div>
 
             <div className="mt-7">
-              <button type="button" className="site-button-light">
-                Get Directions
-              </button>
+              {directionsUrl ? (
+                <a
+                  href={directionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="site-button-light inline-flex"
+                >
+                  Get Directions
+                </a>
+              ) : (
+                <button type="button" className="site-button-light" disabled>
+                  Get Directions
+                </button>
+              )}
             </div>
           </div>
 
           <div className="quiet-card lg:col-span-7 overflow-hidden p-0">
             <div className="relative min-h-[320px] w-full bg-muted sm:min-h-[360px]">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.16),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))]" />
-              <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                Google Maps embed placeholder
-              </div>
+              <HomeLimewoodMap
+                latitude={limewood?.latitude}
+                longitude={limewood?.longitude}
+                mapPlaceUrl={limewood?.googleMapPlaceUrl}
+              />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.22),transparent_58%),linear-gradient(to_bottom,_rgba(0,0,0,0.05),rgba(0,0,0,0.12))]" />
             </div>
           </div>
         </div>
