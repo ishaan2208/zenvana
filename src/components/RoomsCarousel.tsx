@@ -241,52 +241,52 @@ export function RoomsCarousel({
           const isNear = Math.abs(i - activeIndex) === 1
 
           return (
-          <article
-            key={`${room.name}-${i}`}
-            data-slide
-            className={clsx(
-              'quiet-card snap-center shrink-0 overflow-hidden',
-              'basis-full sm:basis-[calc(50%-12px)] lg:basis-[calc(33.333%-16px)]',
-              'transition-transform duration-500 ease-in-out will-change-transform',
-              isCenter ? 'scale-[1]' : isNear ? 'scale-[0.96]' : 'scale-[0.92]',
-            )}
-          >
-            <div className="relative aspect-[4/3] bg-muted">
-              {room.imageSrc ? (
-                <Image
-                  src={room.imageSrc}
-                  alt={room.imageAlt ?? `${room.name} room`}
-                  fill
-                  className="object-cover"
-                />
-              ) : null}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.14),transparent_55%),linear-gradient(to_bottom,_rgba(0,0,0,0.08),rgba(0,0,0,0.08))]" />
-              {!room.imageSrc ? (
-                <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                  Room image placeholder
+            <article
+              key={`${room.name}-${i}`}
+              data-slide
+              className={clsx(
+                'quiet-card snap-center shrink-0 overflow-hidden',
+                'basis-full sm:basis-[calc(50%-12px)] lg:basis-[calc(33.333%-16px)]',
+                'transition-transform duration-500 ease-in-out will-change-transform',
+                isCenter ? 'scale-[1]' : isNear ? 'scale-[0.96]' : 'scale-[0.92]',
+              )}
+            >
+              <div className="relative aspect-[4/3] bg-muted">
+                {room.imageSrc ? (
+                  <Image
+                    src={room.imageSrc}
+                    alt={room.imageAlt ?? `${room.name} room`}
+                    fill
+                    className="object-cover"
+                  />
+                ) : null}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.14),transparent_55%),linear-gradient(to_bottom,_rgba(0,0,0,0.08),rgba(0,0,0,0.08))]" />
+                {!room.imageSrc ? (
+                  <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
+                    Room image placeholder
+                  </div>
+                ) : null}
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-2 text-sm text-foreground/70">
+                  <BedDouble className="h-4 w-4" />
+                  Room type
                 </div>
-              ) : null}
-            </div>
-            <div className="p-6">
-              <div className="flex items-center gap-2 text-sm text-foreground/70">
-                <BedDouble className="h-4 w-4" />
-                Room type
+                <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
+                  {room.name}
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">{room.description}</p>
+                <div className="mt-6">
+                  <Link
+                    href={room.href ?? '/hotels'}
+                    className="site-button-light"
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    Explore Room
+                  </Link>
+                </div>
               </div>
-              <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-                {room.name}
-              </h3>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">{room.description}</p>
-              <div className="mt-6">
-                <Link
-                  href={room.href ?? '/hotels'}
-                  className="site-button-light"
-                  onPointerDown={(e) => e.stopPropagation()}
-                >
-                  Explore Room
-                </Link>
-              </div>
-            </div>
-          </article>
+            </article>
           )
         })}
       </div>
