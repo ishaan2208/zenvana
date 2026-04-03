@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
 import { RoomsCarousel } from '@/components/RoomsCarousel'
+import type { PublicPropertyListItem } from '@/lib/api'
 import { getPublicProperties, getPublicPropertyBySlug } from '@/lib/api'
 import { HeroBookBar } from './HeroBookBar'
 
@@ -32,7 +33,7 @@ export default async function HomePage() {
     <>
       <HeroSection properties={heroProperties} />
       <IntroTextSection />
-      <RoomsSection />
+      <RoomsSection properties={properties} />
       <SpecialOffersSection />
       <DiningSection />
       <EventsSection />
@@ -135,34 +136,63 @@ function HeroSection({
   )
 }
 
-function RoomsSection() {
+/** Preferred URL segments; verified against API so we never link to a missing slug. */
+const ROOM_CARD_TO_SLUG: Record<string, string> = {
+  Rosewood: 'rosewood',
+  Silkwood: 'silkwood',
+  'Monte Verde': 'monteverde',
+  Silverwood: 'silverwood',
+  Cherrywood: 'cherrywood',
+}
+
+function hotelHrefForCard(label: string, properties: PublicPropertyListItem[]) {
+  const preferred = ROOM_CARD_TO_SLUG[label]
+  if (preferred) {
+    const hit = properties.find((p) => p.slug === preferred)
+    if (hit) return `/hotels/${hit.slug}`
+  }
+  const needle = label.trim().toLowerCase()
+  const byName = properties.find((p) => {
+    const n = p.publicName.toLowerCase()
+    return n.includes(needle) || n.replace(/\s+/g, '').includes(needle.replace(/\s+/g, ''))
+  })
+  if (byName) return `/hotels/${byName.slug}`
+  return '/hotels'
+}
+
+function RoomsSection({ properties }: { properties: PublicPropertyListItem[] }) {
   const rooms = [
     {
       name: 'Rosewood',
       description: 'A calm, light-filled room with plush comfort and an easy city rhythm.',
       imageSrc: '/images/dehradun/Rosewood.png',
+      href: hotelHrefForCard('Rosewood', properties),
     },
     {
       name: 'Silkwood',
       description: 'Designed for friends and families with practical layout and warm details.',
       imageSrc: '/images/dehradun/silkwood .png',
       imageAlt: 'best hotels in dehradun',
+      href: hotelHrefForCard('Silkwood', properties),
     },
     {
       name: 'Monte Verde',
       description: 'More space, softer lighting, and a slower pace for longer stays.',
       imageSrc: '/images/dehradun/MonteVerde.png',
+      href: hotelHrefForCard('Monte Verde', properties),
     },
     {
       name: 'Silverwood',
       description: 'Framed views of the hills with morning light and quieter evenings.',
       imageSrc: '/images/dehradun/SILVER W BUILDING PIC.png',
+      href: hotelHrefForCard('Silverwood', properties),
     },
     {
-      name: 'Charrywood',
+      name: 'Cherrywood',
       description: 'Watch the city move from a higher, calmer vantage point.',
       imageSrc: '/images/dehradun/cherrwood building pic 1.png',
       imageAlt: 'best hotels in dehradun',
+      href: hotelHrefForCard('Cherrywood', properties),
     },
   ]
 
