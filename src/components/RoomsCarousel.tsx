@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import clsx from 'clsx'
@@ -63,7 +63,7 @@ export function RoomsCarousel({
     setPageCount(Math.max(1, Math.ceil(baseCount / visible)))
   }
 
-  const getSlideStep = () => {
+  const getSlideStep = useCallback(() => {
     const el = trackRef.current
     if (!el) return 0
     const first = el.querySelector<HTMLElement>('[data-slide]')
@@ -72,42 +72,45 @@ export function RoomsCarousel({
     const computed = window.getComputedStyle(el)
     const gap = Number.parseFloat(computed.columnGap || computed.gap || '0') || 0
     return slideRect.width + gap
-  }
+  }, [])
 
   const easeInOut = (t: number) =>
     t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 
-  const scrollToIndex = (idx: number) => {
-    const el = trackRef.current
-    if (!el) return
-    const step = getSlideStep()
-    const target = step * idx
-    if (prefersReducedMotion) {
-      el.scrollLeft = target
-      return
-    }
-
-    const start = el.scrollLeft
-    const distance = target - start
-    const duration = 500
-    const startTime = performance.now()
-
-    if (animationRef.current != null) {
-      cancelAnimationFrame(animationRef.current)
-    }
-
-    const stepFrame = (now: number) => {
-      const elapsed = now - startTime
-      const t = Math.min(1, elapsed / duration)
-      const eased = easeInOut(t)
-      el.scrollLeft = start + distance * eased
-      if (t < 1) {
-        animationRef.current = requestAnimationFrame(stepFrame)
+  const scrollToIndex = useCallback(
+    (idx: number) => {
+      const el = trackRef.current
+      if (!el) return
+      const step = getSlideStep()
+      const target = step * idx
+      if (prefersReducedMotion) {
+        el.scrollLeft = target
+        return
       }
-    }
 
-    animationRef.current = requestAnimationFrame(stepFrame)
-  }
+      const start = el.scrollLeft
+      const distance = target - start
+      const duration = 500
+      const startTime = performance.now()
+
+      if (animationRef.current != null) {
+        cancelAnimationFrame(animationRef.current)
+      }
+
+      const stepFrame = (now: number) => {
+        const elapsed = now - startTime
+        const t = Math.min(1, elapsed / duration)
+        const eased = easeInOut(t)
+        el.scrollLeft = start + distance * eased
+        if (t < 1) {
+          animationRef.current = requestAnimationFrame(stepFrame)
+        }
+      }
+
+      animationRef.current = requestAnimationFrame(stepFrame)
+    },
+    [getSlideStep, prefersReducedMotion],
+  )
 
   const onPrev = () => scrollToIndex(clamp(activeIndex - 1, 0, rooms.length - 1))
   const onNext = () => scrollToIndex(clamp(activeIndex + 1, 0, rooms.length - 1))
