@@ -161,8 +161,7 @@ export function RoomsCarousel({
     onScroll()
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseCount, loopedRooms.length, loopStartIndex])
+  }, [baseCount, getSlideStep, loopStartIndex, loopedRooms.length])
 
   useEffect(() => {
     if (!autoplayMs || prefersReducedMotion || isHovered) return
@@ -176,7 +175,7 @@ export function RoomsCarousel({
     }, autoplayMs)
 
     return () => window.clearInterval(id)
-  }, [activeIndex, autoplayMs, prefersReducedMotion, isHovered])
+  }, [activeIndex, autoplayMs, getSlideStep, isHovered, prefersReducedMotion, scrollToIndex])
 
   return (
     <div
