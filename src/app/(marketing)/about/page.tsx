@@ -33,7 +33,7 @@ export default function AboutPage() {
             </p>
             <p>
               <strong>Prime Locations:</strong> Situated near Rajpur Road, our guests enjoy easy
-              access to Dehradun's best cafes, shopping hubs like Pacific Mall, and corporate
+              access to Dehradun&apos;s best cafes, shopping hubs like Pacific Mall, and corporate
               centers.
             </p>
             <p>
@@ -42,7 +42,7 @@ export default function AboutPage() {
               majestic Himalayan foothills.
             </p>
             <p>
-              <strong>Curated Comfort:</strong> From Monte Verde's spacious layouts for longer
+              <strong>Curated Comfort:</strong> From Monte Verde&apos;s spacious layouts for longer
               stays to the Silkwood family suites, we provide a variety of accommodations tailored
               to business travelers, couples, and families alike.
             </p>

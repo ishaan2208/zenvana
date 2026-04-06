@@ -130,7 +130,9 @@ export default function ConfirmationVoucher({
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          {logoUrl && logoUrl !== 'N/A' && <Image style={styles.logo} src={logoUrl} />}
+          {logoUrl && logoUrl !== 'N/A' && (
+            <Image style={styles.logo} src={logoUrl} alt="Hotel logo" />
+          )}
           <Text style={styles.sectionTitle}>{booking.property.name}</Text>
           <Text style={styles.text}>{booking.property.address || '-'}</Text>
           <Text style={styles.text}>

@@ -31,7 +31,7 @@ export function AboutStory() {
             </h2>
             <p>
               Zenvana was founded with a simple goal: to create a collection of stays that feel
-              deeply rooted in Dehradun's unique charm. We recognized a need for spaces that offer
+              deeply rooted in Dehradun&apos;s unique charm. We recognized a need for spaces that offer
               both modern convenience and a peaceful escape.
             </p>
             <p>
