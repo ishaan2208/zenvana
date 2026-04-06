@@ -130,8 +130,10 @@ export default function ConfirmationVoucher({
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
+          {/* @react-pdf/renderer Image has no alt prop; PDF readers use surrounding text */}
           {logoUrl && logoUrl !== 'N/A' && (
-            <Image style={styles.logo} src={logoUrl} alt="Hotel logo" />
+            // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image is not HTML img
+            <Image style={styles.logo} src={logoUrl} />
           )}
           <Text style={styles.sectionTitle}>{booking.property.name}</Text>
           <Text style={styles.text}>{booking.property.address || '-'}</Text>

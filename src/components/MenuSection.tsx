@@ -10,7 +10,7 @@ type MenuItemData = {
   price: string
 }
 
-type MenuData = Record<string, MenuItemData[]>
+type MenuData = Record<string, readonly MenuItemData[]>
 
 type MenuSectionProps = {
   menuData: MenuData
