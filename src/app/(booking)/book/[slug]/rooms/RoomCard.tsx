@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useAppRouter } from '@/hooks/useAppRouter'
 import {
   ArrowRight,
   BedDouble,
@@ -148,7 +148,7 @@ export function RoomCard({
   nightsForPlans3 = nights,
   nightsForPlans4 = nights,
 }: RoomCardProps) {
-  const router = useRouter()
+  const router = useAppRouter()
 
   const hasMultiRoomPlans =
     multiRoomMode &&

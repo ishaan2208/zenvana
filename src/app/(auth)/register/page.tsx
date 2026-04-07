@@ -7,7 +7,7 @@ import { SlimLayout } from '@/components/SlimLayout'
 import { type Metadata } from 'next'
 import { useState } from 'react'
 import axios from 'axios'
-import { useRouter } from 'next/navigation'
+import { useAppRouter } from '@/hooks/useAppRouter'
 import { useForm } from 'react-hook-form'
 
 // export const metadata: Metadata = {
@@ -29,7 +29,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
-  const router = useRouter()
+  const router = useAppRouter()
 
   const onSubmit = (values: any) => {
     setLoading(true)

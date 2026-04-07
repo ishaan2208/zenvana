@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useAppRouter } from '@/hooks/useAppRouter'
 import Script from 'next/script'
 import {
   BadgeCheck,
@@ -76,7 +76,7 @@ export default function CheckoutForm({
   ratePlan: _ratePlan,
   occupancy,
 }: Props) {
-  const router = useRouter()
+  const router = useAppRouter()
 
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')

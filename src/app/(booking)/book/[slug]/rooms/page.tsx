@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft,
+  Hotel,
   MapPin,
   Sparkles,
 } from 'lucide-react'
@@ -15,7 +16,9 @@ import {
 import type { PublicRatesWithPlansPlan } from '@/lib/api'
 import { Button } from '@/components/Button'
 import { Container } from '@/components/Container'
+import { SoldOutTag } from '@/components/SoldOutTag'
 import { RoomCard } from './RoomCard'
+import { isRoomTypePurchasable } from './roomAvailability'
 import {
   filterPreferDoubleSharing,
   filterPreferNoTriple,
@@ -252,12 +255,14 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
         : `${occupancy} guest${occupancy !== 1 ? 's' : ''}`
       : null
 
-  const roomTypesAvailableForRequest = roomTypesWithRates.filter(
-    (room) => room.availableRooms >= rooms && room.availableRooms > 0
+  const bookableRoomTypes = roomTypesWithRates.filter((room) =>
+    isRoomTypePurchasable(room, rooms),
   )
 
   const allRoomTypesSoldOut =
-    roomTypesWithRates.length > 0 && roomTypesAvailableForRequest.length === 0
+    roomTypesWithRates.length > 0 && bookableRoomTypes.length === 0
+
+  const stayDetailsHref = `/book/${slug}?checkIn=${checkIn}&checkOut=${checkOut}&rooms=${rooms}${occupancy != null ? `&guests=${occupancy}` : ''}${guestsPerRoom != null ? `&guestsPerRoom=${guestsPerRoom}` : ''}`
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -265,7 +270,7 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
 
       <Container className="relative py-5 sm:py-6 lg:py-10">
         <Link
-          href={`/book/${slug}?checkIn=${checkIn}&checkOut=${checkOut}&rooms=${rooms}${occupancy != null ? `&guests=${occupancy}` : ''}${guestsPerRoom != null ? `&guestsPerRoom=${guestsPerRoom}` : ''}`}
+          href={stayDetailsHref}
           className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-4 py-2 text-sm font-medium text-foreground/80 backdrop-blur-xl transition hover:text-foreground dark:bg-background/40"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -274,66 +279,7 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-8">
           <div className="min-w-0 space-y-5">
-            {roomTypesWithRates.map((room) => (
-              <RoomCard
-                key={room.roomTypeId}
-                slug={slug}
-                checkIn={checkIn}
-                checkOut={checkOut}
-                occupancyParam={occupancy != null ? String(occupancy) : ''}
-                rooms={rooms}
-                roomTypeId={room.roomTypeId}
-                name={room.name}
-                occupancy={room.occupancy}
-                shortDescription={room.shortDescription}
-                roomImages={room.roomImages}
-                availableRooms={room.availableRooms}
-                nights={nights}
-                averagePricePerNight={room.averagePricePerNight}
-                averageMarketRatePerNight={room.averageMarketRatePerNight}
-                plans={room.plans}
-                nightsForPlans={room.nightsForPlans}
-                noRatePlanForOccupancy={room.noRatePlanForOccupancy}
-                multiRoomMode={room.multiRoomMode}
-                totalGuests={room.totalGuests}
-                totalRooms={room.totalRooms}
-                shareCombinations={room.shareCombinations}
-                plansForOccupancy1={room.plansForOccupancy1}
-                plansForOccupancy2={room.plansForOccupancy2}
-                plansForOccupancy3={room.plansForOccupancy3}
-                plansForOccupancy4={room.plansForOccupancy4}
-                nightsForPlans1={room.nightsForPlans1}
-                nightsForPlans2={room.nightsForPlans2}
-                nightsForPlans3={room.nightsForPlans3}
-                nightsForPlans4={room.nightsForPlans4}
-              />
-            ))}
-
-            {allRoomTypesSoldOut && (
-              <div className="rounded-[2rem] border border-amber-300/60 bg-amber-50/80 p-6 shadow-[0_18px_45px_rgba(8,17,31,0.04)] dark:border-amber-700/40 dark:bg-amber-950/25 sm:p-7">
-                <div className="text-[11px] uppercase tracking-[0.24em] text-amber-800 dark:text-amber-200">
-                  Not enough rooms for this search
-                </div>
-                <p className="mt-3 text-sm leading-7 text-amber-900 dark:text-amber-300">
-                  No room type currently has {rooms} room{rooms !== 1 ? 's' : ''} available for these dates.
-                  Try different dates or search for fewer rooms.
-                </p>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Button href={`/book/${slug}`} variant="outline" color="slate" className="dark:text-white">
-                    Change dates or rooms
-                  </Button>
-                  <Link
-                    href={`/hotels/${slug}`}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 transition hover:text-foreground"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to property
-                  </Link>
-                </div>
-              </div>
-            )}
-
-            {roomTypesWithRates.length === 0 && (
+            {roomTypesWithRates.length === 0 ? (
               <div className="rounded-[2rem] border border-border/60 bg-background/55 p-6 shadow-[0_18px_45px_rgba(8,17,31,0.04)] backdrop-blur-2xl dark:bg-background/30 sm:p-7">
                 <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                   No rooms configured
@@ -342,6 +288,94 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
                   No room types are currently configured for this property.
                 </p>
               </div>
+            ) : allRoomTypesSoldOut ? (
+              <section className="relative overflow-hidden rounded-[2rem] border border-rose-200/70 bg-gradient-to-br from-rose-50/95 via-background/85 to-background/60 shadow-[0_28px_80px_rgba(190,18,60,0.12)] backdrop-blur-2xl dark:border-rose-900/50 dark:from-rose-950/40 dark:via-background/40 dark:to-background/25 sm:p-2">
+                <div
+                  className="pointer-events-none absolute -right-6 -top-10 select-none sm:-right-4 sm:-top-6"
+                  aria-hidden
+                >
+                  <span className="block rotate-[-14deg] text-[clamp(3.5rem,14vw,7rem)] font-black uppercase leading-none tracking-tighter text-rose-200/90 dark:text-rose-950/50">
+                    Sold
+                  </span>
+                  <span className="-mt-2 block rotate-[-14deg] text-[clamp(2.5rem,10vw,5rem)] font-black uppercase leading-none tracking-tighter text-rose-300/80 dark:text-rose-900/40">
+                    Out
+                  </span>
+                </div>
+
+                <div className="relative p-6 sm:p-8 lg:p-10">
+                  <div className="inline-flex flex-wrap items-center gap-3">
+                    <SoldOutTag className="px-4 py-2 text-xs tracking-[0.18em]" label="Fully booked" />
+                    <span className="text-[11px] uppercase tracking-[0.24em] text-rose-800/80 dark:text-rose-200/80">
+                      {property.publicName}
+                    </span>
+                  </div>
+
+                  <h1 className="mt-5 max-w-xl font-serif text-[clamp(1.75rem,4.5vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-foreground">
+                    Every room type is unavailable for this stay
+                  </h1>
+
+                  <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
+                    For your dates we don’t have enough inventory or matching rate plans. Pick another
+                    Zenvana property, or adjust your dates and guest count.
+                  </p>
+
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                    <Button
+                      href="/hotels"
+                      color="blue"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl"
+                    >
+                      <Hotel className="h-4 w-4" />
+                      Choose another property
+                    </Button>
+                    <Button href={stayDetailsHref} variant="outline" color="slate" className="dark:text-white">
+                      Change dates or rooms
+                    </Button>
+                    <Link
+                      href={`/hotels/${slug}`}
+                      className="inline-flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-foreground sm:px-2"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      This hotel’s page
+                    </Link>
+                  </div>
+                </div>
+              </section>
+            ) : (
+              bookableRoomTypes.map((room) => (
+                <RoomCard
+                  key={room.roomTypeId}
+                  slug={slug}
+                  checkIn={checkIn}
+                  checkOut={checkOut}
+                  occupancyParam={occupancy != null ? String(occupancy) : ''}
+                  rooms={rooms}
+                  roomTypeId={room.roomTypeId}
+                  name={room.name}
+                  occupancy={room.occupancy}
+                  shortDescription={room.shortDescription}
+                  roomImages={room.roomImages}
+                  availableRooms={room.availableRooms}
+                  nights={nights}
+                  averagePricePerNight={room.averagePricePerNight}
+                  averageMarketRatePerNight={room.averageMarketRatePerNight}
+                  plans={room.plans}
+                  nightsForPlans={room.nightsForPlans}
+                  noRatePlanForOccupancy={room.noRatePlanForOccupancy}
+                  multiRoomMode={room.multiRoomMode}
+                  totalGuests={room.totalGuests}
+                  totalRooms={room.totalRooms}
+                  shareCombinations={room.shareCombinations}
+                  plansForOccupancy1={room.plansForOccupancy1}
+                  plansForOccupancy2={room.plansForOccupancy2}
+                  plansForOccupancy3={room.plansForOccupancy3}
+                  plansForOccupancy4={room.plansForOccupancy4}
+                  nightsForPlans1={room.nightsForPlans1}
+                  nightsForPlans2={room.nightsForPlans2}
+                  nightsForPlans3={room.nightsForPlans3}
+                  nightsForPlans4={room.nightsForPlans4}
+                />
+              ))
             )}
           </div>
 

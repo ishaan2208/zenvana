@@ -3,7 +3,10 @@ import clsx from 'clsx'
 
 import './globals.css'
 import { type Metadata } from 'next'
+import { Suspense } from 'react'
+
 import { organizationJsonLd, webSiteJsonLd } from '@/lib/structured-data'
+import { NavigationLoadingProvider } from '@/components/navigation-loading-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Analytics } from "@vercel/analytics/next"
 
@@ -49,19 +52,23 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Analytics />
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify(organizationJsonLd()),
-            }}
-          />
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify(webSiteJsonLd()),
-            }}
-          />
-          {children}
+          <Suspense fallback={null}>
+            <NavigationLoadingProvider>
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                  __html: JSON.stringify(organizationJsonLd()),
+                }}
+              />
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                  __html: JSON.stringify(webSiteJsonLd()),
+                }}
+              />
+              {children}
+            </NavigationLoadingProvider>
+          </Suspense>
         </ThemeProvider>
       </body>
     </html>

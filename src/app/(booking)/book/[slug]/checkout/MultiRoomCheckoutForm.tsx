@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useAppRouter } from '@/hooks/useAppRouter'
 import {
   BedDouble,
   CalendarRange,
@@ -48,7 +48,7 @@ export default function MultiRoomCheckoutForm({
   propertyName,
   primaryPhone,
 }: Props) {
-  const router = useRouter()
+  const router = useAppRouter()
 
   const [payload, setPayload] = useState<StoredPayload | null>(null)
 

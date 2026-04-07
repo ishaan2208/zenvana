@@ -2,7 +2,7 @@
 
 import type { FormEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useAppRouter } from '@/hooks/useAppRouter'
 import { differenceInCalendarDays, format } from 'date-fns'
 import {
   BedDouble,
@@ -87,7 +87,7 @@ export function BookSearchForm({
   propertyName,
   location,
 }: BookSearchFormProps) {
-  const router = useRouter()
+  const router = useAppRouter()
   const today = useMemo(() => startOfDay(new Date()), [])
   const tomorrow = useMemo(() => addDays(today, 1), [today])
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useAppRouter } from '@/hooks/useAppRouter'
 import { Calendar as CalendarIcon, ChevronRight, MapPinned, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -72,7 +72,7 @@ function toDateString(date: Date): string {
 }
 
 export function HeroBookBar({ properties }: HeroBookBarProps) {
-  const router = useRouter()
+  const router = useAppRouter()
   const today = useMemo(() => new Date(), [])
   const tomorrow = useMemo(() => {
     const d = new Date(today)
