@@ -159,8 +159,15 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     ? filterPreferDoubleSharing(filterPreferNoTriple(getShareCombinations(rooms, occupancy!)))
     : []
 
+  const hasConfiguredPropertyRooms = property.roomTypes.length > 0
+
+  /** Skip rate-plan fetches when inventory cannot satisfy the guest’s room count. */
+  const inventoryEligible = availability.roomTypes.filter(
+    (av) => av.availableRooms > 0 && av.availableRooms >= rooms,
+  )
+
   const plansPerType = await Promise.all(
-    availability.roomTypes.map((av) =>
+    inventoryEligible.map((av) =>
       isMultiRoomWithGuests
         ? Promise.all([
           getPublicRatesWithPlans(slug, av.roomTypeId, checkIn, checkOut, 1),
@@ -184,7 +191,7 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     property.roomTypes.map((roomType) => [roomType.name.trim().toLowerCase(), roomType] as const)
   )
 
-  const roomTypesWithRates = availability.roomTypes.map((av, i) => {
+  const roomTypesWithRates = inventoryEligible.map((av, i) => {
     const rt =
       propertyRoomTypeById.get(String(av.roomTypeId)) ??
       propertyRoomTypeByName.get(av.name.trim().toLowerCase())
@@ -259,8 +266,8 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     isRoomTypePurchasable(room, rooms),
   )
 
-  const allRoomTypesSoldOut =
-    roomTypesWithRates.length > 0 && bookableRoomTypes.length === 0
+  const allRoomsSoldOutForStay =
+    hasConfiguredPropertyRooms && bookableRoomTypes.length === 0
 
   const stayDetailsHref = `/book/${slug}?checkIn=${checkIn}&checkOut=${checkOut}&rooms=${rooms}${occupancy != null ? `&guests=${occupancy}` : ''}${guestsPerRoom != null ? `&guestsPerRoom=${guestsPerRoom}` : ''}`
 
@@ -279,7 +286,7 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-8">
           <div className="min-w-0 space-y-5">
-            {roomTypesWithRates.length === 0 ? (
+            {!hasConfiguredPropertyRooms ? (
               <div className="rounded-[2rem] border border-border/60 bg-background/55 p-6 shadow-[0_18px_45px_rgba(8,17,31,0.04)] backdrop-blur-2xl dark:bg-background/30 sm:p-7">
                 <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                   No rooms configured
@@ -288,7 +295,7 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
                   No room types are currently configured for this property.
                 </p>
               </div>
-            ) : allRoomTypesSoldOut ? (
+            ) : allRoomsSoldOutForStay ? (
               <section className="relative overflow-hidden rounded-[2rem] border border-rose-200/70 bg-gradient-to-br from-rose-50/95 via-background/85 to-background/60 shadow-[0_28px_80px_rgba(190,18,60,0.12)] backdrop-blur-2xl dark:border-rose-900/50 dark:from-rose-950/40 dark:via-background/40 dark:to-background/25 sm:p-2">
                 <div
                   className="pointer-events-none absolute -right-6 -top-10 select-none sm:-right-4 sm:-top-6"
@@ -311,24 +318,30 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
                   </div>
 
                   <h1 className="mt-5 max-w-xl font-serif text-[clamp(1.75rem,4.5vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-foreground">
-                    Every room type is unavailable for this stay
+                    All rooms are sold out for these dates
                   </h1>
 
                   <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
-                    For your dates we don’t have enough inventory or matching rate plans. Pick another
-                    Zenvana property, or adjust your dates and guest count.
+                    Every room type at this hotel is unavailable for your stay — not enough inventory
+                    or no matching rate plans for your guest count. Browse other Zenvana properties or
+                    change your dates and room configuration.
                   </p>
 
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                     <Button
                       href="/hotels"
                       color="blue"
-                      className="inline-flex items-center justify-center gap-2 rounded-xl"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl sm:w-auto"
                     >
                       <Hotel className="h-4 w-4" />
-                      Choose another property
+                      View all properties
                     </Button>
-                    <Button href={stayDetailsHref} variant="outline" color="slate" className="dark:text-white">
+                    <Button
+                      href={stayDetailsHref}
+                      variant="outline"
+                      color="slate"
+                      className="dark:text-white"
+                    >
                       Change dates or rooms
                     </Button>
                     <Link

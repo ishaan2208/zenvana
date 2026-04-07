@@ -25,6 +25,7 @@ import { EmblaImageGallery } from '@/components/EmblaImageGallery'
 import type { PublicRatesWithPlansPlan } from '@/lib/api'
 import { normalizeGalleryImages } from '@/lib/media'
 import type { ShareCombination } from './shareCombinations'
+import { isRoomTypeSoldOut } from './roomAvailability'
 
 const MULTI_ROOM_STORAGE_KEY = 'zenvana_multi_room_booking'
 
@@ -161,10 +162,20 @@ export function RoomCard({
   const hasPlans = plans.length > 0 || hasMultiRoomPlans
   const effectiveAvailableRooms = hasPlans ? Math.max(1, availableRooms) : availableRooms
 
-  const soldOut =
-    availableRooms < rooms ||
-    availableRooms <= 0 ||
-    (!multiRoomMode && noRatePlanForOccupancy)
+  const soldOut = isRoomTypeSoldOut(
+    {
+      availableRooms,
+      multiRoomMode,
+      noRatePlanForOccupancy,
+      plans,
+      shareCombinations,
+      plansForOccupancy1,
+      plansForOccupancy2,
+      plansForOccupancy3,
+      plansForOccupancy4,
+    },
+    rooms,
+  )
 
   const maxSelectableRooms = Math.min(effectiveAvailableRooms, rooms)
   const showOnlyOneRoomLeft = rooms === 1 && availableRooms === 1

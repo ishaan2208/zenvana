@@ -41,3 +41,11 @@ export function isRoomTypePurchasable(
   if (!room.plans?.length) return false
   return true
 }
+
+/** Mirrors {@link isRoomTypePurchasable} for UI (sold-out banner, disabled booking). */
+export function isRoomTypeSoldOut(
+  room: RoomSelectionRow,
+  requestedRooms: number,
+): boolean {
+  return !isRoomTypePurchasable(room, requestedRooms)
+}
