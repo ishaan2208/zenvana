@@ -6,12 +6,22 @@ import {
   MapPin,
   Mountain,
   Sparkles,
+  Tag,
   Trees,
 } from 'lucide-react'
 
-import { getPublicProperties, getPublicPropertyBySlug } from '@/lib/api'
+import {
+  cheapestPlanAcrossRoomTypes,
+  cheapestStayFromBulk,
+  getPublicProperties,
+  getPublicPropertyBySlug,
+  getPublicRatesBulk,
+  getPublicRatesWithPlans,
+} from '@/lib/api'
 import { Container } from '@/components/Container'
+import { HotelListingPlanPrice } from '@/components/HotelListingPlanPrice'
 import { Card, CardContent } from '@/components/ui/Card'
+import { addDaysYmd, kolkataYmd } from '@/lib/kolkata-calendar'
 import { pickHeroAndGallery } from '@/lib/media'
 
 export const metadata = {
@@ -41,17 +51,78 @@ const highlights = [
 export default async function HotelsPage() {
   const properties = await getPublicProperties()
 
-  // Fallback: for properties missing heroImageUrl, fetch full detail to get hero from images
-  const propertiesWithImages = await Promise.all(
-    properties.map(async (p) => {
-      let heroUrl = p.heroImageUrl
-      if (!heroUrl) {
-        const full = await getPublicPropertyBySlug(p.slug)
-        heroUrl = pickHeroAndGallery(full?.images).heroUrl
-      }
-      return { ...p, heroImageUrl: heroUrl }
-    })
+  const fullDetails = await Promise.all(properties.map((p) => getPublicPropertyBySlug(p.slug)))
+
+  const propertiesWithImages = properties.map((p, i) => {
+    const full = fullDetails[i]
+    const heroUrl = p.heroImageUrl ?? pickHeroAndGallery(full?.images).heroUrl
+    // List + detail both carry showValueBadge; OR them so a stale cached slug response
+    // (missing the field) cannot wipe a true from the fresher /public/properties list.
+    const showValueBadge =
+      p.showValueBadge === true || full?.showValueBadge === true
+    return {
+      ...p,
+      heroImageUrl: heroUrl,
+      roomTypes: full?.roomTypes ?? [],
+      showValueBadge,
+    }
+  })
+
+  const checkInYmd = kolkataYmd()
+  const checkOutYmd = addDaysYmd(checkInYmd, 1)
+  const cacheListing = { next: { revalidate: 300 } } as const
+
+  const planTasks: Array<Promise<Awaited<ReturnType<typeof getPublicRatesWithPlans>>>> = []
+  const planPropIndex: number[] = []
+  propertiesWithImages.forEach((p, propIdx) => {
+    for (const rt of p.roomTypes) {
+      planTasks.push(
+        getPublicRatesWithPlans(p.slug, rt.id, checkInYmd, checkOutYmd, 1, cacheListing)
+      )
+      planPropIndex.push(propIdx)
+    }
+  })
+
+  const [planResults, bulkResults] = await Promise.all([
+    planTasks.length ? Promise.all(planTasks) : Promise.resolve([] as Awaited<ReturnType<typeof getPublicRatesWithPlans>>[]),
+    Promise.all(
+      propertiesWithImages.map((p) =>
+        getPublicRatesBulk(p.slug, checkInYmd, checkOutYmd, 1, cacheListing)
+      )
+    ),
+  ])
+
+  const plansByProperty = propertiesWithImages.map(
+    () => [] as Array<Awaited<ReturnType<typeof getPublicRatesWithPlans>>>
   )
+  planResults.forEach((res, i) => {
+    plansByProperty[planPropIndex[i]].push(res)
+  })
+
+  const propertiesForGrid = propertiesWithImages
+    .map((p, i) => {
+      const { roomTypes: _roomTypes, ...pub } = p
+      const plan = cheapestPlanAcrossRoomTypes(plansByProperty[i])
+      const bulkLine = cheapestStayFromBulk(bulkResults[i])
+      const listingPrice = plan
+        ? { amount: plan.totalAmount, marketAmount: plan.marketTotalAmount }
+        : bulkLine
+          ? {
+            amount: bulkLine.totalAmount,
+            marketAmount: bulkLine.totalMarketAmount,
+          }
+          : null
+      return {
+        ...pub,
+        listingPrice,
+      }
+    })
+    .sort((a, b) => {
+      const pa = a.listingPrice?.amount ?? -Infinity
+      const pb = b.listingPrice?.amount ?? -Infinity
+      if (pb !== pa) return pb - pa
+      return a.publicName.localeCompare(b.publicName)
+    })
 
   return (
     <main className="bg-background text-foreground">
@@ -73,14 +144,25 @@ export default async function HotelsPage() {
             </p>
           </div>
 
-          {propertiesWithImages.length === 0 ? (
+          {propertiesForGrid.length === 0 ? (
             <EmptyState />
           ) : (
             <ul className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {propertiesWithImages.map((p) => (
+              {propertiesForGrid.map((p) => (
                 <li key={p.id}>
                   <Link href={`/hotels/${p.slug}`} className="group block h-full">
                     <Card className="h-full overflow-hidden rounded-[2rem] border-border/60 bg-card/70 text-card-foreground shadow-[0_18px_45px_rgba(8,17,31,0.05)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_26px_80px_rgba(8,17,31,0.1)] dark:bg-card/50">
+                      {p.listingPrice != null ? (
+                        <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/35 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
+                          <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                            From today
+                          </span>
+                          <HotelListingPlanPrice
+                            amount={p.listingPrice.amount}
+                            marketAmount={p.listingPrice.marketAmount}
+                          />
+                        </div>
+                      ) : null}
                       <div className="relative overflow-hidden">
                         {p.heroImageUrl ? (
                           <Image
@@ -103,10 +185,17 @@ export default async function HotelsPage() {
                         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,17,31,0.03)_0%,rgba(8,17,31,0.14)_42%,rgba(8,17,31,0.78)_100%)]" />
 
                         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.24em] dark:text-white/78 text-[#dbe64c] backdrop-blur-md">
-                            <Sparkles className="h-3.5 w-3.5 text-[#dbe64c]" />
-                            Zenvana Stay
-                          </div>
+                          {p.showValueBadge ? (
+                            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/30 bg-emerald-950/40 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-emerald-50 backdrop-blur-md">
+                              <Tag className="h-3 w-3 shrink-0 text-emerald-200/90" aria-hidden />
+                              Great value
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#dbe64c] backdrop-blur-md dark:text-white/78">
+                              <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#dbe64c]" />
+                              Boutique stays
+                            </div>
+                          )}
                         </div>
                       </div>
 

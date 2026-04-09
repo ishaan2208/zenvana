@@ -20,6 +20,8 @@ export type PublicPropertyListItem = {
   shortDescription?: string
   heroImageUrl?: string
   canonicalUrl?: string
+  /** Hotels grid: show “Great value” pill when true (from PropertyPublicProfile). */
+  showValueBadge?: boolean
 }
 
 export type PublicPropertyDetail = {
@@ -49,6 +51,7 @@ export type PublicPropertyDetail = {
   gbpUrl?: string
   googleMapPlaceUrl?: string
   canonicalUrl?: string
+  showValueBadge?: boolean
   roomTypes: Array<{
     id: number
     name: string
@@ -85,7 +88,8 @@ export async function getPublicPropertyBySlug(
 ): Promise<PublicPropertyDetail | null> {
   try {
     const res = await fetch(`${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 60 },
+      // Keep in sync with listing (getPublicProperties) so new public fields (e.g. badges) aren’t stale for 60s.
+      next: { revalidate: 10 },
     })
     if (!res.ok) return null
     const json = await res.json()
@@ -197,16 +201,73 @@ export async function getPublicRatesBulk(
   slug: string,
   checkIn: string,
   checkOut: string,
-  occupancy?: number
+  occupancy?: number,
+  fetchInit?: { next?: { revalidate?: number | false } }
 ): Promise<PublicRatesBulkResponse | null> {
   const params = new URLSearchParams({ checkIn, checkOut })
   if (occupancy != null) params.set('occupancy', String(occupancy))
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/rates/bulk?${params}`
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/rates/bulk?${params}`,
+    fetchInit?.next ? { next: fetchInit.next } : undefined
   )
   if (!res.ok) return null
   const json = await res.json()
   return json?.data ?? null
+}
+
+/** Lowest average direct rate per night across room types (for listing “from” labels). */
+export function minAverageNightFromBulk(data: PublicRatesBulkResponse | null): number | null {
+  if (!data?.roomTypes?.length) return null
+  let min = Infinity
+  for (const rt of data.roomTypes) {
+    const n = rt.averagePricePerNight
+    if (typeof n === 'number' && n > 0 && n < min) min = n
+  }
+  return min === Infinity ? null : min
+}
+
+/**
+ * Cheapest rate-plan row (minimum direct stay total) across all room types and meal plans.
+ * Matches book flow totals: plan.totalAmount / plan.marketTotalAmount with occupancy as fetched.
+ */
+export function cheapestPlanAcrossRoomTypes(
+  perRoomType: Array<PublicRatesWithPlansResponse | null>
+): PublicRatesWithPlansPlan | null {
+  let best: PublicRatesWithPlansPlan | null = null
+  let bestTotal = Infinity
+  for (const data of perRoomType) {
+    if (!data || data.noRatePlanForOccupancy) continue
+    for (const p of data.plans ?? []) {
+      const t = p.totalAmount
+      if (typeof t !== 'number' || !(t > 0)) continue
+      if (t < bestTotal) {
+        bestTotal = t
+        best = p
+      }
+    }
+  }
+  return best
+}
+
+/** Fallback when no plan rows: lowest direct stay total from bulk engine (same dates). */
+export function cheapestStayFromBulk(
+  data: PublicRatesBulkResponse | null
+): { totalAmount: number; totalMarketAmount?: number } | null {
+  if (!data?.roomTypes?.length) return null
+  let best: { totalAmount: number; totalMarketAmount?: number } | null = null
+  let bestTotal = Infinity
+  for (const rt of data.roomTypes) {
+    const t = rt.totalAmount
+    if (typeof t !== 'number' || !(t > 0)) continue
+    if (t < bestTotal) {
+      bestTotal = t
+      best = {
+        totalAmount: t,
+        totalMarketAmount: rt.totalMarketAmount,
+      }
+    }
+  }
+  return best
 }
 
 export type PublicRatesWithPlansPlan = {
@@ -241,7 +302,8 @@ export async function getPublicRatesWithPlans(
   roomTypeId: number,
   checkIn: string,
   checkOut: string,
-  occupancy?: number
+  occupancy?: number,
+  fetchInit?: { next?: { revalidate?: number | false } }
 ): Promise<PublicRatesWithPlansResponse | null> {
   const params = new URLSearchParams({
     roomTypeId: String(roomTypeId),
@@ -250,7 +312,7 @@ export async function getPublicRatesWithPlans(
   })
   if (occupancy != null) params.set('occupancy', String(occupancy))
   const url = `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/rates/plans?${params}`
-  const res = await fetch(url)
+  const res = await fetch(url, fetchInit?.next ? { next: fetchInit.next } : undefined)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     console.log('[zenvana/api] getPublicRatesWithPlans failed', {
