@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { ContactForm } from '@/components/ContactForm'
 import { Container } from '@/components/Container'
 import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
 import { getPublicPropertyBySlug } from '@/lib/api'
@@ -84,54 +85,7 @@ export default async function ContactPage() {
               Share a few details and our team will get back with the next steps.
             </p>
 
-            <form className="mt-6 grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2">
-                <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                  Full Name
-                </span>
-                <input
-                  className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                  placeholder="Your name"
-                />
-              </label>
-
-              <label className="grid gap-2">
-                <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                  Email Address
-                </span>
-                <input
-                  type="email"
-                  className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                  placeholder="you@example.com"
-                />
-              </label>
-
-              <label className="grid gap-2 sm:col-span-2">
-                <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                  Phone Number
-                </span>
-                <input
-                  className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                  placeholder="+91 00000 00000"
-                />
-              </label>
-
-              <label className="grid gap-2 sm:col-span-2">
-                <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                  Message
-                </span>
-                <textarea
-                  className="min-h-[140px] resize-none rounded-2xl border border-border/70 bg-background px-4 py-3 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                  placeholder="How can we help?"
-                />
-              </label>
-
-              <div className="sm:col-span-2 pt-2">
-                <button type="button" className="site-button-dark w-full sm:w-auto">
-                  Submit
-                </button>
-              </div>
-            </form>
+            <ContactForm />
           </div>
 
           <div className="quiet-card lg:col-span-5 p-6 sm:p-7">

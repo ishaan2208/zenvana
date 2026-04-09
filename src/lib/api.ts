@@ -114,6 +114,31 @@ export async function getPublicDestinations(): Promise<
   }
 }
 
+/** POST contact form (browser). Sends mail via backend SMTP. */
+export async function submitPublicContact(payload: {
+  name: string
+  email: string
+  phone: string
+  message: string
+  /** Honeypot — leave empty */
+  website?: string
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/public/contact`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+    if (!res.ok || !json.ok) {
+      return { ok: false, error: json?.error ?? 'Something went wrong. Please try again.' }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false, error: 'Network error. Please check your connection and try again.' }
+  }
+}
+
 // Client-side: availability and rates (called with user-selected dates)
 
 export type PublicAvailabilityRoomType = {
