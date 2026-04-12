@@ -17,8 +17,10 @@ import {
 import { Button } from '@/components/Button'
 import { PriceWithMarketRate } from '@/components/PriceWithMarketRate'
 import { createPublicBookingWithRoomLines } from '@/lib/api'
+import { toast } from 'sonner'
 
 const MULTI_ROOM_STORAGE_KEY = 'zenvana_multi_room_booking'
+const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
 
 type StoredPayload = {
   slug: string
@@ -121,11 +123,15 @@ export default function MultiRoomCheckoutForm({
   function handleGuestNameChange(value: string) {
     setGuestName(value)
     setFieldErrors((prev) => ({ ...prev, guestName: undefined }))
+    setError(null)
+    toast.dismiss(GUEST_REQUIRED_TOAST_ID)
   }
 
   function handleGuestPhoneChange(value: string) {
     setGuestPhone(value)
     setFieldErrors((prev) => ({ ...prev, guestPhone: undefined }))
+    setError(null)
+    toast.dismiss(GUEST_REQUIRED_TOAST_ID)
   }
 
   function validateRequiredFields() {
@@ -133,7 +139,22 @@ export default function MultiRoomCheckoutForm({
     if (!guestName.trim()) nextErrors.guestName = 'Name is required'
     if (!guestPhone.trim()) nextErrors.guestPhone = 'Phone number is required'
     setFieldErrors(nextErrors)
-    return Object.keys(nextErrors).length === 0
+    if (Object.keys(nextErrors).length > 0) {
+      const msg =
+        'Please enter your full name and phone number before continuing.'
+      setError(msg)
+      toast.error(msg, { id: GUEST_REQUIRED_TOAST_ID, duration: 8000 })
+      const firstId = nextErrors.guestName ? 'guestName' : 'guestPhone'
+      requestAnimationFrame(() => {
+        document.getElementById(firstId)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
+        document.getElementById(firstId)?.focus()
+      })
+      return false
+    }
+    return true
   }
 
   async function handleSubmit(e: React.FormEvent) {

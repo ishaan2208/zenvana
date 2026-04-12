@@ -23,6 +23,9 @@ import {
   sendPublicBookingOtp,
   verifyPublicBookingOtp,
 } from '@/lib/api'
+import { toast } from 'sonner'
+
+const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
 
 type Props = {
   slug: string
@@ -127,12 +130,16 @@ export default function CheckoutForm({
   function handleGuestPhoneChange(value: string) {
     setGuestPhone(value)
     setFieldErrors((prev) => ({ ...prev, guestPhone: undefined }))
+    setError(null)
+    toast.dismiss(GUEST_REQUIRED_TOAST_ID)
     resetPhoneVerification(value)
   }
 
   function handleGuestNameChange(value: string) {
     setGuestName(value)
     setFieldErrors((prev) => ({ ...prev, guestName: undefined }))
+    setError(null)
+    toast.dismiss(GUEST_REQUIRED_TOAST_ID)
   }
 
   function validateRequiredFields() {
@@ -140,7 +147,22 @@ export default function CheckoutForm({
     if (!guestName.trim()) nextErrors.guestName = 'Name is required'
     if (!guestPhone.trim()) nextErrors.guestPhone = 'Phone number is required'
     setFieldErrors(nextErrors)
-    return Object.keys(nextErrors).length === 0
+    if (Object.keys(nextErrors).length > 0) {
+      const msg =
+        'Please enter your full name and phone number before continuing.'
+      setError(msg)
+      toast.error(msg, { id: GUEST_REQUIRED_TOAST_ID, duration: 8000 })
+      const firstId = nextErrors.guestName ? 'guestName' : 'guestPhone'
+      requestAnimationFrame(() => {
+        document.getElementById(firstId)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
+        document.getElementById(firstId)?.focus()
+      })
+      return false
+    }
+    return true
   }
 
   async function handleSendOtp() {
@@ -349,9 +371,7 @@ export default function CheckoutForm({
                 {roomTypeName}
               </h2>
 
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                Final guest details, WhatsApp verification, payment, done. This is the last clean stretch before confirmation.
-              </p>
+
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <SummaryCard
@@ -395,9 +415,7 @@ export default function CheckoutForm({
                   </span>
                   <span className="text-sm font-medium text-foreground">Pay now</span>
                 </div>
-                <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  This is preselected so guests can complete the booking in one smooth pass.
-                </p>
+
               </div>
 
               {primaryPhone && (

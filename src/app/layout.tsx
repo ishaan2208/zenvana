@@ -6,6 +6,7 @@ import { type Metadata } from 'next'
 import { Suspense } from 'react'
 
 import { organizationJsonLd, webSiteJsonLd } from '@/lib/structured-data'
+import { AppToaster } from '@/components/app-toaster'
 import { NavigationLoadingProvider } from '@/components/navigation-loading-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Analytics } from "@vercel/analytics/next"
@@ -54,6 +55,7 @@ export default function RootLayout({
           <Analytics />
           <Suspense fallback={null}>
             <NavigationLoadingProvider>
+              <AppToaster />
               <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
