@@ -227,6 +227,10 @@ export default function CheckoutForm({
     totalAmount: parseFloat(totalAmount),
     numRooms: _numRooms ?? 1,
     ratePlan: _ratePlan,
+    ratePlanId:
+      _ratePlan && _ratePlan !== 'default' && !Number.isNaN(Number(_ratePlan))
+        ? Number(_ratePlan)
+        : undefined,
     occupancy: occupancy ?? 1,
   })
 

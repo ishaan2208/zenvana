@@ -92,6 +92,18 @@ function getRoomCheckOutDate(room: PublicVoucherBookingDetails['BookingRoom'][nu
   return room.checkOutDate ?? room.checkOut
 }
 
+const RATE_PLAN_LABEL: Record<'EP' | 'CP' | 'MAP' | 'AP', string> = {
+  EP: 'Room only',
+  CP: 'Room + Breakfast',
+  MAP: 'Room + Breakfast + Dinner',
+  AP: 'Room + All Meals',
+}
+
+function formatRoomPlan(plan?: 'EP' | 'CP' | 'MAP' | 'AP') {
+  const p = plan ?? 'EP'
+  return `${p} - ${RATE_PLAN_LABEL[p]}`
+}
+
 function ConfirmationVoucherDocument({ booking }: { booking: PublicVoucherBookingDetails }) {
   const logoUrl = booking.property.logoUrl || 'N/A'
   return (
@@ -149,7 +161,7 @@ function ConfirmationVoucherDocument({ booking }: { booking: PublicVoucherBookin
             <View style={styles.tableRow} key={room.id}>
               <View style={styles.tableColBig}>
                 <Text style={styles.tableCellBig}>
-                  {room.room_type.name} ({room.occupancy} occupancy)
+                  {room.room_type.name} ({room.occupancy} occupancy) • {formatRoomPlan(room.roomPlan)}
                 </Text>
               </View>
               <View style={styles.tableCol}>

@@ -368,6 +368,9 @@ export type CreatePublicBookingPayload = {
   roomTypeId: number
   totalAmount: number
   occupancy?: number
+  ratePlanId?: number
+  // Backward compatibility alias used by some checkout paths
+  ratePlan?: string
   payment?: { paid: boolean; transactionId?: string }
 }
 
@@ -468,6 +471,7 @@ export type PublicBookingPayload = {
 export type PublicVoucherBookingRoom = {
   id: number
   occupancy: number
+  roomPlan?: 'EP' | 'CP' | 'MAP' | 'AP'
   tariff: number
   totalNight: number
   checkIn: string

@@ -11,6 +11,7 @@ import { Container } from '@/components/Container'
 import { Button } from '@/components/Button'
 import { PriceWithTax } from '@/components/PriceWithTax'
 import { DownloadConfirmationVoucherButton } from './DownloadConfirmationVoucherButton'
+import { getPublicBookingVoucherDetailsByReference } from '@/lib/api'
 
 export const metadata = {
   title: 'Booking confirmation',
@@ -32,6 +33,22 @@ type Props = {
 
 export default async function ConfirmationPage({ searchParams }: Props) {
   const q = await searchParams
+  const booking =
+    q.bookingReference ? await getPublicBookingVoucherDetailsByReference(q.bookingReference).catch(() => null) : null
+
+  const uniquePlans = booking
+    ? [...new Set((booking.BookingRoom ?? []).map((r) => (r.roomPlan ?? 'EP') as 'EP' | 'CP' | 'MAP' | 'AP'))]
+    : []
+  const ratePlanLabelMap: Record<'EP' | 'CP' | 'MAP' | 'AP', string> = {
+    EP: 'Room only',
+    CP: 'Room + Breakfast',
+    MAP: 'Room + Breakfast + Dinner',
+    AP: 'Room + All Meals',
+  }
+  const ratePlanText =
+    uniquePlans.length > 0
+      ? uniquePlans.map((p) => `${p} - ${ratePlanLabelMap[p]}`).join(' + ')
+      : null
 
   const hasDetails =
     q.propertyName &&
@@ -120,6 +137,14 @@ export default async function ConfirmationPage({ searchParams }: Props) {
                       {q.roomTypeName}
                     </p>
                   </div>
+                  {ratePlanText && (
+                    <div className="mt-5 rounded-[1.4rem] border border-border/60 bg-background/55 p-4 dark:bg-background/35">
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                        Rate plan
+                      </div>
+                      <p className="mt-2 text-base font-medium text-foreground">{ratePlanText}</p>
+                    </div>
+                  )}
                 </div>
               </section>
             ) : (
