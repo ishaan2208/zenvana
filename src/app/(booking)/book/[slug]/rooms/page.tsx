@@ -187,14 +187,9 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
   const propertyRoomTypeById = new Map(
     property.roomTypes.map((roomType) => [String(roomType.id), roomType] as const)
   )
-  const propertyRoomTypeByName = new Map(
-    property.roomTypes.map((roomType) => [roomType.name.trim().toLowerCase(), roomType] as const)
-  )
 
   const roomTypesWithRates = inventoryEligible.map((av, i) => {
-    const rt =
-      propertyRoomTypeById.get(String(av.roomTypeId)) ??
-      propertyRoomTypeByName.get(av.name.trim().toLowerCase())
+    const rt = propertyRoomTypeById.get(String(av.roomTypeId))
     const rate = ratesByRoomTypeId.get(av.roomTypeId)
     const plansData = plansPerType[i]
 
