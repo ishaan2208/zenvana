@@ -20,8 +20,11 @@ import { Button } from '@/components/Button'
 import { PriceWithMarketRate } from '@/components/PriceWithMarketRate'
 import {
   createPublicBooking,
+  createRazorpayOrder,
   sendPublicBookingOtp,
   verifyPublicBookingOtp,
+  verifyRazorpayAndCreateBooking,
+  type PublicBookingPayload,
 } from '@/lib/api'
 import { toast } from 'sonner'
 
@@ -43,6 +46,28 @@ type Props = {
   occupancy?: number
 }
 
+async function loadRazorpayScript(): Promise<void> {
+  if (typeof window === 'undefined') return
+  if (window.Razorpay) return
+  await new Promise<void>((resolve, reject) => {
+    const url = 'https://checkout.razorpay.com/v1/checkout.js'
+    const existing = document.querySelector(`script[src="${url}"]`)
+    if (existing) {
+      existing.addEventListener('load', () => resolve())
+      existing.addEventListener('error', () =>
+        reject(new Error('Razorpay script failed to load'))
+      )
+      return
+    }
+    const s = document.createElement('script')
+    s.src = url
+    s.async = true
+    s.onload = () => resolve()
+    s.onerror = () => reject(new Error('Failed to load Razorpay'))
+    document.body.appendChild(s)
+  })
+}
+
 declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => {
@@ -52,6 +77,7 @@ declare global {
         handler: (res: {
           razorpay_payment_id: string
           razorpay_order_id: string
+          razorpay_signature: string
         }) => void
       ) => void
     }
@@ -62,6 +88,16 @@ function formatCountdown(seconds: number) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${String(s).padStart(2, '0')}`
+}
+
+/** Match backend `getNightsBetween` for tariff × nights totals. */
+function countStayNights(checkInStr: string, checkOutStr: string): number {
+  const start = new Date(checkInStr)
+  const end = new Date(checkOutStr)
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  const n = Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+  return Math.max(1, n)
 }
 
 export default function CheckoutForm({
@@ -292,26 +328,45 @@ export default function CheckoutForm({
     setSubmitting(true)
 
     try {
-      const orderRes = await fetch('/api/razorpay/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parseFloat(totalAmount),
-          currency: 'INR',
-        }),
-      })
-
-      if (!orderRes.ok) {
-        const j = await orderRes.json().catch(() => ({}))
-        throw new Error(j?.error ?? 'Could not create payment order')
+      await loadRazorpayScript()
+      const RazorpayCtor = window.Razorpay
+      if (!RazorpayCtor) {
+        throw new Error('Payment script did not load. Please refresh and try again.')
       }
 
-      const { orderId } = await orderRes.json()
-      if (!orderId) throw new Error('Invalid order response')
+      const nightsNum = countStayNights(checkIn, checkOut)
+      const perNight =
+        Math.round((parseFloat(totalAmount) / nightsNum) * 100) / 100
+      const ratePlanIdNum =
+        _ratePlan && _ratePlan !== 'default' && !Number.isNaN(Number(_ratePlan))
+          ? Number(_ratePlan)
+          : undefined
+
+      const bookingPayload: PublicBookingPayload = {
+        guest: {
+          name: guestName.trim(),
+          phone: guestPhone.trim(),
+          email: guestEmail.trim() || undefined,
+        },
+        checkIn,
+        checkOut,
+        paymentIntent: 'pay_now',
+        roomLines: [
+          {
+            roomTypeId: parseInt(roomTypeId, 10),
+            occupancy: occupancy ?? 1,
+            tariff: perNight,
+            ...(ratePlanIdNum != null ? { ratePlanId: ratePlanIdNum } : {}),
+          },
+        ],
+      }
+
+      const { orderId } = await createRazorpayOrder(slug, bookingPayload)
+      const amountPaise = Math.round(parseFloat(totalAmount) * 100)
 
       const options = {
         key: rzpKey,
-        amount: Math.round(parseFloat(totalAmount) * 100),
+        amount: amountPaise,
         currency: 'INR',
         name: 'ZenVana',
         description: `Booking — ${propertyName}`,
@@ -321,9 +376,33 @@ export default function CheckoutForm({
           email: guestEmail || undefined,
           contact: guestPhone || undefined,
         },
-        handler: async (response: { razorpay_payment_id: string }) => {
+        handler: async (response: {
+          razorpay_payment_id: string
+          razorpay_order_id: string
+          razorpay_signature: string
+        }) => {
           try {
-            await confirmBooking(response.razorpay_payment_id)
+            const data = await verifyRazorpayAndCreateBooking(
+              slug,
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              bookingPayload
+            )
+            setSubmitting(false)
+            router.push(
+              `/booking/confirmation?` +
+                new URLSearchParams({
+                  slug,
+                  propertyName,
+                  propertyPhone: primaryPhone ?? '',
+                  checkIn,
+                  checkOut,
+                  roomTypeName,
+                  totalAmount,
+                  bookingReference: data.bookingReference,
+                })
+            )
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Booking failed')
             setSubmitting(false)
@@ -331,14 +410,7 @@ export default function CheckoutForm({
         },
       }
 
-      const Razorpay = window.Razorpay
-      if (!Razorpay) {
-        setError('Payment script did not load. Please refresh and try again.')
-        setSubmitting(false)
-        return
-      }
-
-      const rzp = new Razorpay(options)
+      const rzp = new RazorpayCtor(options)
 
       rzp.on('payment.failed', () => {
         setError('Payment failed or was cancelled.')
@@ -346,7 +418,6 @@ export default function CheckoutForm({
       })
 
       rzp.open()
-      setSubmitting(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed')
       setSubmitting(false)
@@ -357,7 +428,7 @@ export default function CheckoutForm({
     <>
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
 
       <form

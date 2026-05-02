@@ -432,29 +432,6 @@ export async function createPublicBookingWithRoomLines(
   return json?.data
 }
 
-// -----------------------------------------------------------------------------
-// Razorpay (pay_now flow)
-// -----------------------------------------------------------------------------
-
-export async function createRazorpayOrder(
-  slug: string,
-  amountPaise: number,
-  currency = 'INR',
-  receipt?: string
-): Promise<{ orderId: string }> {
-  const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/razorpay-order`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: amountPaise, currency, receipt }),
-    }
-  )
-  const json = await res.json()
-  if (!res.ok) throw new Error(json?.error ?? 'Could not create payment order')
-  return json?.data
-}
-
 export type PublicBookingPayload = {
   guest: { name: string; phone: string; email?: string }
   checkIn: string
@@ -466,6 +443,30 @@ export type PublicBookingPayload = {
     tariff: number
   }>
   paymentIntent: 'pay_later' | 'pay_now'
+}
+
+// -----------------------------------------------------------------------------
+// Razorpay (pay_now flow)
+// -----------------------------------------------------------------------------
+
+/** Server computes paise from `booking` and stores a pending checkout row for webhooks. */
+export async function createRazorpayOrder(
+  slug: string,
+  booking: PublicBookingPayload,
+  currency = 'INR',
+  receipt?: string
+): Promise<{ orderId: string }> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/razorpay-order`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking, currency, receipt }),
+    }
+  )
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error ?? 'Could not create payment order')
+  return json?.data
 }
 
 export type PublicVoucherBookingRoom = {
