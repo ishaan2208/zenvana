@@ -8,11 +8,11 @@ import { TextField } from '@/components/Fields'
 import { Logo } from '@/components/Logo'
 import { SlimLayout } from '@/components/SlimLayout'
 import {
-  postGuestLoginRequestOtp,
-  postGuestVerifyLogin,
+  postGuestSignupRequestOtp,
+  postGuestVerifySignup,
 } from '@/lib/zenvanaGuestApi'
 
-export default function GuestLoginPage() {
+export default function GuestSignupPage() {
   const router = useAppRouter()
   const [phone, setPhone] = useState('')
   const [challengeId, setChallengeId] = useState<number | null>(null)
@@ -25,7 +25,7 @@ export default function GuestLoginPage() {
     setErr(null)
     setBusy(true)
     try {
-      const data = await postGuestLoginRequestOtp(phone)
+      const data = await postGuestSignupRequestOtp(phone)
       setChallengeId(data.challengeId)
       setMasked(data.maskedPhone ?? '')
     } catch (e) {
@@ -40,10 +40,10 @@ export default function GuestLoginPage() {
     setErr(null)
     setBusy(true)
     try {
-      await postGuestVerifyLogin(phone, otp, challengeId)
+      await postGuestVerifySignup(phone, otp, challengeId)
       router.push('/account')
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Login failed')
+      setErr(e instanceof Error ? e.message : 'Signup failed')
     } finally {
       setBusy(false)
     }
@@ -57,12 +57,12 @@ export default function GuestLoginPage() {
         </Link>
       </div>
       <h2 className="mt-12 text-lg font-semibold text-gray-900 dark:text-gray-100">
-        Guest sign in
+        Create guest account
       </h2>
       <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-        New here?{' '}
-        <Link href="/guest/signup" className="font-medium text-blue-600 hover:underline">
-          Create a guest account
+        Already have an account?{' '}
+        <Link href="/login" className="font-medium text-blue-600 hover:underline">
+          Sign in
         </Link>
       </p>
 
@@ -101,7 +101,7 @@ export default function GuestLoginPage() {
             required
           />
           <Button type="button" color="blue" className="w-full" disabled={busy} onClick={verify}>
-            Verify & sign in
+            Verify & create account
           </Button>
           <button
             type="button"

@@ -453,19 +453,22 @@ export type PublicBookingPayload = {
 export async function createRazorpayOrder(
   slug: string,
   booking: PublicBookingPayload,
-  currency = 'INR',
-  receipt?: string
-): Promise<{ orderId: string }> {
+  opts?: { currency?: string; receipt?: string; pointsToRedeem?: number }
+): Promise<{ orderId: string; cashPaise: number; pointsRedeemed: number }> {
+  const currency = opts?.currency ?? 'INR'
+  const receipt = opts?.receipt
+  const pointsToRedeem = opts?.pointsToRedeem ?? 0
   const res = await fetch(
     `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/razorpay-order`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ booking, currency, receipt }),
+      credentials: 'include',
+      body: JSON.stringify({ booking, currency, receipt, pointsToRedeem }),
     }
   )
   const json = await res.json()
-  if (!res.ok) throw new Error(json?.error ?? 'Could not create payment order')
+  if (!res.ok) throw new Error(json?.error ?? json?.message ?? 'Could not create payment order')
   return json?.data
 }
 

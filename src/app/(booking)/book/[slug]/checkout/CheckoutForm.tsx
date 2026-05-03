@@ -26,6 +26,7 @@ import {
   verifyRazorpayAndCreateBooking,
   type PublicBookingPayload,
 } from '@/lib/api'
+import { getZenvanaGuestMe } from '@/lib/zenvanaGuestApi'
 import { toast } from 'sonner'
 
 const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
@@ -118,6 +119,8 @@ export default function CheckoutForm({
   const router = useAppRouter()
 
   const [guestName, setGuestName] = useState('')
+  const [pointsToRedeem, setPointsToRedeem] = useState(0)
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null)
   const [guestPhone, setGuestPhone] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
   const [fieldErrors, setFieldErrors] = useState<{
@@ -146,6 +149,28 @@ export default function CheckoutForm({
     const t = setTimeout(() => setResendCooldown((v) => v - 1), 1000)
     return () => clearTimeout(t)
   }, [resendCooldown])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const me = await getZenvanaGuestMe()
+        if (cancelled || !me) return
+        setPointsBalance(me.pointsBalance ?? 0)
+        const d = me.phoneE164.replace(/\D/g, '').slice(-10)
+        if (d.length === 10) {
+          setGuestPhone((prev) => (prev.trim() ? prev : d))
+        }
+        if (me.email) setGuestEmail((prev) => (prev.trim() ? prev : me.email!))
+        if (me.displayName) setGuestName((prev) => (prev.trim() ? prev : me.displayName!))
+      } catch {
+        /* optional */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function resetPhoneVerification(nextPhone?: string) {
     const resolvedPhone = nextPhone ?? guestPhone
@@ -361,8 +386,11 @@ export default function CheckoutForm({
         ],
       }
 
-      const { orderId } = await createRazorpayOrder(slug, bookingPayload)
-      const amountPaise = Math.round(parseFloat(totalAmount) * 100)
+      const pts = Math.floor(pointsToRedeem / 10) * 10
+      const order = await createRazorpayOrder(slug, bookingPayload, {
+        pointsToRedeem: pts,
+      })
+      const { orderId, cashPaise: amountPaise } = order
 
       const options = {
         key: rzpKey,
@@ -702,6 +730,32 @@ export default function CheckoutForm({
                 tone="neutral"
               />
             </div>
+
+            {pointsBalance != null && pointsBalance >= 10 && paymentMode === 'pay_now' && (
+              <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
+                <label className="block text-sm font-medium text-foreground" htmlFor="pointsRedeem">
+                  Redeem points (balance {pointsBalance}; 10 pts = ₹1)
+                </label>
+                <input
+                  id="pointsRedeem"
+                  type="number"
+                  min={0}
+                  max={pointsBalance}
+                  step={10}
+                  value={pointsToRedeem}
+                  onChange={(e) => {
+                    const raw = parseInt(e.target.value, 10)
+                    if (Number.isNaN(raw)) {
+                      setPointsToRedeem(0)
+                      return
+                    }
+                    const v = Math.min(Math.max(0, Math.floor(raw / 10) * 10), pointsBalance)
+                    setPointsToRedeem(v)
+                  }}
+                  className="mt-2 w-full max-w-xs rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            )}
 
             <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
               <div className="flex items-start gap-3">

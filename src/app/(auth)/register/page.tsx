@@ -64,8 +64,15 @@ export default function Register() {
       ) : (
         <>
           <div className=" flex w-full flex-col items-center space-y-6">
+            <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+              Booking as a guest?{' '}
+              <a href="/guest/signup" className="font-medium text-blue-600 hover:underline">
+                Create a guest account
+              </a>{' '}
+              (separate from property / partner listing below).
+            </p>
             <h2 className="mt-6 text-center text-lg font-semibold text-gray-900">
-              Get started for free by filling the form or by calling us at{' '}
+              List your property — get started for free by filling the form or by calling us at{' '}
             </h2>
             <Button color="blue" className=" mt-4">
               <a href="tel:+91 9084702208" className="text-white">

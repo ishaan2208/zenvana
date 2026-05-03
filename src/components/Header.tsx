@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Home,
   Info,
+  LogIn,
   MapPinned,
   Menu,
   MoonStar,
@@ -27,6 +28,7 @@ import clsx from 'clsx'
 
 import { Logo } from '@/components/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { getZenvanaGuestMe, postZenvanaGuestLogout, type ZenvanaGuestMe } from '@/lib/zenvanaGuestApi'
 
 type NavItem = {
   href: string
@@ -54,6 +56,11 @@ export function Header() {
   const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [guest, setGuest] = useState<ZenvanaGuestMe | null>(null)
+
+  useEffect(() => {
+    void getZenvanaGuestMe().then(setGuest)
+  }, [pathname])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10)
@@ -168,6 +175,38 @@ export function Header() {
                 <ThemeToggle />
               </div>
 
+              {guest ? (
+                <div className="hidden items-center gap-2 lg:flex">
+                  <Link
+                    href="/account"
+                    className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    Account
+                  </Link>
+                  <Link
+                    href="/my-bookings"
+                    className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    Bookings
+                  </Link>
+                  <button
+                    type="button"
+                    className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                    onClick={() => void postZenvanaGuestLogout().then(() => setGuest(null))}
+                  >
+                    Log out
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="hidden items-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-3 py-2 text-sm font-medium text-foreground shadow-sm backdrop-blur-xl transition-colors hover:bg-card lg:inline-flex"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Sign in
+                </Link>
+              )}
+
               <Link
                 href="/hotels"
                 className="hidden h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-[0_12px_28px_-16px_rgba(0,0,0,0.45)] transition-transform duration-200 hover:-translate-y-0.5 md:inline-flex"
@@ -204,7 +243,12 @@ export function Header() {
 
       <AnimatePresence>
         {mobileOpen && (
-          <MobileMenu pathname={pathname} onClose={() => setMobileOpen(false)} />
+          <MobileMenu
+            pathname={pathname}
+            guest={guest}
+            onGuestChange={setGuest}
+            onClose={() => setMobileOpen(false)}
+          />
         )}
       </AnimatePresence>
     </>
@@ -213,9 +257,13 @@ export function Header() {
 
 function MobileMenu({
   pathname,
+  guest,
+  onGuestChange,
   onClose,
 }: {
   pathname: string
+  guest: ZenvanaGuestMe | null
+  onGuestChange: (g: ZenvanaGuestMe | null) => void
   onClose: () => void
 }) {
   return (
@@ -292,6 +340,48 @@ function MobileMenu({
                   <span>Book a stay</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
+
+                <div className="mt-3 flex flex-col gap-2">
+                  {guest ? (
+                    <>
+                      <Link
+                        href="/account"
+                        onClick={onClose}
+                        className="rounded-xl border border-border/60 bg-background px-4 py-3 text-center text-sm font-medium"
+                      >
+                        Account
+                      </Link>
+                      <Link
+                        href="/my-bookings"
+                        onClick={onClose}
+                        className="rounded-xl border border-border/60 bg-background px-4 py-3 text-center text-sm font-medium"
+                      >
+                        My bookings
+                      </Link>
+                      <button
+                        type="button"
+                        className="rounded-xl border border-border/60 px-4 py-3 text-center text-sm font-medium"
+                        onClick={() => {
+                          void postZenvanaGuestLogout().then(() => {
+                            onGuestChange(null)
+                            onClose()
+                          })
+                        }}
+                      >
+                        Log out
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      href="/login"
+                      onClick={onClose}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-background px-4 py-3 text-sm font-medium"
+                    >
+                      <LogIn className="h-4 w-4" />
+                      Guest sign in
+                    </Link>
+                  )}
+                </div>
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-2.5">
