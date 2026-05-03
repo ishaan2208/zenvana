@@ -5,14 +5,59 @@ function guestApiBase(): string {
   return `${withApi}/public/zenvana-guest`
 }
 
+export const ZENVANA_GUEST_TITLES = ['MR', 'MS', 'MRS'] as const
+export type ZenvanaGuestTitle = (typeof ZENVANA_GUEST_TITLES)[number]
+
 export type ZenvanaGuestMe = {
   id: number
   phoneE164: string
   email: string | null
   emailVerifiedAt: string | null
+  title: ZenvanaGuestTitle | null
+  firstName: string | null
+  lastName: string | null
   displayName: string | null
   createdAt: string
   pointsBalance: number
+}
+
+export function zenvanaGuestTitleLabel(title: string | null | undefined): string {
+  switch (title) {
+    case 'MR':
+      return 'Mr.'
+    case 'MS':
+      return 'Ms.'
+    case 'MRS':
+      return 'Mrs.'
+    default:
+      return ''
+  }
+}
+
+/** Salutation + last name (e.g. Ms. Patel) for nav and greetings when we have both. */
+export function formatZenvanaGuestSalutationName(me: {
+  title?: string | null
+  lastName?: string | null
+  firstName?: string | null
+  displayName?: string | null
+}): string {
+  const last = me.lastName?.trim() ?? ''
+  const label = zenvanaGuestTitleLabel(me.title)
+  if (label && last) return `${label} ${last}`
+  return formatZenvanaGuestProfileName(me)
+}
+
+/** Full legal-style name: first + last, then legacy displayName. */
+export function formatZenvanaGuestProfileName(me: {
+  firstName?: string | null
+  lastName?: string | null
+  displayName?: string | null
+}): string {
+  const a = me.firstName?.trim() ?? ''
+  const b = me.lastName?.trim() ?? ''
+  const joined = [a, b].filter(Boolean).join(' ').trim()
+  if (joined) return joined
+  return (me.displayName?.trim() || '').trim()
 }
 
 export async function getZenvanaGuestMe(): Promise<ZenvanaGuestMe | null> {
@@ -67,13 +112,21 @@ export async function postGuestLoginRequestOtp(phone: string): Promise<{
 export async function postGuestVerifySignup(
   phone: string,
   otp: string,
-  challengeId: number
+  challengeId: number,
+  profile: { firstName: string; lastName: string; title: ZenvanaGuestTitle }
 ): Promise<void> {
   const res = await fetch(`${guestApiBase()}/phone-otp/verify-signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ phone, otp, challengeId }),
+    body: JSON.stringify({
+      phone,
+      otp,
+      challengeId,
+      title: profile.title,
+      firstName: profile.firstName.trim(),
+      lastName: profile.lastName.trim(),
+    }),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json?.error ?? json?.message ?? 'Verification failed')

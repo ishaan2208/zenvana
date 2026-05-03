@@ -1,39 +1,47 @@
 'use client'
+
 import Link from 'next/link'
-import { Button } from '@/components/Button'
-import { SelectField, TextField } from '@/components/Fields'
-import { Logo } from '@/components/Logo'
-import { SlimLayout } from '@/components/SlimLayout'
-import { type Metadata } from 'next'
+import { motion } from 'framer-motion'
+import {
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  HeartHandshake,
+  Loader2,
+  Phone,
+  TrendingUp,
+} from 'lucide-react'
 import { useState } from 'react'
-import axios from 'axios'
-import { useAppRouter } from '@/hooks/useAppRouter'
 import { useForm } from 'react-hook-form'
+import axios from 'axios'
 
-// export const metadata: Metadata = {
-//   title: 'Sign Up',
-// }
+import { useAppRouter } from '@/hooks/useAppRouter'
+import { AuthShell } from '@/components/auth/AuthShell'
+import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton'
+import { BrandField } from '@/components/auth/BrandField'
 
-export default function Register() {
-  const form = useForm({
-    defaultValues: {
-      first_name: '',
-      last_name: '',
-      phone: '',
-      email: '',
-    },
+type FormValues = {
+  first_name: string
+  last_name: string
+  phone: string
+  email: string
+}
+
+export default function PartnerRegisterPage() {
+  const router = useAppRouter()
+  const [loading, setLoading] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<FormValues>({
+    defaultValues: { first_name: '', last_name: '', phone: '', email: '' },
   })
 
-  const [firstname, setFirstname] = useState('')
-  const [lastname, setLastname] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
-  const router = useAppRouter()
-
-  const onSubmit = (values: any) => {
+  const onSubmit = (values: FormValues) => {
     setLoading(true)
-
     axios
       .post(`${process.env.NEXT_PUBLIC_API_URL}/leads`, {
         firstName: values.first_name,
@@ -41,8 +49,8 @@ export default function Register() {
         phone: values.phone,
         email: values.email,
       })
-      .then((res) => {
-        form.reset()
+      .then(() => {
+        reset()
         router.push('/thankyou')
       })
       .finally(() => {
@@ -51,169 +59,161 @@ export default function Register() {
   }
 
   return (
-    <SlimLayout>
-      <div className="flex">
-        <Link href="/" aria-label="Home">
-          <Logo className="h-24 w-auto" />
-        </Link>
-      </div>
-      {loading ? (
-        <h1 className=" text-lg font-bold text-red-500">
-          Please do not refresh the page or go back form is getting submitted
-        </h1>
-      ) : (
+    <AuthShell
+      eyebrow="Partner with Zenvana"
+      title={<>List your property.</>}
+      subtitle={
         <>
-          <div className=" flex w-full flex-col items-center space-y-6">
-            <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-              Booking as a guest?{' '}
-              <a href="/guest/signup" className="font-medium text-blue-600 hover:underline">
-                Create a guest account
-              </a>{' '}
-              (separate from property / partner listing below).
-            </p>
-            <h2 className="mt-6 text-center text-lg font-semibold text-gray-900">
-              List your property — get started for free by filling the form or by calling us at{' '}
-            </h2>
-            <Button color="blue" className=" mt-4">
-              <a href="tel:+91 9084702208" className="text-white">
-                +91 9084702208
-              </a>
-            </Button>
-            <h1>Or</h1>
-            {/* <p className="mt-2 text-sm text-gray-700">
-        Already registered?{' '}
-        <Link
-          href="/login"
-          className="font-medium text-blue-600 hover:underline"
-        >
-          Sign in
-        </Link>{' '}
-        to your account.
-      </p> */}
-
-            <form
-              action="#"
-              className="mt-10 grid w-full grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2"
-              onSubmit={form.handleSubmit(onSubmit)}
-            >
-              <div className=" w-full">
-                <label htmlFor="first_name">First Name</label>
-                <input
-                  className="w-full rounded-md border border-gray-300 p-2"
-                  type="text"
-                  {...form.register('first_name', {
-                    required: 'This field is required',
-                    maxLength: {
-                      value: 20,
-                      message:
-                        'First name should not be more than 20 characters',
-                    },
-                  })}
-                />
-                <p className=" text-red-500">
-                  {form.formState.errors.first_name?.message &&
-                    form.formState.errors.first_name?.message}
-                </p>
-              </div>
-              <div className=" w-full">
-                <label htmlFor="last_name">Last Name</label>
-                <input
-                  className="w-full rounded-md border border-gray-300 p-2"
-                  type="text"
-                  {...form.register('last_name', {
-                    required: 'This field is required',
-                    maxLength: {
-                      value: 20,
-                      message:
-                        'Last name should not be more than 20 characters',
-                    },
-                  })}
-                />
-                <p className=" text-red-500">
-                  {form.formState.errors.last_name?.message &&
-                    form.formState.errors.last_name?.message}
-                </p>
-              </div>
-              <div className=" col-span-2 w-full">
-                <label htmlFor="phone">Phone</label>
-                <input
-                  className="w-full rounded-md border border-gray-300 p-2"
-                  type="text"
-                  {...form.register('phone', {
-                    required: 'This field is required',
-                    maxLength: {
-                      value: 10,
-                      message: 'Phone number should be 10 digits',
-                    },
-                    pattern: {
-                      value: /^[0-9]{10}$/,
-                      message: 'Invalid phone number',
-                    },
-                  })}
-                />
-                <p className=" text-red-500">
-                  {form.formState.errors.phone?.message &&
-                    form.formState.errors.phone?.message}
-                </p>
-              </div>
-              <div className=" col-span-2 w-full">
-                <label htmlFor="email">Email</label>
-                <input
-                  className="w-full rounded-md border border-gray-300 p-2"
-                  type="email"
-                  {...form.register('email', {
-                    required: 'This field is required',
-                    pattern: {
-                      value: /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/,
-                      message: 'Invalid email address',
-                    },
-                  })}
-                />
-                <p className=" text-red-500">
-                  {form.formState.errors.email?.message &&
-                    form.formState.errors.email?.message}
-                </p>
-              </div>
-              <div className="col-span-full">
-                <Button
-                  // onClick={onSubmit}
-                  type="submit"
-                  variant="solid"
-                  color="blue"
-                  className="w-full"
-                >
-                  <span>
-                    Register <span aria-hidden="true">&rarr;</span>
-                  </span>
-                </Button>
-              </div>
-            </form>
-          </div>
+          Join a curated portfolio of boutique stays across Dehradun. We handle direct bookings,
+          guest communication, and revenue tools so you can focus on hospitality.
         </>
+      }
+      imageSrc="/images/dehradun/rajpur-road-editorial.jpg"
+      imageAlt="Rajpur Road, Dehradun — Zenvana partners"
+      quote={{
+        text: 'A growing portfolio of properties shaped by Rajpur Road, foothill calm, and direct-booking ease.',
+        caption: 'Zenvana partner network',
+      }}
+      trustMarks={[
+        { icon: <TrendingUp className="h-3.5 w-3.5" />, label: 'Higher direct booking conversion.' },
+        { icon: <Building2 className="h-3.5 w-3.5" />, label: 'Tools built for boutique hotels.' },
+        { icon: <HeartHandshake className="h-3.5 w-3.5" />, label: 'Personal onboarding support.' },
+      ]}
+      footer={
+        <p>
+          Booking as a guest?{' '}
+          <Link
+            href="/guest/signup"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Create a guest account
+          </Link>{' '}
+          instead.
+        </p>
+      }
+    >
+      <CallCtaCard />
+
+      <div className="my-8 flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground/80">
+        <span className="h-px flex-1 bg-border/70" />
+        Or share details
+        <span className="h-px flex-1 bg-border/70" />
+      </div>
+
+      {loading ? (
+        <SubmittingState />
+      ) : (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <BrandField
+              label="First name"
+              placeholder="Aarav"
+              error={errors.first_name?.message}
+              {...register('first_name', {
+                required: 'Required',
+                maxLength: { value: 20, message: 'Max 20 characters' },
+              })}
+            />
+            <BrandField
+              label="Last name"
+              placeholder="Sharma"
+              error={errors.last_name?.message}
+              {...register('last_name', {
+                required: 'Required',
+                maxLength: { value: 20, message: 'Max 20 characters' },
+              })}
+            />
+          </div>
+
+          <BrandField
+            label="Phone"
+            placeholder="98XXX XXXXX"
+            inputMode="numeric"
+            leading={<>+91</>}
+            error={errors.phone?.message}
+            {...register('phone', {
+              required: 'Required',
+              pattern: { value: /^[0-9]{10}$/, message: 'Enter a valid 10-digit number' },
+            })}
+          />
+
+          <BrandField
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            error={errors.email?.message}
+            {...register('email', {
+              required: 'Required',
+              pattern: {
+                value: /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                message: 'Enter a valid email',
+              },
+            })}
+          />
+
+          <AuthPrimaryButton
+            type="submit"
+            trailing={<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
+          >
+            Get started
+          </AuthPrimaryButton>
+
+          <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground/80">
+            <CheckCircle2 className="h-3.5 w-3.5 text-foreground/60" />
+            We&rsquo;ll reach out within one business day.
+          </p>
+        </form>
       )}
-    </SlimLayout>
+    </AuthShell>
   )
 }
 
-function Input({
-  label,
-  className,
-  type = 'text',
-  error,
-  ...props
-}: {
-  label: string
-  className: string
-  type: string
-  error: string
-}) {
+function CallCtaCard() {
   return (
-    <div>
-      <label htmlFor="first_name">First Name</label>
-      <input type={type} id="first_name" {...props} />
-      <p id="error" className=" h-8 text-red-500">
-        {error && <span>{error}</span>}
-      </p>
+    <div className="quiet-card overflow-hidden">
+      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/20 text-accent-foreground">
+            <Phone className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Talk to our team
+            </div>
+            <div className="mt-1 text-base font-semibold tracking-tight text-foreground">
+              Prefer a quick call?
+            </div>
+          </div>
+        </div>
+        <a
+          href="tel:+919084702208"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-[0_12px_28px_-16px_rgba(0,0,0,0.45)] transition hover:-translate-y-0.5"
+        >
+          <Phone className="h-4 w-4" />
+          +91 90847 02208
+        </a>
+      </div>
+      <div className="h-1 bg-gradient-to-r from-primary/30 via-accent/25 to-primary/30" />
     </div>
+  )
+}
+
+function SubmittingState() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="quiet-card flex items-center gap-4 p-6"
+      role="status"
+      aria-live="polite"
+    >
+      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+      <div>
+        <div className="text-sm font-semibold text-foreground">Submitting your details</div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Please don&rsquo;t refresh or close this tab while we save your information.
+        </p>
+      </div>
+    </motion.div>
   )
 }

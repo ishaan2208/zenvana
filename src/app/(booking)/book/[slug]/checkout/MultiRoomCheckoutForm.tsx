@@ -25,7 +25,7 @@ import {
   verifyRazorpayAndCreateBooking,
   type PublicBookingPayload,
 } from '@/lib/api'
-import { getZenvanaGuestMe } from '@/lib/zenvanaGuestApi'
+import { formatZenvanaGuestSalutationName, getZenvanaGuestMe } from '@/lib/zenvanaGuestApi'
 import { toast } from 'sonner'
 
 const MULTI_ROOM_STORAGE_KEY = 'zenvana_multi_room_booking'
@@ -144,7 +144,8 @@ export default function MultiRoomCheckoutForm({
           setGuestPhone((prev) => (prev.trim() ? prev : d))
         }
         if (me.email) setGuestEmail((prev) => (prev.trim() ? prev : me.email!))
-        if (me.displayName) setGuestName((prev) => (prev.trim() ? prev : me.displayName!))
+        const line = formatZenvanaGuestSalutationName(me)
+        if (line) setGuestName((prev) => (prev.trim() ? prev : line))
       } catch {
         /* optional */
       }

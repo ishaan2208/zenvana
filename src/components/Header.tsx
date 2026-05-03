@@ -14,12 +14,15 @@ import {
   Home,
   Info,
   LogIn,
+  LogOut,
+  Luggage,
   MapPinned,
   Menu,
   MoonStar,
   NotebookPen,
   Phone,
   Sparkles,
+  UserCircle2,
   UtensilsCrossed,
   X,
   type LucideIcon,
@@ -28,7 +31,13 @@ import clsx from 'clsx'
 
 import { Logo } from '@/components/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { getZenvanaGuestMe, postZenvanaGuestLogout, type ZenvanaGuestMe } from '@/lib/zenvanaGuestApi'
+import {
+  formatZenvanaGuestProfileName,
+  formatZenvanaGuestSalutationName,
+  getZenvanaGuestMe,
+  postZenvanaGuestLogout,
+  type ZenvanaGuestMe,
+} from '@/lib/zenvanaGuestApi'
 
 type NavItem = {
   href: string
@@ -177,6 +186,12 @@ export function Header() {
 
               {guest ? (
                 <div className="hidden items-center gap-2 lg:flex">
+                  <span
+                    className="max-w-[10rem] truncate px-1 text-sm font-medium text-foreground"
+                    title={formatZenvanaGuestProfileName(guest) || undefined}
+                  >
+                    {formatZenvanaGuestSalutationName(guest) || 'Guest'}
+                  </span>
                   <Link
                     href="/account"
                     className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
@@ -293,7 +308,7 @@ function MobileMenu({
         <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-background/96 shadow-2xl backdrop-blur-2xl">
           <div className="max-h-[calc(100dvh-env(safe-area-inset-top)-1.5rem)] overflow-y-auto overscroll-contain p-3">
             <div className="rounded-[1.6rem] border border-border/60 bg-card/80 p-3.5">
-              <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3">
+              <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                     <MoonStar className="h-3.5 w-3.5" />
@@ -304,87 +319,39 @@ function MobileMenu({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={onClose}
-                  aria-label="Close navigation"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background text-foreground transition-colors hover:bg-muted"
-                >
-                  <X className="h-4.5 w-4.5" />
-                </button>
-              </div>
-
-              <div className="mt-3 rounded-[1.4rem] border border-border/60 bg-background p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      <BedDouble className="h-3.5 w-3.5" />
-                      Booking first
-                    </div>
-                    <p className="mt-1 text-sm leading-6 text-foreground/90">
-                      Browse stays, compare offers, and move toward booking with fewer taps.
-                    </p>
-                  </div>
-
-                  <div className="shrink-0 scale-[0.95]">
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="scale-[0.95]">
                     <ThemeToggle />
                   </div>
-                </div>
-
-                <Link
-                  href="/hotels"
-                  onClick={onClose}
-                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-[0_12px_28px_-16px_rgba(0,0,0,0.45)] transition-transform duration-200 hover:-translate-y-0.5"
-                >
-                  <CalendarDays className="h-4 w-4" />
-                  <span>Book a stay</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-
-                <div className="mt-3 flex flex-col gap-2">
-                  {guest ? (
-                    <>
-                      <Link
-                        href="/account"
-                        onClick={onClose}
-                        className="rounded-xl border border-border/60 bg-background px-4 py-3 text-center text-sm font-medium"
-                      >
-                        Account
-                      </Link>
-                      <Link
-                        href="/my-bookings"
-                        onClick={onClose}
-                        className="rounded-xl border border-border/60 bg-background px-4 py-3 text-center text-sm font-medium"
-                      >
-                        My bookings
-                      </Link>
-                      <button
-                        type="button"
-                        className="rounded-xl border border-border/60 px-4 py-3 text-center text-sm font-medium"
-                        onClick={() => {
-                          void postZenvanaGuestLogout().then(() => {
-                            onGuestChange(null)
-                            onClose()
-                          })
-                        }}
-                      >
-                        Log out
-                      </button>
-                    </>
-                  ) : (
-                    <Link
-                      href="/login"
-                      onClick={onClose}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-background px-4 py-3 text-sm font-medium"
-                    >
-                      <LogIn className="h-4 w-4" />
-                      Guest sign in
-                    </Link>
-                  )}
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close navigation"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background text-foreground transition-colors hover:bg-muted"
+                  >
+                    <X className="h-4.5 w-4.5" />
+                  </button>
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2.5">
+              {guest ? (
+                <MobileIdentityCard guest={guest} onClose={onClose} />
+              ) : (
+                <MobileSignInCard onClose={onClose} />
+              )}
+
+              <Link
+                href="/hotels"
+                onClick={onClose}
+                className="group mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-sm font-medium text-primary-foreground shadow-[0_14px_30px_-18px_rgba(0,31,63,0.5)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-18px_rgba(0,31,63,0.55)]"
+              >
+                <CalendarDays className="h-4 w-4" />
+                <span>Book a stay</span>
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+
+              <SectionEyebrow>Explore</SectionEyebrow>
+              <div className="grid grid-cols-2 gap-2.5">
                 {nav.map((item, index) => (
                   <MobileNavCard
                     key={item.href}
@@ -395,6 +362,53 @@ function MobileMenu({
                   />
                 ))}
               </div>
+
+              {guest && (
+                <>
+                  <SectionEyebrow>Your account</SectionEyebrow>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <MobileNavCard
+                      item={{
+                        href: '/account',
+                        label: 'Account',
+                        icon: UserCircle2,
+                        blurb: 'Profile & email',
+                      }}
+                      active={isActivePath(pathname, '/account')}
+                      index={0}
+                      onClose={onClose}
+                    />
+                    <MobileNavCard
+                      item={{
+                        href: '/my-bookings',
+                        label: 'My bookings',
+                        icon: Luggage,
+                        blurb: 'Past, present, future',
+                      }}
+                      active={isActivePath(pathname, '/my-bookings')}
+                      index={1}
+                      onClose={onClose}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void postZenvanaGuestLogout().then(() => {
+                        onGuestChange(null)
+                        onClose()
+                      })
+                    }}
+                    className="group mt-2.5 flex w-full items-center justify-between gap-2 rounded-[1.35rem] border border-border/60 bg-background px-4 py-3.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:border-border hover:bg-muted/60 hover:text-foreground"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <LogOut className="h-4 w-4" />
+                      Log out
+                    </span>
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -462,5 +476,96 @@ function MobileNavCard({
         </div>
       </Link>
     </motion.div>
+  )
+}
+
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-2.5 mt-4 flex items-center gap-3 px-1 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+      <span>{children}</span>
+      <span className="h-px flex-1 bg-border/70" />
+    </div>
+  )
+}
+
+function MobileIdentityCard({
+  guest,
+  onClose,
+}: {
+  guest: ZenvanaGuestMe
+  onClose: () => void
+}) {
+  const salutation = formatZenvanaGuestSalutationName(guest)
+  const legal = formatZenvanaGuestProfileName(guest)
+  const initial =
+    (guest.lastName?.trim()?.charAt(0) ||
+      guest.firstName?.trim()?.charAt(0) ||
+      legal?.charAt(0) ||
+      guest.phoneE164 ||
+      'Z')
+      .replace(/[^A-Za-z0-9]/g, '')
+      .charAt(0)
+      .toUpperCase() || 'Z'
+  const primary = salutation || 'Zenvana guest'
+  const secondary = guest.phoneE164
+
+  return (
+    <Link
+      href="/account"
+      onClick={onClose}
+      aria-label="View account"
+      className="group relative mt-3 block overflow-hidden rounded-[1.4rem] border border-border/60 bg-card p-3.5 transition-colors hover:border-border"
+    >
+      <div className="brand-gradient absolute inset-0 opacity-95" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(219,230,76,0.22),_transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.18] mix-blend-soft-light bg-[repeating-linear-gradient(135deg,_rgba(255,255,255,0.09),_rgba(255,255,255,0.09)_1px,_transparent_1px,_transparent_10px)]" />
+
+      <div className="relative z-10 flex items-center gap-3 text-white">
+        <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/10 font-serif text-xl font-semibold backdrop-blur-md">
+          {initial}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-white/75">
+            <Sparkles className="h-3 w-3" />
+            Signed in
+          </div>
+          <div className="mt-0.5 truncate text-sm font-semibold">{primary}</div>
+          <div className="mt-0.5 truncate text-xs text-white/75">{secondary}</div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-white backdrop-blur-md">
+            <Sparkles className="h-3 w-3" />
+            {guest.pointsBalance.toLocaleString('en-IN')} pts
+          </span>
+          <ChevronRight className="h-4 w-4 text-white/70 transition-transform group-hover:translate-x-0.5" />
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function MobileSignInCard({ onClose }: { onClose: () => void }) {
+  return (
+    <Link
+      href="/login"
+      onClick={onClose}
+      className="group mt-3 flex items-center gap-3 rounded-[1.4rem] border border-border/60 bg-background p-3.5 transition-colors hover:border-border hover:bg-muted/60"
+    >
+      <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-card text-muted-foreground transition-colors group-hover:text-foreground">
+        <LogIn className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+          Guest access
+        </div>
+        <div className="mt-0.5 text-sm font-semibold tracking-tight text-foreground">
+          Sign in or create account
+        </div>
+        <div className="mt-0.5 text-xs text-muted-foreground">
+          WhatsApp OTP — no password to remember
+        </div>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+    </Link>
   )
 }
