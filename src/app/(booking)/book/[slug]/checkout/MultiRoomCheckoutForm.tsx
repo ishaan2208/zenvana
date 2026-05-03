@@ -3,24 +3,71 @@
 import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import Script from 'next/script'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import {
   BedDouble,
   CalendarRange,
+  CreditCard,
   Mail,
   PhoneCall,
   ShieldCheck,
   Users,
   User2,
+  Wallet,
 } from 'lucide-react'
 
 import { Button } from '@/components/Button'
 import { PriceWithMarketRate } from '@/components/PriceWithMarketRate'
-import { createPublicBookingWithRoomLines } from '@/lib/api'
+import {
+  createPublicBookingWithRoomLines,
+  createRazorpayOrder,
+  verifyRazorpayAndCreateBooking,
+  type PublicBookingPayload,
+} from '@/lib/api'
+import { getZenvanaGuestMe } from '@/lib/zenvanaGuestApi'
 import { toast } from 'sonner'
 
 const MULTI_ROOM_STORAGE_KEY = 'zenvana_multi_room_booking'
 const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
+
+async function loadRazorpayScript(): Promise<void> {
+  if (typeof window === 'undefined') return
+  if (window.Razorpay) return
+  await new Promise<void>((resolve, reject) => {
+    const url = 'https://checkout.razorpay.com/v1/checkout.js'
+    const existing = document.querySelector(`script[src="${url}"]`)
+    if (existing) {
+      existing.addEventListener('load', () => resolve())
+      existing.addEventListener('error', () =>
+        reject(new Error('Razorpay script failed to load'))
+      )
+      return
+    }
+    const s = document.createElement('script')
+    s.src = url
+    s.async = true
+    s.onload = () => resolve()
+    s.onerror = () => reject(new Error('Failed to load Razorpay'))
+    document.body.appendChild(s)
+  })
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: Record<string, unknown>) => {
+      open: () => void
+      on: (
+        event: string,
+        handler: (res: {
+          razorpay_payment_id: string
+          razorpay_order_id: string
+          razorpay_signature: string
+        }) => void
+      ) => void
+    }
+  }
+}
 
 type StoredPayload = {
   slug: string
@@ -65,6 +112,10 @@ export default function MultiRoomCheckoutForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [paymentMode, setPaymentMode] = useState<'pay_later' | 'pay_now'>('pay_now')
+  const [pointsToRedeem, setPointsToRedeem] = useState(0)
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null)
+
   useEffect(() => {
     try {
       const raw =
@@ -81,6 +132,27 @@ export default function MultiRoomCheckoutForm({
     }
   }, [slug])
 
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const me = await getZenvanaGuestMe()
+        if (cancelled || !me) return
+        setPointsBalance(me.pointsBalance ?? 0)
+        const d = me.phoneE164.replace(/\D/g, '').slice(-10)
+        if (d.length === 10) {
+          setGuestPhone((prev) => (prev.trim() ? prev : d))
+        }
+        if (me.email) setGuestEmail((prev) => (prev.trim() ? prev : me.email!))
+        if (me.displayName) setGuestName((prev) => (prev.trim() ? prev : me.displayName!))
+      } catch {
+        /* optional */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const byOcc = useMemo(() => {
     if (!payload) return {} as Record<number, { count: number; tariff: number }>
@@ -157,7 +229,45 @@ export default function MultiRoomCheckoutForm({
     return true
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function buildBookingPayload(): PublicBookingPayload {
+    return {
+      guest: {
+        name: guestName.trim(),
+        phone: guestPhone.trim(),
+        email: guestEmail.trim() || undefined,
+      },
+      checkIn,
+      checkOut,
+      paymentIntent: 'pay_now',
+      roomLines: roomLines.map((l) => ({
+        roomTypeId: l.roomTypeId,
+        ratePlanId: l.ratePlanId,
+        occupancy: l.occupancy,
+        tariff: l.tariff,
+      })),
+    }
+  }
+
+  function pushConfirmation(bookingReference: string) {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(MULTI_ROOM_STORAGE_KEY)
+    }
+    router.push(
+      `/booking/confirmation?` +
+      new URLSearchParams({
+        slug,
+        propertyName,
+        propertyPhone: primaryPhone ?? '',
+        checkIn,
+        checkOut,
+        roomTypeName,
+        totalAmount: String(totalAmount),
+        bookingReference,
+      })
+    )
+  }
+
+  async function handlePayLater(e: React.FormEvent) {
     e.preventDefault()
     if (!validateRequiredFields()) return
     setSubmitting(true)
@@ -166,9 +276,9 @@ export default function MultiRoomCheckoutForm({
     try {
       const data = await createPublicBookingWithRoomLines(slug, {
         guest: {
-          name: guestName,
-          phone: guestPhone,
-          email: guestEmail || undefined,
+          name: guestName.trim(),
+          phone: guestPhone.trim(),
+          email: guestEmail.trim() || undefined,
         },
         checkIn,
         checkOut,
@@ -181,30 +291,95 @@ export default function MultiRoomCheckoutForm({
         paymentIntent: 'pay_later',
       })
 
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem(MULTI_ROOM_STORAGE_KEY)
-      }
-
-      router.push(
-        `/booking/confirmation?` +
-        new URLSearchParams({
-          slug,
-          propertyName,
-          propertyPhone: primaryPhone ?? '',
-          checkIn,
-          checkOut,
-          roomTypeName,
-          totalAmount: String(totalAmount),
-          bookingReference: data.bookingReference,
-        })
-      )
+      pushConfirmation(data.bookingReference)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Booking failed')
       setSubmitting(false)
     }
   }
 
+  async function handlePayNow(e: React.FormEvent) {
+    e.preventDefault()
+    if (!validateRequiredFields()) return
+    setError(null)
+
+    const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+    if (!rzpKey) {
+      setError('Online payment is not configured.')
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      await loadRazorpayScript()
+      const RazorpayCtor = window.Razorpay
+      if (!RazorpayCtor) {
+        throw new Error('Payment script did not load. Please refresh and try again.')
+      }
+
+      const bookingPayload = buildBookingPayload()
+      const pts = Math.floor(pointsToRedeem / 10) * 10
+      const order = await createRazorpayOrder(slug, bookingPayload, {
+        pointsToRedeem: pts,
+      })
+      const { orderId, cashPaise: amountPaise } = order
+
+      const options = {
+        key: rzpKey,
+        amount: amountPaise,
+        currency: 'INR',
+        name: 'ZenVana',
+        description: `Booking — ${propertyName}`,
+        order_id: orderId,
+        prefill: {
+          name: guestName,
+          email: guestEmail || undefined,
+          contact: guestPhone || undefined,
+        },
+        handler: async (response: {
+          razorpay_payment_id: string
+          razorpay_order_id: string
+          razorpay_signature: string
+        }) => {
+          try {
+            const data = await verifyRazorpayAndCreateBooking(
+              slug,
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              bookingPayload
+            )
+            setSubmitting(false)
+            pushConfirmation(data.bookingReference)
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Booking failed')
+            setSubmitting(false)
+          }
+        },
+      }
+
+      const rzp = new RazorpayCtor(options)
+
+      rzp.on('payment.failed', () => {
+        setError('Payment failed or was cancelled.')
+        setSubmitting(false)
+      })
+
+      rzp.open()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed')
+      setSubmitting(false)
+    }
+  }
+
   return (
+    <>
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+      />
+
     <div className="space-y-6">
       <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl dark:bg-background/30">
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -277,13 +452,13 @@ export default function MultiRoomCheckoutForm({
           <div className="border-t border-border/60 p-5 sm:p-6 lg:border-l lg:border-t-0 lg:p-7">
             <div className="rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
               <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                Payment note
+                Payment
               </div>
               <div className="mt-3 text-sm font-medium text-foreground">
-                Multi-room checkout keeps the current pay-later flow
+                Pay now or pay at property
               </div>
               <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                This matches the existing room-lines booking contract in your current implementation.
+                Online payment uses Razorpay for the cash portion; signed-in guests can redeem points the same way as single-room checkout.
               </p>
             </div>
 
@@ -305,7 +480,10 @@ export default function MultiRoomCheckoutForm({
         </div>
       </section>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={paymentMode === 'pay_now' ? handlePayNow : handlePayLater}
+        className="space-y-6"
+      >
         <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_18px_45px_rgba(8,17,31,0.05)] backdrop-blur-2xl dark:bg-background/30">
           <div className="border-b border-border/60 px-5 py-5 sm:px-6">
             <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
@@ -355,6 +533,77 @@ export default function MultiRoomCheckoutForm({
           </div>
         </section>
 
+        <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_18px_45px_rgba(8,17,31,0.05)] backdrop-blur-2xl dark:bg-background/30">
+          <div className="border-b border-border/60 px-5 py-5 sm:px-6">
+            <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+              Payment
+            </div>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+              Choose how to confirm this multi-room booking.
+            </p>
+          </div>
+
+          <div className="px-5 py-5 sm:px-6 sm:py-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <PaymentOptionCard
+                checked={paymentMode === 'pay_now'}
+                onSelect={() => setPaymentMode('pay_now')}
+                title="Pay now"
+                description={
+                  <>
+                    Complete payment online for{' '}
+                    <PriceWithMarketRate
+                      amount={Number(totalAmount)}
+                      marketAmount={marketTotal}
+                      size="sm"
+                      showTaxBreakup={false}
+                    />
+                    .
+                  </>
+                }
+                icon={<CreditCard className="h-5 w-5" />}
+                tone="primary"
+                badge="Recommended"
+              />
+
+              <PaymentOptionCard
+                checked={paymentMode === 'pay_later'}
+                onSelect={() => setPaymentMode('pay_later')}
+                title="Pay at property"
+                description="Confirm the booking now and settle the amount during your stay."
+                icon={<Wallet className="h-5 w-5" />}
+                tone="neutral"
+              />
+            </div>
+
+            {pointsBalance != null && pointsBalance >= 10 && paymentMode === 'pay_now' && (
+              <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
+                <label className="block text-sm font-medium text-foreground" htmlFor="mrPointsRedeem">
+                  Redeem points (balance {pointsBalance}; 10 pts = ₹1)
+                </label>
+                <input
+                  id="mrPointsRedeem"
+                  type="number"
+                  min={0}
+                  max={pointsBalance}
+                  step={10}
+                  value={pointsToRedeem}
+                  onChange={(e) => {
+                    const raw = parseInt(e.target.value, 10)
+                    if (Number.isNaN(raw)) {
+                      setPointsToRedeem(0)
+                      return
+                    }
+                    const v = Math.min(Math.max(0, Math.floor(raw / 10) * 10), pointsBalance)
+                    setPointsToRedeem(v)
+                  }}
+                  className="mt-2 w-full max-w-xs rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
         {error && (
           <div
             className="rounded-[1.35rem] border border-red-300/60 bg-red-50/80 px-4 py-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/20 dark:text-red-300"
@@ -371,7 +620,11 @@ export default function MultiRoomCheckoutForm({
             className="h-14 w-full rounded-[1.1rem] text-sm font-medium shadow-[0_14px_34px_rgba(37,99,235,0.22)]"
             disabled={submitting}
           >
-            {submitting ? 'Processing…' : 'Confirm booking'}
+            {submitting
+              ? 'Processing…'
+              : paymentMode === 'pay_now'
+                ? 'Pay & confirm booking'
+                : 'Confirm booking'}
           </Button>
 
           {primaryPhone && (
@@ -391,6 +644,87 @@ export default function MultiRoomCheckoutForm({
         </div>
       </form>
     </div>
+    </>
+  )
+}
+
+function PaymentOptionCard({
+  checked,
+  onSelect,
+  title,
+  description,
+  icon,
+  tone,
+  badge,
+}: {
+  checked: boolean
+  onSelect: () => void
+  title: string
+  description: ReactNode
+  icon: ReactNode
+  tone: 'primary' | 'neutral'
+  badge?: string
+}) {
+  const activePrimary =
+    checked && tone === 'primary'
+      ? 'border-primary bg-primary/7 ring-1 ring-primary'
+      : ''
+
+  const activeNeutral =
+    checked && tone === 'neutral'
+      ? 'border-foreground/20 bg-foreground/[0.03] ring-1 ring-foreground/10'
+      : ''
+
+  return (
+    <label
+      className={`cursor-pointer rounded-[1.45rem] border p-4 transition-all ${checked
+        ? `${activePrimary} ${activeNeutral}`
+        : 'border-border/60 bg-background/72 hover:border-foreground/15 dark:bg-background/35'
+        }`}
+    >
+      <input
+        type="radio"
+        name="mrPaymentMode"
+        checked={checked}
+        onChange={onSelect}
+        className="sr-only"
+      />
+
+      <div className="flex items-start gap-4">
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone === 'primary'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-foreground text-background'
+            }`}
+        >
+          {icon}
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-medium tracking-tight text-foreground">
+              {title}
+            </p>
+
+            {badge && (
+              <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-primary">
+                {badge}
+              </span>
+            )}
+
+            {checked && !badge && (
+              <span className="rounded-full border border-foreground/15 bg-foreground/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-foreground/80">
+                Selected
+              </span>
+            )}
+          </div>
+
+          <div className="mt-2 text-sm leading-7 text-muted-foreground">
+            {description}
+          </div>
+        </div>
+      </div>
+    </label>
   )
 }
 
