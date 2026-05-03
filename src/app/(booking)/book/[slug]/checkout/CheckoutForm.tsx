@@ -392,16 +392,16 @@ export default function CheckoutForm({
             setSubmitting(false)
             router.push(
               `/booking/confirmation?` +
-                new URLSearchParams({
-                  slug,
-                  propertyName,
-                  propertyPhone: primaryPhone ?? '',
-                  checkIn,
-                  checkOut,
-                  roomTypeName,
-                  totalAmount,
-                  bookingReference: data.bookingReference,
-                })
+              new URLSearchParams({
+                slug,
+                propertyName,
+                propertyPhone: primaryPhone ?? '',
+                checkIn,
+                checkOut,
+                roomTypeName,
+                totalAmount,
+                bookingReference: data.bookingReference,
+              })
             )
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Booking failed')
@@ -636,8 +636,8 @@ export default function CheckoutForm({
                               onClick={handleVerifyOtp}
                               className="inline-flex h-12 items-center justify-center gap-2 rounded-[1rem] bg-[#25D366] px-5 text-sm font-medium text-white shadow-[0_16px_30px_rgba(37,211,102,0.22)] transition hover:bg-[#1fbe5a] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[160px]"
                             >
-                              <WhatsAppIcon className="h-4.5 w-4.5" />
-                              {otpBusy ? 'Verifying…' : 'Verify on WhatsApp'}
+                              <WhatsAppIcon className="h-5 w-5" />
+                              {otpBusy ? 'Verifying…' : 'Verify'}
                             </button>
                           </div>
 
