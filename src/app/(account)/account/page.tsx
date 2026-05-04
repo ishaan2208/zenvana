@@ -27,9 +27,10 @@ import {
   formatZenvanaGuestProfileName,
   formatZenvanaGuestSalutationName,
   getZenvanaGuestMe,
+  patchZenvanaGuestMe,
   postZenvanaGuestLogout,
-  zenvanaGuestTitleLabel,
   type ZenvanaGuestMe,
+  type ZenvanaGuestTitle,
 } from '@/lib/zenvanaGuestApi'
 
 export default function GuestAccountPage() {
@@ -128,12 +129,7 @@ export default function GuestAccountPage() {
       <section className="container-shell py-10 sm:py-14">
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <ProfileCard
-              me={me}
-              salutationName={salutationName}
-              legalName={legalName}
-              emailVerified={emailVerified}
-            />
+            <ProfileCard me={me} emailVerified={emailVerified} onProfileUpdated={setMe} />
 
             <div className="quiet-card overflow-hidden">
               <div className="flex items-start gap-3 border-b border-border/60 p-5 sm:p-6">
@@ -284,15 +280,67 @@ function AccountHero({
 
 function ProfileCard({
   me,
-  salutationName,
-  legalName,
   emailVerified,
+  onProfileUpdated,
 }: {
   me: ZenvanaGuestMe
-  salutationName: string
-  legalName: string
   emailVerified: boolean
+  onProfileUpdated: (next: ZenvanaGuestMe) => void
 }) {
+  const [draftTitle, setDraftTitle] = useState<ZenvanaGuestTitle>(() => me.title ?? 'MR')
+  const [draftFirst, setDraftFirst] = useState(() => me.firstName ?? '')
+  const [draftLast, setDraftLast] = useState(() => me.lastName ?? '')
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileErr, setProfileErr] = useState<string | null>(null)
+  const [profileNotice, setProfileNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDraftTitle(me.title ?? 'MR')
+    setDraftFirst(me.firstName ?? '')
+    setDraftLast(me.lastName ?? '')
+    setProfileErr(null)
+  }, [me.id, me.title, me.firstName, me.lastName])
+
+  const baselineTitle = me.title ?? 'MR'
+  const baselineFirst = (me.firstName ?? '').trim()
+  const baselineLast = (me.lastName ?? '').trim()
+  const namesOk = draftFirst.trim().length > 0 && draftLast.trim().length > 0
+  const profileDirty =
+    draftTitle !== baselineTitle ||
+    draftFirst.trim() !== baselineFirst ||
+    draftLast.trim() !== baselineLast
+
+  const previewMe = {
+    title: draftTitle,
+    firstName: draftFirst,
+    lastName: draftLast,
+    displayName: me.displayName,
+  }
+  const previewBooking = formatZenvanaGuestSalutationName(previewMe)
+  const previewLegal = formatZenvanaGuestProfileName(previewMe)
+
+  async function saveProfile() {
+    if (!namesOk || !profileDirty) return
+    setProfileErr(null)
+    setProfileNotice(null)
+    setProfileSaving(true)
+    try {
+      await patchZenvanaGuestMe({
+        title: draftTitle,
+        firstName: draftFirst.trim(),
+        lastName: draftLast.trim(),
+      })
+      const fresh = await getZenvanaGuestMe()
+      if (!fresh) throw new Error('Session expired')
+      onProfileUpdated(fresh)
+      setProfileNotice('Profile updated.')
+    } catch (e) {
+      setProfileErr(e instanceof Error ? e.message : 'Could not save')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
   return (
     <div className="quiet-card overflow-hidden">
       <div className="flex items-start gap-3 border-b border-border/60 p-5 sm:p-6">
@@ -308,25 +356,108 @@ function ProfileCard({
           </h2>
         </div>
       </div>
+
+      <div className="space-y-5 border-b border-border/60 p-5 sm:p-6">
+        <div>
+          <label
+            htmlFor="account-guest-title"
+            className="mb-2 block text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground"
+          >
+            Courtesy title
+          </label>
+          <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-background/85 px-4 transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+            <select
+              id="account-guest-title"
+              name="title"
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value as ZenvanaGuestTitle)}
+              className="h-12 w-full cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
+            >
+              <option value="MR">Mr.</option>
+              <option value="MS">Ms.</option>
+              <option value="MRS">Mrs.</option>
+            </select>
+          </div>
+          <p className="mt-1.5 text-xs text-muted-foreground/80">
+            Used in greetings and as your booking name line (e.g. Ms. Sharma).
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <BrandField
+            label="First name (legal)"
+            name="firstName"
+            type="text"
+            autoComplete="given-name"
+            placeholder="e.g. Priya"
+            value={draftFirst}
+            onChange={(e) => setDraftFirst(e.target.value)}
+          />
+          <BrandField
+            label="Last name (legal)"
+            name="lastName"
+            type="text"
+            autoComplete="family-name"
+            placeholder="e.g. Sharma"
+            value={draftLast}
+            onChange={(e) => setDraftLast(e.target.value)}
+          />
+        </div>
+
+        <div className="rounded-2xl border border-border/60 bg-card/80 p-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <User className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Booking name
+              </div>
+              <div className="mt-1 text-sm font-medium text-foreground">
+                {previewBooking || '—'}
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex items-start gap-3 border-t border-border/50 pt-4">
+            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <Contact className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Legal full name
+              </div>
+              <div className="mt-1 text-sm font-medium text-foreground">
+                {previewLegal || '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {profileNotice && (
+          <div className="flex items-start gap-2 rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{profileNotice}</span>
+          </div>
+        )}
+        {profileErr && (
+          <div className="flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+            <span>{profileErr}</span>
+          </div>
+        )}
+
+        <AuthPrimaryButton
+          type="button"
+          loading={profileSaving}
+          disabled={!profileDirty || !namesOk}
+          onClick={saveProfile}
+          trailing={<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
+        >
+          Save profile
+        </AuthPrimaryButton>
+      </div>
+
       <dl className="grid gap-px bg-border/60 sm:grid-cols-2">
-        <ProfileRow
-          icon={<BadgeCheck className="h-4 w-4" />}
-          label="Courtesy title"
-          value={zenvanaGuestTitleLabel(me.title) || '—'}
-          muted={!me.title}
-        />
-        <ProfileRow
-          icon={<User className="h-4 w-4" />}
-          label="Booking name"
-          value={salutationName || '—'}
-          muted={!salutationName}
-        />
-        <ProfileRow
-          icon={<Contact className="h-4 w-4" />}
-          label="Legal full name"
-          value={legalName || '—'}
-          muted={!legalName}
-        />
         <ProfileRow
           icon={<Phone className="h-4 w-4" />}
           label="Mobile number"

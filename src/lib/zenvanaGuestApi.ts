@@ -70,6 +70,30 @@ export async function getZenvanaGuestMe(): Promise<ZenvanaGuestMe | null> {
   return json?.data ?? null
 }
 
+export async function patchZenvanaGuestMe(body: {
+  displayName?: string
+  firstName?: string
+  lastName?: string
+  title?: ZenvanaGuestTitle
+}): Promise<void> {
+  const res = await fetch(`${guestApiBase()}/me`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const msg =
+      typeof json?.error === 'string'
+        ? json.error
+        : typeof json?.message === 'string'
+          ? json.message
+          : 'Could not update profile'
+    throw new Error(msg)
+  }
+}
+
 export async function postZenvanaGuestLogout(): Promise<void> {
   await fetch(`${guestApiBase()}/session/logout`, {
     method: 'POST',
