@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 import { getPublicProperties } from '@/lib/api'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvana.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://zenvanahotels.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const properties = await getPublicProperties()

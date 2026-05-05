@@ -26,7 +26,7 @@ import {
   faqPageJsonLd,
 } from '@/lib/structured-data'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvana.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://zenvanahotels.com'
 
 type Props = { params: Promise<{ slug: string }> }
 type Property = NonNullable<Awaited<ReturnType<typeof getPublicPropertyBySlug>>>

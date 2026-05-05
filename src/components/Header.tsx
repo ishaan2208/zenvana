@@ -10,6 +10,7 @@ import {
   BedDouble,
   Building2,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   Home,
   Info,
@@ -31,6 +32,7 @@ import clsx from 'clsx'
 
 import { Logo } from '@/components/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   formatZenvanaGuestProfileName,
   formatZenvanaGuestSalutationName,
@@ -54,6 +56,15 @@ const nav: NavItem[] = [
   { href: '/contact', label: 'Contact', icon: Phone, blurb: 'Get in touch' },
   { href: '/about', label: 'About', icon: Info, blurb: 'Our philosophy' },
   { href: '/offers', label: 'Offers', icon: BadgePercent, blurb: 'Best current deals' },
+]
+
+const desktopNav: { href: string; label: string }[] = [
+  { href: '/hotels', label: 'Hotels' },
+  { href: '/restaurant', label: 'Restaurant' },
+  { href: '/offers', label: 'Offers' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/about', label: 'About' },
+  { href: '/contact', label: 'Contact' },
 ]
 
 function isActivePath(pathname: string, href: string) {
@@ -146,10 +157,9 @@ export function Header() {
               aria-label="Primary navigation"
               className="hidden lg:flex"
             >
-              <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card/70 p-1 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.24)] backdrop-blur-xl">
-                {nav.map((item) => {
+              <div className="flex items-center gap-0.5 rounded-full border border-border/60 bg-card/70 p-1 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+                {desktopNav.map((item) => {
                   const active = isActivePath(pathname, item.href)
-                  const Icon = item.icon
 
                   return (
                     <Link
@@ -157,7 +167,7 @@ export function Header() {
                       href={item.href}
                       aria-current={active ? 'page' : undefined}
                       className={clsx(
-                        'relative inline-flex items-center gap-2 rounded-full px-3.5 py-2.5 text-sm font-medium transition-colors duration-200',
+                        'relative inline-flex items-center rounded-full px-3.5 py-2 text-[0.875rem] font-medium tracking-tight transition-colors duration-200 xl:px-4',
                         active
                           ? 'text-foreground'
                           : 'text-muted-foreground hover:text-foreground',
@@ -170,8 +180,6 @@ export function Header() {
                           transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                         />
                       )}
-
-                      <Icon className="h-4 w-4" />
                       <span>{item.label}</span>
                     </Link>
                   )
@@ -185,33 +193,7 @@ export function Header() {
               </div>
 
               {guest ? (
-                <div className="hidden items-center gap-2 lg:flex">
-                  <span
-                    className="max-w-[10rem] truncate px-1 text-sm font-medium text-foreground"
-                    title={formatZenvanaGuestProfileName(guest) || undefined}
-                  >
-                    {formatZenvanaGuestSalutationName(guest) || 'Guest'}
-                  </span>
-                  <Link
-                    href="/account"
-                    className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
-                  >
-                    Account
-                  </Link>
-                  <Link
-                    href="/my-bookings"
-                    className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
-                  >
-                    Bookings
-                  </Link>
-                  <button
-                    type="button"
-                    className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
-                    onClick={() => void postZenvanaGuestLogout().then(() => setGuest(null))}
-                  >
-                    Log out
-                  </button>
-                </div>
+                <DesktopGuestMenu guest={guest} onLogout={() => setGuest(null)} />
               ) : (
                 <Link
                   href="/login"
@@ -267,6 +249,130 @@ export function Header() {
         )}
       </AnimatePresence>
     </>
+  )
+}
+
+function DesktopGuestMenu({
+  guest,
+  onLogout,
+}: {
+  guest: ZenvanaGuestMe
+  onLogout: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const salutation = formatZenvanaGuestSalutationName(guest) || 'Guest'
+  const legal = formatZenvanaGuestProfileName(guest)
+  const initial =
+    (guest.lastName?.trim()?.charAt(0) ||
+      guest.firstName?.trim()?.charAt(0) ||
+      legal?.charAt(0) ||
+      guest.phoneE164 ||
+      'Z')
+      .replace(/[^A-Za-z0-9]/g, '')
+      .charAt(0)
+      .toUpperCase() || 'Z'
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Account menu"
+          className={clsx(
+            'hidden h-11 items-center gap-2 rounded-full border border-border/60 bg-card/80 pl-1.5 pr-3 text-sm font-medium text-foreground shadow-sm backdrop-blur-xl transition-colors hover:bg-card lg:inline-flex',
+            open && 'bg-card',
+          )}
+        >
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-serif text-sm font-semibold text-primary">
+            {initial}
+          </span>
+          <span
+            className="max-w-[8rem] truncate"
+            title={legal || undefined}
+          >
+            {salutation}
+          </span>
+          <ChevronDown
+            className={clsx(
+              'h-3.5 w-3.5 text-muted-foreground transition-transform duration-200',
+              open && 'rotate-180',
+            )}
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={10}
+        className="w-72 rounded-2xl border-border/60 p-0 shadow-[0_22px_60px_-30px_rgba(0,0,0,0.45)]"
+      >
+        <div className="brand-gradient relative overflow-hidden rounded-t-2xl px-4 py-3.5 text-white">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(219,230,76,0.22),_transparent_60%)]" />
+          <div className="relative flex items-center gap-3">
+            <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/10 font-serif text-base font-semibold backdrop-blur-md">
+              {initial}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">{salutation}</div>
+              <div className="mt-0.5 truncate text-[11px] text-white/75">
+                {guest.phoneE164}
+              </div>
+            </div>
+          </div>
+          <div className="relative mt-3 flex items-center justify-between rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-white/85 backdrop-blur-md">
+            <span className="inline-flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3" />
+              Points
+            </span>
+            <span className="text-sm font-semibold tabular-nums tracking-normal text-white">
+              {guest.pointsBalance.toLocaleString('en-IN')}
+            </span>
+          </div>
+        </div>
+
+        <div className="p-1.5">
+          <Link
+            href="/account"
+            onClick={() => setOpen(false)}
+            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/70"
+          >
+            <UserCircle2 className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+            <div className="min-w-0 flex-1">
+              <div className="font-medium">Account</div>
+              <div className="text-[11px] text-muted-foreground">Profile & email</div>
+            </div>
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <Link
+            href="/my-bookings"
+            onClick={() => setOpen(false)}
+            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/70"
+          >
+            <Luggage className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+            <div className="min-w-0 flex-1">
+              <div className="font-medium">My bookings</div>
+              <div className="text-[11px] text-muted-foreground">
+                Past, present, future
+              </div>
+            </div>
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </Link>
+
+          <div className="my-1 h-px bg-border/70" />
+
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              void postZenvanaGuestLogout().then(() => onLogout())
+            }}
+            className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="font-medium">Log out</span>
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
