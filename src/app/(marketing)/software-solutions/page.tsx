@@ -5,6 +5,10 @@ import { Container } from '@/components/Container'
 export const metadata: Metadata = {
   title: 'Software Solutions',
   description: 'Explore software solutions and digital tools by Zenvana.',
+  robots: {
+    index: false,
+    follow: true,
+  },
 }
 
 export default function SoftwareSolutionsPage() {

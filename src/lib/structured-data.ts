@@ -2,7 +2,7 @@
  * JSON-LD structured data for SEO (Organization, WebSite, Hotel, Breadcrumb, FAQ).
  */
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://zenvanahotels.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export function organizationJsonLd() {
   return {

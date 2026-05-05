@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation'
 import { Container } from '@/components/Container'
 import { blogPosts, getBlogPostBySlug } from '@/lib/blogPosts'
 
+const INDEXABLE_BLOG_SLUGS = new Set(['best-hotel-in-dehradun'])
+
 type BlogPostPageProps = {
   params: {
     slug: string
@@ -24,10 +26,12 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
   const post = getBlogPostBySlug(params.slug)
+  const isIndexable = INDEXABLE_BLOG_SLUGS.has(params.slug)
   if (!post) {
     return {
       title: 'Blog | Zenvana',
       description: 'Read stories and stay guides from Zenvana.',
+      robots: { index: false, follow: true },
     }
   }
 
@@ -45,6 +49,10 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       card: 'summary_large_image',
       title: post.title,
       description: post.excerpt,
+    },
+    robots: {
+      index: isIndexable,
+      follow: true,
     },
   }
 }
