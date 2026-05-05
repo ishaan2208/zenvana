@@ -2,10 +2,13 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 
+export const revalidate = 86400
+
 export const metadata: Metadata = {
   title: 'Best Hotel in Dehradun 2026 | Luxury & Budget Stays – Zenvana Group',
   description:
     'Looking for the best hotel in Dehradun? Discover luxury, budget & family-friendly stays by Zenvana Group. Book now for best deals.',
+  alternates: { canonical: '/best-hotel-in-dehradun' },
 }
 
 type HotelBlock = {

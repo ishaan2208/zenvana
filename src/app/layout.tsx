@@ -11,13 +11,38 @@ import { NavigationLoadingProvider } from '@/components/navigation-loading-provi
 import { ThemeProvider } from '@/components/theme-provider'
 import { Analytics } from "@vercel/analytics/next"
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     template: '%s | Zenvana Hotels',
-    default: 'Zenvana Hotels | Boutique & Family Stays | Book Direct',
+    default: 'Zenvana Hotels — Luxury Stays in Dehradun',
   },
   description:
-    'Book direct at Zenvana Hotels. Boutique and family-friendly stays with the best rates. Explore our properties and reserve your stay.',
+    'Curated luxury hotels in Dehradun and Rajpur Road. Book direct for the best rate.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_IN',
+    siteName: 'Zenvana Hotels',
+    url: SITE_URL,
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 }
 
 const inter = Inter({

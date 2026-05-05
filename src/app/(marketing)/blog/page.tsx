@@ -5,9 +5,12 @@ import Link from 'next/link'
 import { Container } from '@/components/Container'
 import { blogPosts } from '@/lib/blogPosts'
 
+export const revalidate = 86400
+
 export const metadata: Metadata = {
-  title: 'Blog',
-  description: 'Read stories, updates, and notes from Zenvana.',
+  title: 'Blog — Travel & Stay Guides for Dehradun',
+  description: 'Hotel guides, travel tips, and seasonal recommendations for Dehradun and Rajpur Road.',
+  alternates: { canonical: '/blog' },
 }
 
 export default function BlogPage() {

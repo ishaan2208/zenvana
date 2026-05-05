@@ -36,6 +36,10 @@ type Props = {
   }>
 }
 
+export const metadata = {
+  robots: { index: false, follow: true },
+}
+
 export default async function CheckoutPage({ params, searchParams }: Props) {
   const { slug } = await params
   const q = await searchParams

@@ -15,10 +15,13 @@ import type { PublicPropertyListItem } from '@/lib/api'
 import { getPublicProperties, getPublicPropertyBySlug } from '@/lib/api'
 import { HeroBookBar } from './HeroBookBar'
 
+export const revalidate = 3600
+
 export const metadata: Metadata = {
   title: 'Zenvana Hotels | Dehradun stays, book direct',
   description:
     'Discover boutique and family-friendly stays on Rajpur Road, Dehradun. Book direct with Zenvana for calmer stays, better value, and thoughtful hospitality.',
+  alternates: { canonical: '/' },
 }
 
 export default async function HomePage() {

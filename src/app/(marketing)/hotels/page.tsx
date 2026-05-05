@@ -24,10 +24,13 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { addDaysYmd, kolkataYmd } from '@/lib/kolkata-calendar'
 import { pickHeroAndGallery } from '@/lib/media'
 
+export const revalidate = 3600
+
 export const metadata = {
-  title: 'Our Hotels | Zenvana Hotels',
+  title: 'All Hotels',
   description:
-    'Explore the Zenvana collection in Dehradun. Thoughtfully located stays with warm hospitality and the ease of booking direct.',
+    'Explore the Zenvana collection of luxury hotels in Dehradun.',
+  alternates: { canonical: '/hotels' },
 }
 
 const highlights = [

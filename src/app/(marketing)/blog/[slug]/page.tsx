@@ -11,6 +11,9 @@ type BlogPostPageProps = {
   }
 }
 
+export const revalidate = 86400
+export const dynamicParams = true
+
 export async function generateStaticParams() {
   return blogPosts
     .filter((post) => !post.href)
@@ -31,6 +34,18 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   return {
     title: `${post.title} | Zenvana Blog`,
     description: post.excerpt,
+    alternates: { canonical: `/blog/${params.slug}` },
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      url: `/blog/${params.slug}`,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.excerpt,
+    },
   }
 }
 

@@ -1,8 +1,11 @@
 import { Container } from '@/components/Container'
 
+export const revalidate = 86400
+
 export const metadata = {
   title: 'Privacy Policy',
   description: 'Privacy policy for Zenvana Hotels.',
+  alternates: { canonical: '/privacypolicy' },
 }
 
 export default function PrivacyPolicyPage() {

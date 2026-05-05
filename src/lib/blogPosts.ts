@@ -85,3 +85,7 @@ export function getBlogPostBySlug(slug: string) {
   return blogPosts.find((post) => post.slug === slug)
 }
 
+export function getAllBlogSlugs() {
+  return blogPosts.filter((post) => !post.href).map((post) => post.slug)
+}
+

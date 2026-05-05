@@ -6,9 +6,12 @@ import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
 import { getPublicPropertyBySlug } from '@/lib/api'
 import { Mail, MapPin, Phone } from 'lucide-react'
 
+export const revalidate = 86400
+
 export const metadata: Metadata = {
   title: 'Contact',
   description: 'Get in touch with Zenvana Hotels.',
+  alternates: { canonical: '/contact' },
 }
 
 export default async function ContactPage() {

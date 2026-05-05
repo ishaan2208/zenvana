@@ -3,10 +3,13 @@ import type { Metadata } from 'next'
 import { AboutSplit } from '@/components/AboutSplit'
 import { AboutStory } from '@/components/AboutStory'
 
+export const revalidate = 86400
+
 export const metadata: Metadata = {
   title: 'About Us | Zenvana Hotels Dehradun',
   description:
     'Learn about Zenvana Hotels in Dehradun. Discover our story, warm hospitality, thoughtful spaces, and guest-first experience.',
+  alternates: { canonical: '/about' },
   openGraph: {
     title: 'About Us | Zenvana Hotels Dehradun',
     description:

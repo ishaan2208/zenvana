@@ -16,6 +16,7 @@ import { getPublicBookingVoucherDetailsByReference } from '@/lib/api'
 export const metadata = {
   title: 'Booking confirmation',
   description: 'Your booking has been confirmed.',
+  robots: { index: false, follow: true },
 }
 
 type Props = {

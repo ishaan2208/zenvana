@@ -15,9 +15,12 @@ import {
 import { RestaurantTestimonials } from '@/components/RestaurantTestimonials'
 import { RestaurantStats } from '@/components/RestaurantStats'
 
+export const revalidate = 86400
+
 export const metadata: Metadata = {
   title: 'Restaurant',
   description: 'Discover the restaurant experience at Zenvana.',
+  alternates: { canonical: '/restaurant' },
 }
 
 export default function RestaurantPage() {

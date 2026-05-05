@@ -4,9 +4,12 @@ import { Container } from '@/components/Container'
 import Link from 'next/link'
 import { Calendar, CheckCircle2, Sparkles } from 'lucide-react'
 
+export const revalidate = 86400
+
 export const metadata: Metadata = {
   title: 'Offers',
   description: 'Special offers and packages at Zenvana Hotels. Book direct for the best rates.',
+  alternates: { canonical: '/offers' },
 }
 
 export default function OffersPage() {

@@ -20,6 +20,10 @@ import { Badge } from '@/components/ui/badge'
 
 type Props = { params: Promise<{ slug: string }> }
 
+export const metadata = {
+  robots: { index: false, follow: true },
+}
+
 export default async function BookPropertyPage({ params }: Props) {
   const { slug } = await params
   const property = await getPublicPropertyBySlug(slug)
