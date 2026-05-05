@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { Container } from '@/components/Container'
+import { getPublicOffers } from '@/lib/api'
 import Link from 'next/link'
 import { Calendar, CheckCircle2, Sparkles } from 'lucide-react'
 
@@ -12,33 +13,42 @@ export const metadata: Metadata = {
   alternates: { canonical: '/offers' },
 }
 
-export default function OffersPage() {
-  const featuredOffers = [
-    {
-      title: 'Weekend Escape Package',
-      description:
-        'A short stay designed for slower mornings and an easy reset from routine.',
-      validity: 'Valid for a limited time (placeholder)',
-      benefits: ['Discount on room booking', 'Complimentary breakfast', 'Flexible check-in'],
-      inclusions: ['Discount percentage (placeholder)', 'Complimentary services', 'Special hotel benefits'],
-    },
-    {
-      title: 'Advance Booking Deal',
-      description:
-        'Plan ahead for cleaner value, smoother check-in, and a more confident arrival.',
-      validity: 'Book in advance (placeholder)',
-      benefits: ['Special discounted rate', 'Free welcome drink', 'Complimentary Wi-Fi'],
-      inclusions: ['Discount percentage (placeholder)', 'Complimentary services', 'Special hotel benefits'],
-    },
-    {
-      title: 'Dining Experience Offer',
-      description:
-        'A taste-led add-on that makes dinner feel like part of the trip, not an afterthought.',
-      validity: 'Valid on selected days (placeholder)',
-      benefits: ['Discount on restaurant dining', 'Complimentary dessert', 'Priority table reservation'],
-      inclusions: ['Discount percentage (placeholder)', 'Complimentary services', 'Special hotel benefits'],
-    },
-  ]
+export default async function OffersPage() {
+  const offers = await getPublicOffers()
+  const featuredOffers =
+    offers.length > 0
+      ? offers.map((offer) => ({
+        title: offer.title,
+        description: `Use code ${offer.code} at checkout to unlock direct booking value.`,
+        validity: offer.validUntil
+          ? `Valid until ${new Date(offer.validUntil).toLocaleDateString('en-IN')}`
+          : 'Valid for a limited time',
+        benefits: [
+          offer.discountType === 'PERCENT'
+            ? `${offer.discountValue}% off on booking amount`
+            : `₹${Math.round(offer.discountValue)} off on booking amount`,
+          offer.scopeType === 'GLOBAL'
+            ? 'Available across Zenvana hotels'
+            : 'Available on selected hotels',
+          'Apply the code on checkout page',
+        ],
+        inclusions: [
+          `Offer code: ${offer.code}`,
+          offer.maxDiscount ? `Max discount: ₹${Math.round(offer.maxDiscount)}` : 'No max cap',
+          offer.minBookingAmount
+            ? `Min booking: ₹${Math.round(offer.minBookingAmount)}`
+            : 'No minimum booking amount',
+        ],
+      }))
+      : [
+        {
+          title: 'Direct Booking Offers',
+          description: 'Check back shortly for active offer codes.',
+          validity: 'Updated regularly',
+          benefits: ['Direct booking discounts', 'Best available value', 'Simple checkout redemption'],
+          inclusions: ['Apply code on checkout', 'Not combinable with points', 'Terms apply'],
+        },
+      ]
 
   const promos = [
     {
@@ -85,7 +95,7 @@ export default function OffersPage() {
                 <div className="lg:col-span-7 p-6 sm:p-7 lg:p-8">
                   <div className="flex flex-wrap items-center gap-2 text-sm text-foreground/70">
                     <Sparkles className="h-4 w-4" />
-                    Featured offer
+                    Featured offer code
                   </div>
 
                   <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
@@ -108,7 +118,7 @@ export default function OffersPage() {
                       {offer.validity}
                     </div>
                     <Link href="/hotels" className="site-button-dark w-fit">
-                      Book Now
+                      Book with this offer
                     </Link>
                   </div>
 

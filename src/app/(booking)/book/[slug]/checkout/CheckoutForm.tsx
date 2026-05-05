@@ -22,6 +22,7 @@ import {
   createPublicBooking,
   createRazorpayOrder,
   sendPublicBookingOtp,
+  validatePublicBookingCoupon,
   verifyPublicBookingOtp,
   verifyRazorpayAndCreateBooking,
   type PublicBookingPayload,
@@ -120,6 +121,10 @@ export default function CheckoutForm({
 
   const [guestName, setGuestName] = useState('')
   const [pointsToRedeem, setPointsToRedeem] = useState(0)
+  const [couponCodeInput, setCouponCodeInput] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null)
+  const [couponBusy, setCouponBusy] = useState(false)
+  const [couponError, setCouponError] = useState<string | null>(null)
   const [pointsBalance, setPointsBalance] = useState<number | null>(null)
   const [guestPhone, setGuestPhone] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
@@ -294,7 +299,67 @@ export default function CheckoutForm({
         ? Number(_ratePlan)
         : undefined,
     occupancy: occupancy ?? 1,
+    couponCode: appliedCoupon?.code,
+    pointsToRedeem: pointsToRedeem > 0 ? pointsToRedeem : 0,
   })
+
+  async function handleApplyCoupon() {
+    const code = couponCodeInput.trim().toUpperCase()
+    if (!code) {
+      setCouponError('Enter a coupon code')
+      return
+    }
+    if (pointsToRedeem > 0) {
+      setCouponError('Points and coupon cannot be used together.')
+      return
+    }
+    setCouponBusy(true)
+    setCouponError(null)
+    try {
+      const nightsNum = countStayNights(checkIn, checkOut)
+      const perNight = Math.round((parseFloat(totalAmount) / nightsNum) * 100) / 100
+      const ratePlanIdNum =
+        _ratePlan && _ratePlan !== 'default' && !Number.isNaN(Number(_ratePlan))
+          ? Number(_ratePlan)
+          : undefined
+      const bookingPayload: PublicBookingPayload = {
+        guest: {
+          name: guestName.trim() || 'Guest',
+          phone: guestPhone.trim() || '9999999999',
+          email: guestEmail.trim() || undefined,
+        },
+        checkIn,
+        checkOut,
+        paymentIntent: paymentMode === 'pay_now' ? 'pay_now' : 'pay_later',
+        roomLines: [
+          {
+            roomTypeId: parseInt(roomTypeId, 10),
+            occupancy: occupancy ?? 1,
+            tariff: perNight,
+            ...(ratePlanIdNum != null ? { ratePlanId: ratePlanIdNum } : {}),
+          },
+        ],
+        couponCode: code,
+        pointsToRedeem: 0,
+      }
+      const result = await validatePublicBookingCoupon(slug, bookingPayload)
+      if (!result.valid) {
+        setCouponError(result.message ?? 'Coupon could not be applied')
+        setAppliedCoupon(null)
+        return
+      }
+      setAppliedCoupon({
+        code: result.code ?? code,
+        discountAmount: result.discountAmount ?? 0,
+      })
+      setCouponCodeInput(result.code ?? code)
+    } catch (err) {
+      setCouponError(err instanceof Error ? err.message : 'Coupon validation failed')
+      setAppliedCoupon(null)
+    } finally {
+      setCouponBusy(false)
+    }
+  }
 
   async function confirmBooking(transactionId?: string) {
     const data = await createPublicBooking(slug, {
@@ -377,6 +442,8 @@ export default function CheckoutForm({
         checkIn,
         checkOut,
         paymentIntent: 'pay_now',
+        couponCode: appliedCoupon?.code,
+        pointsToRedeem: appliedCoupon ? 0 : Math.floor(pointsToRedeem / 10) * 10,
         roomLines: [
           {
             roomTypeId: parseInt(roomTypeId, 10),
@@ -387,7 +454,7 @@ export default function CheckoutForm({
         ],
       }
 
-      const pts = Math.floor(pointsToRedeem / 10) * 10
+      const pts = appliedCoupon ? 0 : Math.floor(pointsToRedeem / 10) * 10
       const order = await createRazorpayOrder(slug, bookingPayload, {
         pointsToRedeem: pts,
       })
@@ -744,6 +811,7 @@ export default function CheckoutForm({
                   max={pointsBalance}
                   step={10}
                   value={pointsToRedeem}
+                  disabled={Boolean(appliedCoupon)}
                   onChange={(e) => {
                     const raw = parseInt(e.target.value, 10)
                     if (Number.isNaN(raw)) {
@@ -755,8 +823,64 @@ export default function CheckoutForm({
                   }}
                   className="mt-2 w-full max-w-xs rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 />
+                {appliedCoupon && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Remove coupon to redeem points.
+                  </p>
+                )}
               </div>
             )}
+
+            <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
+              <label className="block text-sm font-medium text-foreground" htmlFor="couponCode">
+                Offer code
+              </label>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <input
+                  id="couponCode"
+                  type="text"
+                  value={couponCodeInput}
+                  onChange={(e) => {
+                    setCouponCodeInput(e.target.value.toUpperCase())
+                    setCouponError(null)
+                  }}
+                  disabled={pointsToRedeem > 0 || couponBusy}
+                  className="h-12 w-full rounded-[1rem] border border-border/70 bg-background/70 px-4 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/50"
+                  placeholder="Enter coupon"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCoupon}
+                  disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim()}
+                  className="inline-flex h-12 items-center justify-center rounded-[1rem] bg-primary px-5 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {couponBusy ? 'Applying…' : 'Apply'}
+                </button>
+              </div>
+              {appliedCoupon && (
+                <div className="mt-2 flex items-center justify-between text-sm text-emerald-600">
+                  <span>
+                    Applied {appliedCoupon.code} - saved ₹{Math.round(appliedCoupon.discountAmount)}
+                  </span>
+                  <button
+                    type="button"
+                    className="font-medium text-foreground hover:underline"
+                    onClick={() => {
+                      setAppliedCoupon(null)
+                      setCouponError(null)
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              {couponError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{couponError}</p>}
+              {pointsToRedeem > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Set points to 0 before applying a coupon.
+                </p>
+              )}
+            </div>
 
             <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
               <div className="flex items-start gap-3">

@@ -114,6 +114,31 @@ export async function getPublicDestinations(): Promise<
   }
 }
 
+export type PublicOffer = {
+  code: string
+  title: string
+  discountType: 'FLAT' | 'PERCENT' | string
+  discountValue: number
+  maxDiscount?: number | null
+  minBookingAmount?: number | null
+  scopeType: 'GLOBAL' | 'PROPERTY' | string
+  validUntil?: string | null
+  properties?: Array<{ name: string; slug: string }>
+}
+
+export async function getPublicOffers(): Promise<PublicOffer[]> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/public/offers`, {
+      next: { revalidate: 300 },
+    })
+    if (!res.ok) return []
+    const json = await res.json()
+    return json?.data ?? []
+  } catch {
+    return []
+  }
+}
+
 /** POST contact form (browser). Sends mail via backend SMTP. */
 export async function submitPublicContact(payload: {
   name: string
@@ -371,6 +396,8 @@ export type CreatePublicBookingPayload = {
   ratePlanId?: number
   // Backward compatibility alias used by some checkout paths
   ratePlan?: string
+  couponCode?: string
+  pointsToRedeem?: number
   payment?: { paid: boolean; transactionId?: string }
 }
 
@@ -414,6 +441,8 @@ export async function createPublicBookingWithRoomLines(
     checkOut: string
     roomLines: Array<{ roomTypeId: number; ratePlanId?: number; occupancy: number; tariff: number }>
     paymentIntent: 'pay_later' | 'pay_now'
+    couponCode?: string
+    pointsToRedeem?: number
   }
 ): Promise<CreatePublicBookingResponse> {
   const res = await fetch(
@@ -443,6 +472,8 @@ export type PublicBookingPayload = {
     tariff: number
   }>
   paymentIntent: 'pay_later' | 'pay_now'
+  couponCode?: string
+  pointsToRedeem?: number
 }
 
 // -----------------------------------------------------------------------------
@@ -464,11 +495,42 @@ export async function createRazorpayOrder(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ booking, currency, receipt, pointsToRedeem }),
+      body: JSON.stringify({
+        booking: { ...booking, pointsToRedeem },
+        currency,
+        receipt,
+        pointsToRedeem,
+      }),
     }
   )
   const json = await res.json()
   if (!res.ok) throw new Error(json?.error ?? json?.message ?? 'Could not create payment order')
+  return json?.data
+}
+
+export async function validatePublicBookingCoupon(
+  slug: string,
+  booking: PublicBookingPayload
+): Promise<{
+  valid: boolean
+  code?: string
+  discountAmount: number
+  subtotal: number
+  payable: number
+  reason?: string
+  message?: string
+}> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/coupon/validate`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(booking),
+    }
+  )
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json?.message ?? json?.error ?? 'Coupon validation failed')
   return json?.data
 }
 
