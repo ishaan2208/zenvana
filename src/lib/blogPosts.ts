@@ -5,6 +5,12 @@ export type BlogPost = {
   href?: string
 }
 
+/**
+ * Slugs in this set are fully authored and safe to index.
+ * Add newly completed blog slugs here to flip them from noindex -> index.
+ */
+const INDEXABLE_BLOG_SLUGS = new Set(['best-hotel-in-dehradun'])
+
 export const blogPosts: BlogPost[] = [
   {
     slug: 'best-hotel-in-dehradun',
@@ -87,5 +93,9 @@ export function getBlogPostBySlug(slug: string) {
 
 export function getAllBlogSlugs() {
   return blogPosts.filter((post) => !post.href).map((post) => post.slug)
+}
+
+export function isBlogSlugIndexable(slug: string) {
+  return INDEXABLE_BLOG_SLUGS.has(slug)
 }
 
