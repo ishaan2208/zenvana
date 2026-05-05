@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { RestaurantTestimonials } from '@/components/RestaurantTestimonials'
 import { RestaurantStats } from '@/components/RestaurantStats'
+import { EventBookingForm } from '@/components/EventBookingForm'
 
 export const revalidate = 86400
 
@@ -52,20 +53,41 @@ export default function RestaurantPage() {
   ]
 
   const menu = [
-    { name: 'Chef’s Seasonal Starter', description: 'A light bite designed to open the palate.', price: '₹ —' },
-    { name: 'Signature Grill Plate', description: 'Charred notes with a balanced, clean finish.', price: '₹ —' },
-    { name: 'Herb & Citrus Bowl', description: 'Fresh textures with a calm, bright profile.', price: '₹ —' },
-    { name: 'Slow-Cooked Special', description: 'Comfort-forward and thoughtfully spiced.', price: '₹ —' },
-    { name: 'Rooftop Sharing Platter', description: 'Designed for groups and longer conversations.', price: '₹ —' },
-    { name: 'House Dessert', description: 'A soft, warm ending with seasonal accents.', price: '₹ —' },
-    { name: 'Crafted Beverage', description: 'Signature mocktail with layered notes.', price: '₹ —' },
-    { name: 'Bar Snack Pairing', description: 'A crisp accompaniment for a drink-led evening.', price: '₹ —' },
+    { name: 'Butter Chicken', description: 'One of the most loved dishes at our restaurant in Dehradun, cooked in a rich tomato-butter gravy with balanced spices.', price: '300/500/-', imageSrc: '/images/dehradun/Butter Chicken.jpg' },
+    { name: 'Kadai Paneer', description: 'A popular North Indian paneer dish served at our Rajpur Road restaurant, made with fresh capsicum, onion, and aromatic masala.', price: '280/-', imageSrc: '/images/dehradun/kadai paneer.jpg' },
+    { name: 'Dal Makhani', description: 'Slow-cooked black lentils with cream and butter, ideal for guests looking for a classic fine dining meal in Dehradun.', price: '280/-', imageSrc: '/images/dehradun/Dal Makhani.jpg' },
+    { name: 'Chicken Biryani', description: 'Fragrant basmati rice layered with tender chicken and spices, a top choice for biryani lovers near Rajpur Road Dehradun.', price: '300/-', imageSrc: '/images/dehradun/Chicken Biryani.jpg' },
+    { name: 'Mix Veg', description: 'A wholesome mixed vegetable curry cooked with fresh seasonal vegetables and aromatic Indian spices, perfect for a balanced vegetarian meal in Dehradun.', price: '200/-', imageSrc: '/images/dehradun/4x3-mix-veg-recipe.jpg (1).jpeg' },
+    { name: 'Paneer Tikka', description: 'Marinated paneer grilled in the tandoor with Indian spices, perfect for vegetarian guests visiting our Rajpur Road cafe and restaurant.', price: '350/-', imageSrc: '/images/dehradun/paneer tikka.jpg' },
+    { name: 'Jeera Rice', description: 'Light and flavorful cumin rice that pairs well with every main course on our Dehradun restaurant menu.', price: '180/-', imageSrc: '/images/dehradun/jeera-rice-1.jpg' },
+    { name: 'Honey Chilly Potato', description: 'A crispy and flavorful starter with a sweet-spicy glaze, loved by guests searching for the best restaurant in Dehradun.', price: '210/-', imageSrc: '/images/dehradun/Honey chilli.jpg' },
   ]
 
   const testimonials = [
-    { name: 'Customer review', text: 'A premium feel with calm service and beautifully paced courses.', stars: 5 as const },
-    { name: 'Customer review', text: 'Rooftop mood was excellent — warm lighting and great ambience.', stars: 5 as const },
-    { name: 'Customer review', text: 'Food felt thoughtfully made. A great spot for a quieter dinner.', stars: 4 as const },
+    {
+      name: 'Yogesh Kumar',
+      text: 'One of the best restaurant experiences in Dehradun. The rooftop ambiance, attentive staff, and well-balanced flavors made our dinner on Rajpur Road truly memorable from start to finish.',
+      stars: 5 as const,
+      imageSrc: '/images/dehradun/Yogesh.png',
+    },
+    {
+      name: 'Shailja Singh',
+      text: 'If you are looking for the best restaurant in Rajpur Road, Dehradun, this is a great choice. The warm lighting, elegant setup, and quality food created a perfect evening for family dining.',
+      stars: 5 as const,
+      imageSrc: '/images/dehradun/Shailja Singh.png',
+    },
+    {
+      name: 'Shashank Satlaksh',
+      text: 'The food quality and presentation were excellent, and every dish felt freshly prepared. This rooftop restaurant in Dehradun is ideal for a relaxed dinner with scenic views and calm service.',
+      stars: 4 as const,
+      imageSrc: '/images/dehradun/Shashank Satlaksh.png',
+    },
+    {
+      name: 'Jasleen Kaur',
+      text: 'A premium dining place near Rajpur Road with great taste, comfortable seating, and polite staff. We enjoyed the overall vibe and would recommend it to anyone searching for the best restaurant in Dehradun.',
+      stars: 5 as const,
+      imageSrc: '/images/dehradun/Jasleen Kaur.png',
+    },
   ]
   const galleryImages = [
     '/images/dehradun/IMG_4505.jpg',
@@ -97,9 +119,14 @@ export default function RestaurantPage() {
                 quietly indulgent, every single evening.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <button type="button" className="site-button-dark">
-                  Reserve Table
-                </button>
+                <a
+                  href="https://feasta.stayzenvana.com/menu"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="site-button-dark"
+                >
+                  Order Now
+                </a>
                 <Link href="/contact" className="site-button-light">
                   Contact
                 </Link>
@@ -127,19 +154,23 @@ export default function RestaurantPage() {
 
       {/* SECTION 2 — DINING EXPERIENCE FEATURES */}
       <section className="section-rule bg-muted/10">
-        <div className="container-shell py-14 sm:py-16 lg:py-20">
-          <div className="max-w-2xl">
+        <div className="container-shell py-8 sm:py-10 lg:py-12">
+          <div className="mx-auto max-w-none text-center">
             <div className="eyebrow">Dining experience</div>
             <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
               The Best Restaurant in Dehradun for Great Vibes
             </h2>
-            <p className="body-copy mt-5 max-w-xl">
-              Your go-to rooftop cafe for signature flavors, stunning views, and the perfect place
-              to lose track of time.
+            <p className="body-copy mx-auto mt-4 max-w-4xl">
+              Looking for the best restaurant in Rajpur Road, Dehradun? Zenvana offers a premium
+              rooftop dining experience with signature flavors, fresh ingredients, and warm service.
+              From family dinners to date nights and celebrations, our menu blends North Indian
+              favorites, tandoori specialties, and modern cafe-style options in one elegant setting.
+              If you are searching for the best restaurant in Dehradun for ambiance, taste, and
+              consistent quality, this is your perfect dining destination.
             </p>
           </div>
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((f) => (
               <div
                 key={f.title}
@@ -163,28 +194,40 @@ export default function RestaurantPage() {
         <div className="container-shell py-14 sm:py-16 lg:py-20">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <div className="eyebrow">Chef special</div>
+              <div className="eyebrow">Chef Special</div>
               <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-                Featured menu highlights
+                Taste of Luxury Dining
               </h2>
               <p className="body-copy mt-5 max-w-xl">
-                A curated selection of dishes presented with premium ingredients and clean flavor.
+                Experience the finest flavors at the best restaurant on Rajpur Road Dehradun,
+                offering a premium selection of dishes made with high-quality ingredients and
+                expert techniques. Enjoy a luxurious fine dining experience with a perfect balance
+                of taste, presentation, and ambiance.
               </p>
             </div>
 
-            <Link href="/menu" className="site-button-light w-fit">
-              View Full Menu
-            </Link>
+            <a
+              href="https://feasta.stayzenvana.com/menu"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="site-button-light w-fit"
+            >
+              Full Menu
+            </a>
+
           </div>
 
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {menu.map((item) => (
               <article key={item.name} className="quiet-card overflow-hidden">
                 <div className="relative aspect-[4/3] bg-muted">
+                  <Image
+                    src={item.imageSrc}
+                    alt={item.name}
+                    fill
+                    className="object-cover"
+                  />
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.14),transparent_55%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.12))]" />
-                  <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                    Food image placeholder
-                  </div>
                 </div>
                 <div className="p-6">
                   <div className="flex items-center justify-between gap-3">
@@ -207,21 +250,25 @@ export default function RestaurantPage() {
           <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
             <div className="lg:col-span-7">
               <div className="relative aspect-[16/10] overflow-hidden rounded-[2rem] bg-muted">
+                <Image
+                  src="/images/dehradun/IMG_4477.jpg"
+                  alt="Perfect evening rooftop seating at Zenvana restaurant in Dehradun"
+                  fill
+                  className="object-cover"
+                />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.12))]" />
-                <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                  Experience image placeholder
-                </div>
               </div>
             </div>
 
             <div className="lg:col-span-5">
               <div className="eyebrow">Atmosphere</div>
               <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-                An evening designed to feel unhurried.
+                Perfect Evening Setting
               </h2>
               <p className="body-copy mt-5">
-                A premium dining space with carefully tuned lighting, comfortable seating, and a
-                relaxed pace.
+                Step into a warm and inviting space at the best restaurant in Dehradun, where soft
+                lighting, comfortable seating, and a calm vibe create the perfect setting to relax,
+                dine, and enjoy every moment.
               </p>
 
               <div className="mt-7 grid gap-3 text-sm leading-7 text-muted-foreground">
@@ -328,31 +375,31 @@ export default function RestaurantPage() {
         </div>
       </section>
 
-      {/* SECTION 8 — RESERVATION / BOOK TABLE */}
+      {/* SECTION 8 — EVENT ENQUIRY / BOOK EVENT */}
       <section className="section-rule bg-muted/10">
         <div className="container-shell py-14 sm:py-16 lg:py-20">
           <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
             <div className="lg:col-span-5">
-              <div className="eyebrow">Reservations</div>
+              <div className="eyebrow">Events</div>
               <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-                Reserve a table
+                Book an event
               </h2>
               <p className="body-copy mt-5">
-                Share a few details and we&apos;ll confirm availability and preferred seating.
+                Share your event details and we&apos;ll help you plan the perfect celebration.
               </p>
 
               <div className="mt-7 grid gap-3 text-sm leading-7 text-muted-foreground">
                 <div className="flex items-start gap-3">
                   <Award className="mt-1 h-4 w-4 text-primary" />
-                  <span>Private dining requests</span>
+                  <span>Birthday and anniversary events</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <Award className="mt-1 h-4 w-4 text-primary" />
-                  <span>Rooftop seating availability</span>
+                  <span>Corporate and group gatherings</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <Award className="mt-1 h-4 w-4 text-primary" />
-                  <span>Celebration add-ons</span>
+                  <span>Custom decor and catering options</span>
                 </div>
               </div>
             </div>
@@ -360,80 +407,12 @@ export default function RestaurantPage() {
             <div className="quiet-card lg:col-span-7 p-6 sm:p-7">
               <div className="eyebrow">Book</div>
               <h3 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
-                Table booking form
+                Event booking form
               </h3>
               <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                Placeholder form layout inspired by premium restaurant sites.
+                Share your requirements and our team will connect with availability and pricing.
               </p>
-
-              <form className="mt-6 grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Name
-                  </span>
-                  <input
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="Your name"
-                  />
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Email
-                  </span>
-                  <input
-                    type="email"
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="you@example.com"
-                  />
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Phone
-                  </span>
-                  <input
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="+91 00000 00000"
-                  />
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Date
-                  </span>
-                  <input
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="Select date"
-                  />
-                </label>
-
-                <label className="grid gap-2 sm:col-span-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Number of Guests
-                  </span>
-                  <input
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="2"
-                  />
-                </label>
-
-                <label className="grid gap-2 sm:col-span-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Message
-                  </span>
-                  <textarea
-                    className="min-h-[140px] resize-none rounded-2xl border border-border/70 bg-background px-4 py-3 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="Any preferences?"
-                  />
-                </label>
-
-                <div className="sm:col-span-2 pt-2">
-                  <button type="button" className="site-button-dark w-full sm:w-auto">
-                    Reserve Table
-                  </button>
-                </div>
-              </form>
+              <EventBookingForm />
             </div>
           </div>
         </div>

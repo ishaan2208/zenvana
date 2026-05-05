@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
 import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
 
@@ -8,6 +9,7 @@ type Testimonial = {
   name: string
   text: string
   stars: 1 | 2 | 3 | 4 | 5
+  imageSrc: string
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -88,7 +90,9 @@ export function RestaurantTestimonials({
             className="quiet-card snap-start shrink-0 basis-full p-6 sm:basis-[calc(50%-12px)] lg:basis-[calc(33.333%-16px)]"
           >
             <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-full bg-muted" />
+              <div className="relative h-11 w-11 overflow-hidden rounded-full bg-muted">
+                <Image src={t.imageSrc} alt={t.name} fill className="object-cover" />
+              </div>
               <div>
                 <div className="text-sm font-semibold text-foreground">{t.name}</div>
                 <div className="mt-1 flex items-center gap-1 text-amber-500">

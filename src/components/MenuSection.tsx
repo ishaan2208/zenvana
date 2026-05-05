@@ -87,10 +87,10 @@ export function MenuSection({ menuData }: MenuSectionProps) {
   }
 
   const showcaseItems: Array<{ name: string; image: string }> = [
-    { name: 'Butter Chicken', image: '/images/dehradun/IMG_4668.jpg' },
-    { name: 'Paneer Tikka', image: '/images/dehradun/feasta.png' },
-    { name: 'Chicken Biryani', image: '/images/dehradun/MonteVerde.png' },
-    { name: 'Cold Coffee', image: '/images/dehradun/Rosewood.png' },
+    { name: 'Butter Chicken', image: '/images/dehradun/Butter Chicken.jpg' },
+    { name: 'Paneer Tikka', image: '/images/dehradun/paneer tikka.jpg' },
+    { name: 'Chicken Biryani', image: '/images/dehradun/Chicken Biryani.jpg' },
+    { name: 'Cold Coffee', image: '/images/dehradun/Cold-Coffee-with-Ice-Cream.jpg' },
   ]
 
   return (

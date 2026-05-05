@@ -72,7 +72,7 @@ export default async function ContactPage() {
               Phone
             </h2>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              +91 9084702208
+              +91 90840 51774
             </p>
           </div>
         </div>
@@ -104,7 +104,7 @@ export default async function ContactPage() {
             <div className="mt-6 grid gap-3 text-sm text-muted-foreground">
               <div className="flex items-start gap-3">
                 <Phone className="mt-1 h-4 w-4 text-foreground/70" />
-                <span>+91 9084702208</span>
+                <span>+91 90840 51774</span>
               </div>
               <div className="flex items-start gap-3">
                 <Mail className="mt-1 h-4 w-4 text-foreground/70" />

@@ -61,8 +61,8 @@ export function Hero() {
           color="primary"
           className=""
         >
-          <a href="tel:+919084702208" className="text-primary-foreground">
-            +91 9084702208
+          <a href="tel:+919084051774" className="text-primary-foreground">
+            +91 90840 51774
           </a>
         </Button>
         <span>Or</span>
