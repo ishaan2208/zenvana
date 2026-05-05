@@ -42,7 +42,7 @@ const faqs = [
     {
       question: 'How can I get in touch with Zenvana?',
       answer:
-        'You can reach us by phone at +91 9084702208 or by email. We’re happy to help with bookings, questions, or special requests.',
+        'You can reach us by phone at +91 90840 51774 or by email. We’re happy to help with bookings, questions, or special requests.',
     },
     {
       question: 'How do I get started and book a stay?',

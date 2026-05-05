@@ -456,29 +456,28 @@ function GallerySection() {
 function TestimonialsSection() {
   const testimonials = [
     {
-      name: 'Aarav Sharma',
+      name: 'Yogesh Kumar',
       text: 'From the moment we arrived, everything felt seamless and well-organized. The rooms were spacious, clean, and thoughtfully designed for comfort. The staff was polite, responsive, and always ready to help, making our stay truly relaxing. The smooth check-in process and attention to detail made this one of the best hotel experiences in Dehradun for us.',
       stars: 5,
-      imageSrc: '/images/dehradun/istockphoto-2194433569-612x612.jpg',
+      imageSrc: '/images/dehradun/Yogesh.png',
     },
     {
-      name: 'Rahul Verma',
+      name: 'Shailja Singh',
       text: 'The ambiance of the hotel is elegant and calming, perfect for both short and long stays. The property is very well maintained, and cleanliness is clearly a priority here. What stood out the most was the service quality-professional yet warm-which truly reflects the standard you expect from the best hotel in Dehradun.',
       stars: 5,
-      imageSrc:
-        '/images/dehradun/cheerful-indian-businessman-smiling-closeup-portrait-jobs-career-campaign_53876-129417.avif',
+      imageSrc: '/images/dehradun/Shailja Singh.png',
     },
     {
-      name: 'Rohan Mehta',
+      name: 'Shashank Satlaksh',
       text: 'A perfect place for families as well as couples looking for a comfortable and peaceful stay. The location is convenient, the rooms are cozy, and the hospitality is genuinely welcoming. Every small detail is taken care of, making it easy to relax and enjoy your time. Definitely one of the best hotel stays in Dehradun.',
       stars: 4,
-      imageSrc: '/images/dehradun/istockphoto-613557584-612x612.jpg',
+      imageSrc: '/images/dehradun/Shashank Satlaksh.png',
     },
     {
-      name: 'Neha Kapoor',
+      name: 'Jasleen Kaur',
       text: 'We had a wonderful experience staying here. The location is excellent, with easy access to key areas of Dehradun. The staff was supportive throughout our stay, and the overall atmosphere felt warm and inviting. It is a reliable and comfortable choice for anyone searching for the best hotel in Dehradun.',
       stars: 5,
-      imageSrc: '/images/dehradun/ultra-realistic-indian-ai-girl-600nw-2735385401.webp',
+      imageSrc: '/images/dehradun/Jasleen Kaur.png',
     },
   ]
 

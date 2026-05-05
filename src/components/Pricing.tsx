@@ -139,8 +139,8 @@ export function Pricing() {
             for you. You can ask for 15 days free trial by calling us on{' '}
           </p>
           <Button color="blue" className=" mt-4">
-            <a href="tel:+91 9084702208" className="text-white">
-              +91 9084702208
+            <a href="tel:+919084051774" className="text-white">
+              +91 90840 51774
             </a>
           </Button>
         </div>

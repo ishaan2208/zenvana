@@ -56,9 +56,9 @@ export function Footer() {
           <div>
             <div className="eyebrow">Contact</div>
             <div className="mt-4 grid gap-3 text-sm text-foreground/80">
-              <a href="tel:+919084702208" className="inline-flex items-center gap-3 hover:text-foreground">
+              <a href="tel:+919084051774" className="inline-flex items-center gap-3 hover:text-foreground">
                 <Phone className="h-4 w-4" />
-                +91 9084702208
+                +91 90840 51774
               </a>
               <a
                 href="mailto:admin@zenvanahotels.com"
