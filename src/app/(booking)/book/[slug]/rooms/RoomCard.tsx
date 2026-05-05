@@ -59,6 +59,7 @@ type RoomCardProps = {
   nightsForPlans2?: number
   nightsForPlans3?: number
   nightsForPlans4?: number
+  couponCode?: string
 }
 
 const MEAL_PLAN_META: Record<
@@ -148,6 +149,7 @@ export function RoomCard({
   nightsForPlans2 = nights,
   nightsForPlans3 = nights,
   nightsForPlans4 = nights,
+  couponCode,
 }: RoomCardProps) {
   const router = useAppRouter()
 
@@ -324,6 +326,7 @@ export function RoomCard({
       occupancyOverride ?? (occupancyParam ? parseInt(occupancyParam, 10) : undefined)
 
     if (occ != null) p.set('occupancy', String(occ))
+    if (couponCode) p.set('couponCode', couponCode)
     return p
   }
 
@@ -602,7 +605,9 @@ export function RoomCard({
                                     )
                                   }
 
-                                  router.push(`/book/${slug}/checkout?multiRoom=1`)
+                                  const params = new URLSearchParams({ multiRoom: '1' })
+                                  if (couponCode) params.set('couponCode', couponCode)
+                                  router.push(`/book/${slug}/checkout?${params.toString()}`)
                                 }}
                               >
                                 Continue to checkout

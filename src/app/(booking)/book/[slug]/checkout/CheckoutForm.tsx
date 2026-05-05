@@ -1,14 +1,16 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import Script from 'next/script'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   BadgeCheck,
   CalendarRange,
   CheckCircle2,
   CreditCard,
+  Loader2,
   Mail,
   PhoneCall,
   ShieldCheck,
@@ -18,6 +20,8 @@ import {
 
 import { Button } from '@/components/Button'
 import { PriceWithMarketRate } from '@/components/PriceWithMarketRate'
+import { BookingTotalDisplay, CouponCelebration } from '@/components/CouponCelebration'
+import { useCheckoutCouponState } from './CheckoutCouponState'
 import {
   createPublicBooking,
   createRazorpayOrder,
@@ -27,7 +31,11 @@ import {
   verifyRazorpayAndCreateBooking,
   type PublicBookingPayload,
 } from '@/lib/api'
-import { formatZenvanaGuestSalutationName, getZenvanaGuestMe } from '@/lib/zenvanaGuestApi'
+import {
+  checkGuestAccountExists,
+  formatZenvanaGuestSalutationName,
+  getZenvanaGuestMe,
+} from '@/lib/zenvanaGuestApi'
 import { toast } from 'sonner'
 
 const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
@@ -46,6 +54,7 @@ type Props = {
   numRooms?: number
   ratePlan?: string
   occupancy?: number
+  initialCouponCode?: string
 }
 
 async function loadRazorpayScript(): Promise<void> {
@@ -116,15 +125,28 @@ export default function CheckoutForm({
   numRooms: _numRooms,
   ratePlan: _ratePlan,
   occupancy,
+  initialCouponCode,
 }: Props) {
   const router = useAppRouter()
 
   const [guestName, setGuestName] = useState('')
   const [pointsToRedeem, setPointsToRedeem] = useState(0)
   const [couponCodeInput, setCouponCodeInput] = useState('')
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null)
+  // Coupon state lives in context so the page-level booking summary (sidebar,
+  // mobile bar, hero chip) can react. Falls back to local state if no provider
+  // is mounted (e.g. when this form is reused in isolation).
+  const couponCtx = useCheckoutCouponState()
+  const [localAppliedCoupon, setLocalAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null)
+  const [localCouponAppliedKey, setLocalCouponAppliedKey] = useState(0)
+  const appliedCoupon = couponCtx?.appliedCoupon ?? localAppliedCoupon
+  const setAppliedCoupon = couponCtx?.setAppliedCoupon ?? setLocalAppliedCoupon
+  const couponAppliedKey = couponCtx?.couponAppliedKey ?? localCouponAppliedKey
+  const bumpCouponAppliedKey = couponCtx
+    ? couponCtx.bumpAppliedKey
+    : () => setLocalCouponAppliedKey((k) => k + 1)
   const [couponBusy, setCouponBusy] = useState(false)
   const [couponError, setCouponError] = useState<string | null>(null)
+  const applyButtonRef = useRef<HTMLButtonElement>(null)
   const [pointsBalance, setPointsBalance] = useState<number | null>(null)
   const [guestPhone, setGuestPhone] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
@@ -144,6 +166,8 @@ export default function CheckoutForm({
   const [phoneVerified, setPhoneVerified] = useState(false)
   const [verifiedPhone, setVerifiedPhone] = useState('')
   const [otpBusy, setOtpBusy] = useState(false)
+  const [isSignedInGuest, setIsSignedInGuest] = useState(false)
+  const [registeredPhone10, setRegisteredPhone10] = useState('')
 
   const [paymentMode, setPaymentMode] = useState<'pay_at_property' | 'pay_now'>(
     'pay_now'
@@ -161,9 +185,11 @@ export default function CheckoutForm({
       try {
         const me = await getZenvanaGuestMe()
         if (cancelled || !me) return
+        setIsSignedInGuest(true)
         setPointsBalance(me.pointsBalance ?? 0)
         const d = me.phoneE164.replace(/\D/g, '').slice(-10)
         if (d.length === 10) {
+          setRegisteredPhone10(d)
           setGuestPhone((prev) => (prev.trim() ? prev : d))
         }
         if (me.email) setGuestEmail((prev) => (prev.trim() ? prev : me.email!))
@@ -270,6 +296,11 @@ export default function CheckoutForm({
     : null
 
   const phoneReadyForOtp = guestPhone.replace(/\D/g, '').length >= 10
+  const guestPhone10 = guestPhone.replace(/\D/g, '').slice(-10)
+  const sameAsRegisteredPhone =
+    isSignedInGuest && Boolean(registeredPhone10) && guestPhone10 === registeredPhone10
+  const otpRequiredForPayAtProperty = paymentMode === 'pay_at_property' && !sameAsRegisteredPhone
+  const payAtPropertyVerificationDone = !otpRequiredForPayAtProperty || phoneVerified
 
   const guestSummary = useMemo(() => {
     const rooms = _numRooms ?? 1
@@ -303,8 +334,14 @@ export default function CheckoutForm({
     pointsToRedeem: pointsToRedeem > 0 ? pointsToRedeem : 0,
   })
 
-  async function handleApplyCoupon() {
-    const code = couponCodeInput.trim().toUpperCase()
+  const effectiveTotalAmount = useMemo(() => {
+    const base = Number(totalAmount)
+    const discount = appliedCoupon?.discountAmount ?? 0
+    return Math.max(0, base - discount)
+  }, [appliedCoupon?.discountAmount, totalAmount])
+
+  async function applyCouponByCode(codeRaw: string) {
+    const code = codeRaw.trim().toUpperCase()
     if (!code) {
       setCouponError('Enter a coupon code')
       return
@@ -344,6 +381,23 @@ export default function CheckoutForm({
       }
       const result = await validatePublicBookingCoupon(slug, bookingPayload)
       if (!result.valid) {
+        if (result.reason === 'COUPON_LOGIN_REQUIRED') {
+          setAppliedCoupon({
+            code: result.code ?? code,
+            discountAmount: result.discountAmount ?? 0,
+          })
+          setCouponCodeInput(result.code ?? code)
+          bumpCouponAppliedKey()
+          await new Promise((resolve) => setTimeout(resolve, 1400))
+          toast.info('This discount is only for logged-in customers. Redirecting to login/signup...')
+          const redirect = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : `/book/${slug}/checkout`
+          const existing = await checkGuestAccountExists(guestPhone)
+          const nextAuthPath = existing === false ? '/guest/signup' : '/login'
+          setTimeout(() => {
+            router.push(`${nextAuthPath}?redirect=${encodeURIComponent(redirect)}`)
+          }, 900)
+          return
+        }
         setCouponError(result.message ?? 'Coupon could not be applied')
         setAppliedCoupon(null)
         return
@@ -353,6 +407,7 @@ export default function CheckoutForm({
         discountAmount: result.discountAmount ?? 0,
       })
       setCouponCodeInput(result.code ?? code)
+      bumpCouponAppliedKey()
     } catch (err) {
       setCouponError(err instanceof Error ? err.message : 'Coupon validation failed')
       setAppliedCoupon(null)
@@ -360,6 +415,23 @@ export default function CheckoutForm({
       setCouponBusy(false)
     }
   }
+
+  async function handleApplyCoupon() {
+    await applyCouponByCode(couponCodeInput)
+  }
+
+  // Pre-fill the coupon input when arriving from the offers page, but DO NOT auto-apply.
+  // The user must click "Apply" to trigger validation + the celebration animation.
+  useEffect(() => {
+    if (!initialCouponCode) return
+    if (appliedCoupon) return
+    const normalized = initialCouponCode.trim().toUpperCase()
+    if (!normalized) return
+    if (couponCodeInput.trim().toUpperCase() !== normalized) {
+      setCouponCodeInput(normalized)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCouponCode])
 
   async function confirmBooking(transactionId?: string) {
     const data = await createPublicBooking(slug, {
@@ -378,7 +450,7 @@ export default function CheckoutForm({
         checkIn,
         checkOut,
         roomTypeName,
-        totalAmount,
+        totalAmount: String(effectiveTotalAmount),
         bookingReference: data.bookingReference,
       })
     )
@@ -389,7 +461,7 @@ export default function CheckoutForm({
 
     if (!validateRequiredFields()) return
 
-    if (!phoneVerified) {
+    if (!payAtPropertyVerificationDone) {
       setError('Please verify guest phone via WhatsApp OTP before booking.')
       return
     }
@@ -495,7 +567,7 @@ export default function CheckoutForm({
                 checkIn,
                 checkOut,
                 roomTypeName,
-                totalAmount,
+                totalAmount: String(effectiveTotalAmount),
                 bookingReference: data.bookingReference,
               })
             )
@@ -554,11 +626,12 @@ export default function CheckoutForm({
                   icon={<BadgeCheck className="h-4.5 w-4.5" />}
                   label="Total"
                   value={
-                    <PriceWithMarketRate
-                      amount={Number(totalAmount)}
+                    <BookingTotalDisplay
+                      totalAmount={Number(totalAmount)}
                       marketAmount={marketTotal}
-                      size="default"
-                      showTaxBreakup={false}
+                      couponDiscount={appliedCoupon?.discountAmount ?? 0}
+                      couponCode={appliedCoupon?.code ?? null}
+                      appliedKey={couponAppliedKey}
                     />
                   }
                 />
@@ -655,28 +728,34 @@ export default function CheckoutForm({
 
               {paymentMode === 'pay_at_property' && (
                 <div
-                  className={`rounded-[1.35rem] border p-4 ${phoneVerified
+                  className={`rounded-[1.35rem] border p-4 ${payAtPropertyVerificationDone
                     ? 'border-emerald-300/60 bg-emerald-50/80 text-emerald-800 dark:border-emerald-700/40 dark:bg-emerald-950/25 dark:text-emerald-300'
                     : 'border-[#25D366]/20 bg-[linear-gradient(180deg,rgba(37,211,102,0.10),rgba(37,211,102,0.04))] text-foreground dark:bg-[linear-gradient(180deg,rgba(37,211,102,0.12),rgba(37,211,102,0.03))]'
                     }`}
                 >
-                  {phoneVerified ? (
+                  {payAtPropertyVerificationDone ? (
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5" />
-                        <span className="text-sm font-medium">Phone verified successfully on WhatsApp.</span>
+                        <span className="text-sm font-medium">
+                          {sameAsRegisteredPhone
+                            ? 'Using your registered phone number — no extra WhatsApp verification needed.'
+                            : 'Phone verified successfully on WhatsApp.'}
+                        </span>
                       </div>
 
-                      <button
-                        type="button"
-                        className="text-xs font-medium text-foreground hover:underline dark:text-white"
-                        onClick={() => {
-                          setPhoneVerified(false)
-                          setVerifiedPhone('')
-                        }}
-                      >
-                        Verify another number
-                      </button>
+                      {!sameAsRegisteredPhone && (
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-foreground hover:underline dark:text-white"
+                          onClick={() => {
+                            setPhoneVerified(false)
+                            setVerifiedPhone('')
+                          }}
+                        >
+                          Verify another number
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -776,7 +855,7 @@ export default function CheckoutForm({
                   <>
                     Complete payment online for{' '}
                     <PriceWithMarketRate
-                      amount={Number(totalAmount)}
+                      amount={effectiveTotalAmount}
                       marketAmount={marketTotal}
                       size="sm"
                       showTaxBreakup={false}
@@ -835,6 +914,14 @@ export default function CheckoutForm({
               <label className="block text-sm font-medium text-foreground" htmlFor="couponCode">
                 Offer code
               </label>
+              {!appliedCoupon &&
+                initialCouponCode &&
+                couponCodeInput.trim().toUpperCase() ===
+                  initialCouponCode.trim().toUpperCase() && (
+                  <p className="mt-1 text-xs font-medium text-primary">
+                    Code ready — click Apply to unlock your discount.
+                  </p>
+                )}
               <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                 <input
                   id="couponCode"
@@ -848,32 +935,81 @@ export default function CheckoutForm({
                   className="h-12 w-full rounded-[1rem] border border-border/70 bg-background/70 px-4 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/50"
                   placeholder="Enter coupon"
                 />
-                <button
+                <motion.button
+                  ref={applyButtonRef}
                   type="button"
                   onClick={handleApplyCoupon}
-                  disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim()}
-                  className="inline-flex h-12 items-center justify-center rounded-[1rem] bg-primary px-5 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim() || Boolean(appliedCoupon)}
+                  whileTap={
+                    !appliedCoupon && !couponBusy && couponCodeInput.trim() && pointsToRedeem === 0
+                      ? { scale: 0.96 }
+                      : undefined
+                  }
+                  className={`relative inline-flex h-12 min-w-[120px] items-center justify-center overflow-hidden rounded-[1rem] px-5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                    appliedCoupon
+                      ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-8px_rgba(16,185,129,0.55)] dark:bg-emerald-400 dark:text-emerald-950'
+                      : 'bg-primary text-primary-foreground'
+                  }`}
                 >
-                  {couponBusy ? 'Applying…' : 'Apply'}
-                </button>
+                  {couponBusy && (
+                    <motion.span
+                      aria-hidden
+                      initial={{ x: '-130%' }}
+                      animate={{ x: '160%' }}
+                      transition={{ duration: 1.1, ease: 'linear', repeat: Infinity }}
+                      className="pointer-events-none absolute inset-0 -skew-x-12 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.42),transparent)]"
+                    />
+                  )}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {couponBusy ? (
+                      <motion.span
+                        key="busy"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.18 }}
+                        className="relative inline-flex items-center gap-2"
+                      >
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Applying…
+                      </motion.span>
+                    ) : appliedCoupon ? (
+                      <motion.span
+                        key="applied"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative inline-flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Applied
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="apply"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.18 }}
+                        className="relative"
+                      >
+                        Apply
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
               </div>
-              {appliedCoupon && (
-                <div className="mt-2 flex items-center justify-between text-sm text-emerald-600">
-                  <span>
-                    Applied {appliedCoupon.code} - saved ₹{Math.round(appliedCoupon.discountAmount)}
-                  </span>
-                  <button
-                    type="button"
-                    className="font-medium text-foreground hover:underline"
-                    onClick={() => {
-                      setAppliedCoupon(null)
-                      setCouponError(null)
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
+              <CouponCelebration
+                applied={appliedCoupon}
+                appliedKey={couponAppliedKey}
+                originalAmount={Number(totalAmount)}
+                originRef={applyButtonRef}
+                onRemove={() => {
+                  setAppliedCoupon(null)
+                  setCouponError(null)
+                }}
+              />
               {couponError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{couponError}</p>}
               {pointsToRedeem > 0 && (
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -914,7 +1050,7 @@ export default function CheckoutForm({
             type="submit"
             color="blue"
             className="h-14 w-full rounded-[1.1rem] text-sm font-medium shadow-[0_14px_34px_rgba(37,99,235,0.22)]"
-            disabled={submitting || (paymentMode === 'pay_at_property' && !phoneVerified)}
+            disabled={submitting || (paymentMode === 'pay_at_property' && !payAtPropertyVerificationDone)}
           >
             {submitting
               ? 'Processing…'

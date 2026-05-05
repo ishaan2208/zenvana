@@ -30,7 +30,10 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.
 export const revalidate = 1800
 export const dynamicParams = false
 
-type Props = { params: Promise<{ slug: string }> }
+type Props = {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ couponCode?: string }>
+}
 type Property = NonNullable<Awaited<ReturnType<typeof getPublicPropertyBySlug>>>
 
 export async function generateStaticParams() {
@@ -91,8 +94,10 @@ export async function generateMetadata({ params }: Props) {
   }
 }
 
-export default async function PropertyPage({ params }: Props) {
+export default async function PropertyPage({ params, searchParams }: Props) {
   const { slug } = await params
+  const q = await searchParams
+  const couponCode = q.couponCode?.trim().toUpperCase() ?? ''
   const property = await getPublicPropertyBySlug(slug)
   if (!property) notFound()
 
@@ -144,6 +149,7 @@ export default async function PropertyPage({ params }: Props) {
           location={location}
           galleryImages={galleryImages}
           totalImageCount={totalImageCount}
+          couponCode={couponCode}
         />
 
         <QuickFacts
@@ -176,7 +182,11 @@ export default async function PropertyPage({ params }: Props) {
               )}
 
               {roomTypes.length > 0 && (
-                <RoomsSection propertySlug={property.slug} roomTypes={roomTypes} />
+                <RoomsSection
+                  propertySlug={property.slug}
+                  roomTypes={roomTypes}
+                  couponCode={couponCode}
+                />
               )}
 
               <PropertyMapSection
@@ -197,6 +207,7 @@ export default async function PropertyPage({ params }: Props) {
                 property={property}
                 location={location}
                 totalImageCount={totalImageCount}
+                couponCode={couponCode}
               />
             </aside>
           </div>
@@ -214,7 +225,7 @@ export default async function PropertyPage({ params }: Props) {
           </Container>
         </section>
 
-        <PropertyMobileBookingBar property={property} />
+        <PropertyMobileBookingBar property={property} couponCode={couponCode} />
       </main>
     </>
   )
@@ -226,12 +237,14 @@ function PropertyHero({
   location,
   galleryImages,
   totalImageCount,
+  couponCode,
 }: {
   property: Property
   heroUrl?: string
   location: string
   galleryImages: Array<{ url: string }>
   totalImageCount: number
+  couponCode?: string
 }) {
   const previewImages = galleryImages.slice(0, 5)
 
@@ -300,7 +313,11 @@ function PropertyHero({
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Button
-                href={`/book/${property.slug}`}
+                href={
+                  couponCode
+                    ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
+                    : `/book/${property.slug}`
+                }
                 color="blue"
                 className="flex items-center justify-center gap-2 rounded-full px-6"
               >
@@ -603,6 +620,7 @@ function GallerySection({
 function RoomsSection({
   propertySlug,
   roomTypes,
+  couponCode,
 }: {
   propertySlug: string
   roomTypes: Array<{
@@ -611,6 +629,7 @@ function RoomsSection({
     shortDescription?: string | null
     images?: unknown
   }>
+  couponCode?: string
 }) {
   return (
     <section id="rooms" className="scroll-mt-28">
@@ -673,7 +692,13 @@ function RoomsSection({
 
                   <div className="mt-6 flex flex-col gap-3 ">
                     <Button
-                      href={`/book/${propertySlug}?room=${encodeURIComponent(rt.name)}`}
+                      href={
+                        `/book/${propertySlug}?` +
+                        new URLSearchParams({
+                          room: rt.name,
+                          ...(couponCode ? { couponCode } : {}),
+                        }).toString()
+                      }
                       color="blue"
                       className="flex items-center justify-center gap-2 rounded-full"
                     >
@@ -745,10 +770,12 @@ function BookingSidebar({
   property,
   location,
   totalImageCount,
+  couponCode,
 }: {
   property: Property
   location: string
   totalImageCount: number
+  couponCode?: string
 }) {
   const roomCount = property.roomTypes?.length ?? 0
 
@@ -772,7 +799,11 @@ function BookingSidebar({
 
         <div className="px-6 py-6 sm:px-7">
           <Button
-            href={`/book/${property.slug}`}
+            href={
+              couponCode
+                ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
+                : `/book/${property.slug}`
+            }
             color="blue"
             className="flex w-full items-center justify-center gap-2 rounded-full"
           >
@@ -866,7 +897,13 @@ function BookingSidebar({
   )
 }
 
-function PropertyMobileBookingBar({ property }: { property: Property }) {
+function PropertyMobileBookingBar({
+  property,
+  couponCode,
+}: {
+  property: Property
+  couponCode?: string
+}) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/92 px-3 py-3 backdrop-blur-xl xl:hidden">
       <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -881,7 +918,11 @@ function PropertyMobileBookingBar({ property }: { property: Property }) {
         ) : null}
 
         <Button
-          href={`/book/${property.slug}`}
+          href={
+            couponCode
+              ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
+              : `/book/${property.slug}`
+          }
           color="blue"
           className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full"
         >

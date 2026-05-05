@@ -51,7 +51,13 @@ const highlights = [
   },
 ]
 
-export default async function HotelsPage() {
+type Props = {
+  searchParams: Promise<{ couponCode?: string }>
+}
+
+export default async function HotelsPage({ searchParams }: Props) {
+  const q = await searchParams
+  const couponCode = q.couponCode?.trim().toUpperCase() ?? ''
   const properties = await getPublicProperties()
 
   const fullDetails = await Promise.all(properties.map((p) => getPublicPropertyBySlug(p.slug)))
@@ -153,7 +159,14 @@ export default async function HotelsPage() {
             <ul className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {propertiesForGrid.map((p) => (
                 <li key={p.id}>
-                  <Link href={`/hotels/${p.slug}`} className="group block h-full">
+                  <Link
+                    href={
+                      couponCode
+                        ? `/hotels/${p.slug}?${new URLSearchParams({ couponCode }).toString()}`
+                        : `/hotels/${p.slug}`
+                    }
+                    className="group block h-full"
+                  >
                     <Card className="h-full overflow-hidden rounded-[2rem] border-border/60 bg-card/70 text-card-foreground shadow-[0_18px_45px_rgba(8,17,31,0.05)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_26px_80px_rgba(8,17,31,0.1)] dark:bg-card/50">
                       {p.listingPrice != null ? (
                         <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/35 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">

@@ -34,6 +34,7 @@ type Props = {
     rooms?: string
     guests?: string
     guestsPerRoom?: string
+    couponCode?: string
   }>
 }
 
@@ -51,7 +52,9 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     rooms: roomsParam,
     guests: guestsParam,
     guestsPerRoom: guestsPerRoomParam,
+    couponCode: couponCodeParam,
   } = q
+  const couponCode = couponCodeParam?.trim().toUpperCase() ?? ''
 
   if (!checkIn || !checkOut) {
     redirect(`/book/${slug}`)
@@ -268,7 +271,15 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
   const allRoomsSoldOutForStay =
     hasConfiguredPropertyRooms && bookableRoomTypes.length === 0
 
-  const stayDetailsHref = `/book/${slug}?checkIn=${checkIn}&checkOut=${checkOut}&rooms=${rooms}${occupancy != null ? `&guests=${occupancy}` : ''}${guestsPerRoom != null ? `&guestsPerRoom=${guestsPerRoom}` : ''}`
+  const stayDetailsParams = new URLSearchParams({
+    checkIn,
+    checkOut,
+    rooms: String(rooms),
+    ...(occupancy != null ? { guests: String(occupancy) } : {}),
+    ...(guestsPerRoom != null ? { guestsPerRoom: String(guestsPerRoom) } : {}),
+    ...(couponCode ? { couponCode } : {}),
+  })
+  const stayDetailsHref = `/book/${slug}?${stayDetailsParams.toString()}`
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -386,6 +397,7 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
                   nightsForPlans2={room.nightsForPlans2}
                   nightsForPlans3={room.nightsForPlans3}
                   nightsForPlans4={room.nightsForPlans4}
+                  couponCode={couponCode}
                 />
               ))
             )}

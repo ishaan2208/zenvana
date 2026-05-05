@@ -18,14 +18,19 @@ import { pickHeroAndGallery } from '@/lib/media'
 import { BookSearchForm } from './BookSearchForm'
 import { Badge } from '@/components/ui/badge'
 
-type Props = { params: Promise<{ slug: string }> }
+type Props = {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ couponCode?: string }>
+}
 
 export const metadata = {
   robots: { index: false, follow: true },
 }
 
-export default async function BookPropertyPage({ params }: Props) {
+export default async function BookPropertyPage({ params, searchParams }: Props) {
   const { slug } = await params
+  const q = await searchParams
+  const couponCode = q.couponCode?.trim().toUpperCase() ?? ''
   const property = await getPublicPropertyBySlug(slug)
   if (!property) notFound()
 
@@ -71,6 +76,7 @@ export default async function BookPropertyPage({ params }: Props) {
               slug={slug}
               propertyName={property.publicName}
               location={location}
+              initialCouponCode={couponCode}
             />
           </aside>
 

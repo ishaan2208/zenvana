@@ -3,9 +3,10 @@ import type { Metadata } from 'next'
 import { Container } from '@/components/Container'
 import { getPublicOffers } from '@/lib/api'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Calendar, CheckCircle2, Sparkles } from 'lucide-react'
 
-export const revalidate = 86400
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Offers',
@@ -15,55 +16,31 @@ export const metadata: Metadata = {
 
 export default async function OffersPage() {
   const offers = await getPublicOffers()
-  const featuredOffers =
-    offers.length > 0
-      ? offers.map((offer) => ({
-        title: offer.title,
-        description: `Use code ${offer.code} at checkout to unlock direct booking value.`,
-        validity: offer.validUntil
-          ? `Valid until ${new Date(offer.validUntil).toLocaleDateString('en-IN')}`
-          : 'Valid for a limited time',
-        benefits: [
-          offer.discountType === 'PERCENT'
-            ? `${offer.discountValue}% off on booking amount`
-            : `₹${Math.round(offer.discountValue)} off on booking amount`,
-          offer.scopeType === 'GLOBAL'
-            ? 'Available across Zenvana hotels'
-            : 'Available on selected hotels',
-          'Apply the code on checkout page',
-        ],
-        inclusions: [
-          `Offer code: ${offer.code}`,
-          offer.maxDiscount ? `Max discount: ₹${Math.round(offer.maxDiscount)}` : 'No max cap',
-          offer.minBookingAmount
-            ? `Min booking: ₹${Math.round(offer.minBookingAmount)}`
-            : 'No minimum booking amount',
-        ],
-      }))
-      : [
-        {
-          title: 'Direct Booking Offers',
-          description: 'Check back shortly for active offer codes.',
-          validity: 'Updated regularly',
-          benefits: ['Direct booking discounts', 'Best available value', 'Simple checkout redemption'],
-          inclusions: ['Apply code on checkout', 'Not combinable with points', 'Terms apply'],
-        },
-      ]
-
-  const promos = [
-    {
-      title: 'Seasonal Deals',
-      description: 'Curated value tied to seasons and quieter travel windows.',
-    },
-    {
-      title: 'Festival Packages',
-      description: 'Stay plans designed around celebratory weekends and city energy.',
-    },
-    {
-      title: 'Long Stay Discounts',
-      description: 'Better value for longer, calmer stays with practical comfort.',
-    },
-  ]
+  const featuredOffers = offers.map((offer) => ({
+    title: offer.title,
+    code: offer.code,
+    imageUrl: offer.imageUrl ?? null,
+    description: `Use code ${offer.code} at checkout to unlock direct booking value.`,
+    validity: offer.validUntil
+      ? `Valid until ${new Date(offer.validUntil).toLocaleDateString('en-IN')}`
+      : 'Valid for a limited time',
+    benefits: [
+      offer.discountType === 'PERCENT'
+        ? `${offer.discountValue}% off on booking amount`
+        : `₹${Math.round(offer.discountValue)} off on booking amount`,
+      offer.scopeType === 'GLOBAL'
+        ? 'Available across Zenvana hotels'
+        : 'Available on selected hotels',
+      'Apply the code on checkout page',
+    ],
+    inclusions: [
+      `Offer code: ${offer.code}`,
+      offer.maxDiscount ? `Max discount: ₹${Math.round(offer.maxDiscount)}` : 'No max cap',
+      offer.minBookingAmount
+        ? `Min booking: ₹${Math.round(offer.minBookingAmount)}`
+        : 'No minimum booking amount',
+    ],
+  }))
 
   return (
     <div className="section-rule bg-muted/5">
@@ -79,68 +56,95 @@ export default async function OffersPage() {
         </div>
 
         {/* SECTION 2 — FEATURED OFFERS */}
-        <div className="mt-12 space-y-8">
-          {featuredOffers.map((offer) => (
-            <section key={offer.title} className="quiet-card overflow-hidden">
-              <div className="grid gap-0 lg:grid-cols-12">
-                <div className="lg:col-span-5">
-                  <div className="relative h-full min-h-[240px] bg-muted lg:min-h-[320px]">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))]" />
-                    <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                      Offer image placeholder
+        {featuredOffers.length > 0 ? (
+          <div className="mt-12 space-y-8">
+            {featuredOffers.map((offer) => (
+              <section key={offer.title} className="quiet-card overflow-hidden">
+                <div className="grid gap-0 lg:grid-cols-12">
+                  <div className="lg:col-span-5">
+                    <div className="relative h-full min-h-[240px] bg-muted lg:min-h-[320px]">
+                      {offer.imageUrl ? (
+                        <Image
+                          src={offer.imageUrl}
+                          alt={offer.title}
+                          fill
+                          className="object-cover"
+                          sizes="(min-width: 1024px) 40vw, 100vw"
+                        />
+                      ) : null}
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))]" />
+                      {!offer.imageUrl && (
+                        <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
+                          Offer image placeholder
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                <div className="lg:col-span-7 p-6 sm:p-7 lg:p-8">
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-foreground/70">
-                    <Sparkles className="h-4 w-4" />
-                    Featured offer code
-                  </div>
-
-                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                    {offer.title}
-                  </h2>
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">{offer.description}</p>
-
-                  <div className="mt-6 grid gap-2">
-                    {offer.benefits.map((b) => (
-                      <div key={b} className="flex items-start gap-3 text-sm leading-7 text-muted-foreground">
-                        <CheckCircle2 className="mt-1 h-4 w-4 text-primary" />
-                        <span>{b}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="inline-flex items-center gap-2 rounded-2xl bg-muted px-4 py-2 text-sm text-foreground/75">
-                      <Calendar className="h-4 w-4" />
-                      {offer.validity}
+                  <div className="lg:col-span-7 p-6 sm:p-7 lg:p-8">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-foreground/70">
+                      <Sparkles className="h-4 w-4" />
+                      Featured offer code
                     </div>
-                    <Link href="/hotels" className="site-button-dark w-fit">
-                      Book with this offer
-                    </Link>
-                  </div>
 
-                  {/* SECTION 3 — OFFER DETAILS (under each offer) */}
-                  <div className="mt-7 border-t border-border/60 pt-6">
-                    <div className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                      Inclusions
-                    </div>
-                    <div className="mt-4 grid gap-2">
-                      {offer.inclusions.map((i) => (
-                        <div key={i} className="flex items-start gap-3 text-sm leading-7 text-muted-foreground">
+                    <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                      {offer.title}
+                    </h2>
+                    <p className="mt-3 text-sm leading-7 text-muted-foreground">{offer.description}</p>
+
+                    <div className="mt-6 grid gap-2">
+                      {offer.benefits.map((b) => (
+                        <div key={b} className="flex items-start gap-3 text-sm leading-7 text-muted-foreground">
                           <CheckCircle2 className="mt-1 h-4 w-4 text-primary" />
-                          <span>{i}</span>
+                          <span>{b}</span>
                         </div>
                       ))}
                     </div>
+
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="inline-flex items-center gap-2 rounded-2xl bg-muted px-4 py-2 text-sm text-foreground/75">
+                        <Calendar className="h-4 w-4" />
+                        {offer.validity}
+                      </div>
+                      <Link
+                        href={`/hotels?${new URLSearchParams({ couponCode: offer.code }).toString()}`}
+                        className="site-button-dark w-fit"
+                      >
+                        Book with this offer
+                      </Link>
+                    </div>
+
+                    <div className="mt-7 border-t border-border/60 pt-6">
+                      <div className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
+                        Inclusions
+                      </div>
+                      <div className="mt-4 grid gap-2">
+                        {offer.inclusions.map((i) => (
+                          <div key={i} className="flex items-start gap-3 text-sm leading-7 text-muted-foreground">
+                            <CheckCircle2 className="mt-1 h-4 w-4 text-primary" />
+                            <span>{i}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </section>
-          ))}
-        </div>
+              </section>
+            ))}
+          </div>
+        ) : (
+          <section className="mt-12 quiet-card p-8 text-center">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">No active offers right now</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              We could not find any currently active coupon codes. Please check again shortly.
+            </p>
+            <div className="mt-6">
+              <Link href="/hotels" className="site-button-dark">
+                Explore Hotels
+              </Link>
+            </div>
+          </section>
+        )}
 
         {/* SECTION 4 — CALL TO ACTION */}
         <div className="mt-12">
@@ -167,43 +171,6 @@ export default async function OffersPage() {
           </div>
         </div>
 
-        {/* SECTION 5 — ADDITIONAL PROMOTIONS */}
-        <div className="mt-12">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="eyebrow">More promotions</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl">
-              Smaller deals, same quiet value.
-            </h2>
-            <p className="body-copy mt-5 text-muted-foreground">
-              A set of additional promotions presented in a clean grid layout.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {promos.map((p) => (
-              <article
-                key={p.title}
-                className="quiet-card group overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl"
-              >
-                <div className="relative aspect-[4/3] bg-muted">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.14),transparent_55%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.12))]" />
-                  <div className="absolute inset-0 grid place-items-center text-xs font-medium uppercase tracking-[0.22em] text-foreground/55">
-                    Promo image placeholder
-                  </div>
-                </div>
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold tracking-tight text-foreground">{p.title}</h3>
-                  <p className="mt-2 text-sm leading-7 text-muted-foreground">{p.description}</p>
-                  <div className="mt-6">
-                    <Link href="/offers" className="site-link">
-                      Explore Offer
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
       </Container>
     </div>
   )

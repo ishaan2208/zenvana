@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 import { useAppRouter } from '@/hooks/useAppRouter'
 import { AuthShell } from '@/components/auth/AuthShell'
@@ -26,6 +27,7 @@ const RESEND_SECONDS = 30
 
 export default function GuestLoginPage() {
   const router = useAppRouter()
+  const searchParams = useSearchParams()
   const [phone, setPhone] = useState('')
   const [challengeId, setChallengeId] = useState<number | null>(null)
   const [otp, setOtp] = useState('')
@@ -33,6 +35,7 @@ export default function GuestLoginPage() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [resendIn, setResendIn] = useState(0)
+  const redirectTo = searchParams.get('redirect') || '/account'
 
   useEffect(() => {
     if (resendIn <= 0) return
@@ -63,7 +66,7 @@ export default function GuestLoginPage() {
     setBusy(true)
     try {
       await postGuestVerifyLogin(phone, otp, challengeId)
-      router.push('/account')
+      router.push(redirectTo)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Login failed')
     } finally {
@@ -103,7 +106,7 @@ export default function GuestLoginPage() {
           <p>
             New to Zenvana?{' '}
             <Link
-              href="/guest/signup"
+              href={`/guest/signup?redirect=${encodeURIComponent(redirectTo)}`}
               className="font-medium text-foreground underline-offset-4 hover:underline"
             >
               Create a guest account

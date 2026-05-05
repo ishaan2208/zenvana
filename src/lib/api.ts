@@ -117,6 +117,7 @@ export async function getPublicDestinations(): Promise<
 export type PublicOffer = {
   code: string
   title: string
+  imageUrl?: string | null
   discountType: 'FLAT' | 'PERCENT' | string
   discountValue: number
   maxDiscount?: number | null
@@ -128,9 +129,7 @@ export type PublicOffer = {
 
 export async function getPublicOffers(): Promise<PublicOffer[]> {
   try {
-    const res = await fetch(`${BACKEND_URL}/public/offers`, {
-      next: { revalidate: 300 },
-    })
+    const res = await fetch(`${BACKEND_URL}/public/offers`, { cache: 'no-store' })
     if (!res.ok) return []
     const json = await res.json()
     return json?.data ?? []

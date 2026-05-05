@@ -56,6 +56,7 @@ type BookSearchFormProps = {
   slug: string
   propertyName?: string
   location?: string
+  initialCouponCode?: string
 }
 
 const calendarClassNames = {
@@ -86,6 +87,7 @@ export function BookSearchForm({
   slug,
   propertyName,
   location,
+  initialCouponCode,
 }: BookSearchFormProps) {
   const router = useAppRouter()
   const today = useMemo(() => startOfDay(new Date()), [])
@@ -170,6 +172,9 @@ export function BookSearchForm({
 
     if (useGuestsPerRoomMode) {
       params.set('guestsPerRoom', String(guests))
+    }
+    if (initialCouponCode) {
+      params.set('couponCode', initialCouponCode)
     }
 
     setIsLoading(true)

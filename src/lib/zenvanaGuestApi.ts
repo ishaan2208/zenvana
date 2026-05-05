@@ -171,6 +171,22 @@ export async function postGuestVerifyLogin(
   if (!res.ok) throw new Error(json?.error ?? json?.message ?? 'Verification failed')
 }
 
+export async function checkGuestAccountExists(phone: string): Promise<boolean | null> {
+  const normalized = phone.replace(/\D/g, '').slice(-10)
+  if (normalized.length !== 10) return null
+  try {
+    const base = guestApiBase()
+    const res = await fetch(`${base}/account-exists?phone=${encodeURIComponent(normalized)}`, {
+      credentials: 'include',
+    })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) return null
+    return Boolean(json?.data?.exists)
+  } catch (error) {
+    return null
+  }
+}
+
 export type ZenvanaGuestBookingRow = {
   id: number
   bookingReference: string

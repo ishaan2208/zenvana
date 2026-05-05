@@ -13,10 +13,13 @@ import {
 
 import { getPublicPropertyBySlug } from '@/lib/api'
 import { Container } from '@/components/Container'
-import { PriceWithMarketRate } from '@/components/PriceWithMarketRate'
 import CheckoutForm from './CheckoutForm'
 import MultiRoomCheckoutForm from './MultiRoomCheckoutForm'
 import { BackToRoomsLink } from './BackToRoomsLink'
+import {
+  CheckoutCouponProvider,
+  LiveBookingTotal,
+} from './CheckoutCouponState'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -33,6 +36,7 @@ type Props = {
     ratePlan?: string
     ratePlanLabel?: string
     occupancy?: string
+    couponCode?: string
   }>
 }
 
@@ -50,6 +54,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
 
   if (isMultiRoom) {
     return (
+      <CheckoutCouponProvider>
       <main className="bg-background text-foreground">
         <section className="relative overflow-hidden border-b border-border/60 bg-background">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(219,230,76,0.08),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(116,195,101,0.06),transparent_22%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(219,230,76,0.05),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(116,195,101,0.05),transparent_22%)]" />
@@ -123,6 +128,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                 slug={slug}
                 propertyName={property.publicName}
                 primaryPhone={property.primaryPhone}
+                initialCouponCode={q.couponCode}
               />
             </div>
 
@@ -148,6 +154,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
           </div>
         </Container>
       </main>
+      </CheckoutCouponProvider>
     )
   }
 
@@ -179,6 +186,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
     (q.ratePlan === 'default' ? 'Room only' : q.ratePlan ?? 'Room only')
 
   return (
+    <CheckoutCouponProvider>
     <main className="bg-background text-foreground">
       <section className="relative overflow-hidden border-b border-border/60 bg-background">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(219,230,76,0.08),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(116,195,101,0.06),transparent_22%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(219,230,76,0.05),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(116,195,101,0.05),transparent_22%)]" />
@@ -212,12 +220,10 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                 <SummaryChip
                   icon={<Receipt className="h-4 w-4" />}
                   text={
-                    <PriceWithMarketRate
-                      amount={Number(totalAmount)}
+                    <LiveBookingTotal
+                      baseTotal={Number(totalAmount)}
                       marketAmount={marketTotal}
-                      size="sm"
-                      inline
-                      showTaxBreakup={false}
+                      variant="chip"
                     />
                   }
                 />
@@ -261,19 +267,11 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
           <div className="min-w-0 max-w-4xl">
             <div className="flex flex-col gap-4 xl:hidden">
               <div className="rounded-[1.35rem] border border-border/60 bg-card/70 px-4 py-3 dark:bg-card/50">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                    Total
-                  </span>
-                  <span className="text-lg font-semibold tracking-tight text-foreground">
-                    <PriceWithMarketRate
-                      amount={Number(totalAmount)}
-                      marketAmount={marketTotal}
-                      size="lg"
-                      showTaxBreakup={false}
-                    />
-                  </span>
-                </div>
+                <LiveBookingTotal
+                  baseTotal={Number(totalAmount)}
+                  marketAmount={marketTotal}
+                  variant="mobile-bar"
+                />
               </div>
               <div className="flex flex-wrap gap-2">
                 <Link
@@ -284,6 +282,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                       rooms: String(numRooms),
                     })
                     if (occupancy != null) params.set('occupancy', String(occupancy))
+                    if (q.couponCode) params.set('couponCode', q.couponCode)
                     return `/book/${slug}/rooms?${params.toString()}`
                   })()}
                   className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
@@ -314,6 +313,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
               numRooms={numRooms}
               ratePlan={q.ratePlan}
               occupancy={occupancy}
+              initialCouponCode={q.couponCode}
             />
           </div>
 
@@ -354,14 +354,13 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
 
               <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/55 px-4 py-4 dark:bg-background/35">
                 <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                  Total
+                  Booking summary
                 </div>
-                <div className="mt-2 text-xl font-semibold tracking-tight text-foreground">
-                  <PriceWithMarketRate
-                    amount={Number(totalAmount)}
+                <div className="mt-3 text-xl font-semibold tracking-tight text-foreground">
+                  <LiveBookingTotal
+                    baseTotal={Number(totalAmount)}
                     marketAmount={marketTotal}
-                    size="xl"
-                    showTaxBreakup={false}
+                    variant="sidebar"
                   />
                 </div>
               </div>
@@ -375,6 +374,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                       rooms: String(numRooms),
                     })
                     if (occupancy != null) params.set('occupancy', String(occupancy))
+                    if (q.couponCode) params.set('couponCode', q.couponCode)
                     return `/book/${slug}/rooms?${params.toString()}`
                   })()}
                   className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
@@ -396,6 +396,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
         </div>
       </Container>
     </main>
+    </CheckoutCouponProvider>
   )
 }
 

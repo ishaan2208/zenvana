@@ -1,14 +1,17 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { useAppRouter } from '@/hooks/useAppRouter'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   BedDouble,
   CalendarRange,
+  CheckCircle2,
   CreditCard,
+  Loader2,
   Mail,
   PhoneCall,
   ShieldCheck,
@@ -19,6 +22,8 @@ import {
 
 import { Button } from '@/components/Button'
 import { PriceWithMarketRate } from '@/components/PriceWithMarketRate'
+import { BookingTotalDisplay, CouponCelebration } from '@/components/CouponCelebration'
+import { useCheckoutCouponState } from './CheckoutCouponState'
 import {
   createPublicBookingWithRoomLines,
   createRazorpayOrder,
@@ -26,7 +31,11 @@ import {
   verifyRazorpayAndCreateBooking,
   type PublicBookingPayload,
 } from '@/lib/api'
-import { formatZenvanaGuestSalutationName, getZenvanaGuestMe } from '@/lib/zenvanaGuestApi'
+import {
+  checkGuestAccountExists,
+  formatZenvanaGuestSalutationName,
+  getZenvanaGuestMe,
+} from '@/lib/zenvanaGuestApi'
 import { toast } from 'sonner'
 
 const MULTI_ROOM_STORAGE_KEY = 'zenvana_multi_room_booking'
@@ -91,12 +100,14 @@ type Props = {
   slug: string
   propertyName: string
   primaryPhone?: string
+  initialCouponCode?: string
 }
 
 export default function MultiRoomCheckoutForm({
   slug,
   propertyName,
   primaryPhone,
+  initialCouponCode,
 }: Props) {
   const router = useAppRouter()
 
@@ -117,9 +128,18 @@ export default function MultiRoomCheckoutForm({
   const [pointsToRedeem, setPointsToRedeem] = useState(0)
   const [pointsBalance, setPointsBalance] = useState<number | null>(null)
   const [couponCodeInput, setCouponCodeInput] = useState('')
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null)
+  const couponCtx = useCheckoutCouponState()
+  const [localAppliedCoupon, setLocalAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null)
+  const [localCouponAppliedKey, setLocalCouponAppliedKey] = useState(0)
+  const appliedCoupon = couponCtx?.appliedCoupon ?? localAppliedCoupon
+  const setAppliedCoupon = couponCtx?.setAppliedCoupon ?? setLocalAppliedCoupon
+  const couponAppliedKey = couponCtx?.couponAppliedKey ?? localCouponAppliedKey
+  const bumpCouponAppliedKey = couponCtx
+    ? couponCtx.bumpAppliedKey
+    : () => setLocalCouponAppliedKey((k) => k + 1)
   const [couponBusy, setCouponBusy] = useState(false)
   const [couponError, setCouponError] = useState<string | null>(null)
+  const applyButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     try {
@@ -181,6 +201,20 @@ export default function MultiRoomCheckoutForm({
     4: '4-share',
   }
 
+  // Pre-fill the coupon input when arriving from the offers page, but DO NOT auto-apply.
+  // The user must click "Apply" to trigger validation + the celebration animation.
+  useEffect(() => {
+    if (!initialCouponCode) return
+    if (!payload) return
+    if (appliedCoupon) return
+    const normalized = initialCouponCode.trim().toUpperCase()
+    if (!normalized) return
+    if (couponCodeInput.trim().toUpperCase() !== normalized) {
+      setCouponCodeInput(normalized)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCouponCode, payload])
+
   if (!payload) {
     return (
       <div className="mt-8 rounded-[2rem] border border-amber-300/60 bg-amber-50/80 p-6 text-center dark:border-amber-700/40 dark:bg-amber-950/20">
@@ -197,6 +231,7 @@ export default function MultiRoomCheckoutForm({
   }
 
   const { checkIn, checkOut, nights, roomTypeName, roomLines, totalAmount, marketTotal } = payload
+  const effectiveTotalAmount = Math.max(0, totalAmount - (appliedCoupon?.discountAmount ?? 0))
 
   function handleGuestNameChange(value: string) {
     setGuestName(value)
@@ -256,8 +291,8 @@ export default function MultiRoomCheckoutForm({
     }
   }
 
-  async function handleApplyCoupon() {
-    const code = couponCodeInput.trim().toUpperCase()
+  async function applyCouponByCode(codeRaw: string) {
+    const code = codeRaw.trim().toUpperCase()
     if (!code) {
       setCouponError('Enter a coupon code')
       return
@@ -276,18 +311,37 @@ export default function MultiRoomCheckoutForm({
         pointsToRedeem: 0,
       })
       if (!result.valid) {
+        if (result.reason === 'COUPON_LOGIN_REQUIRED') {
+          setAppliedCoupon({ code: result.code ?? code, discountAmount: result.discountAmount ?? 0 })
+          setCouponCodeInput(result.code ?? code)
+          bumpCouponAppliedKey()
+          await new Promise((resolve) => setTimeout(resolve, 1400))
+          toast.info('This discount is only for logged-in customers. Redirecting to login/signup...')
+          const redirect = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : `/book/${slug}/checkout`
+          const existing = await checkGuestAccountExists(guestPhone)
+          const nextAuthPath = existing === false ? '/guest/signup' : '/login'
+          setTimeout(() => {
+            router.push(`${nextAuthPath}?redirect=${encodeURIComponent(redirect)}`)
+          }, 900)
+          return
+        }
         setCouponError(result.message ?? 'Coupon could not be applied')
         setAppliedCoupon(null)
         return
       }
       setAppliedCoupon({ code: result.code ?? code, discountAmount: result.discountAmount ?? 0 })
       setCouponCodeInput(result.code ?? code)
+      bumpCouponAppliedKey()
     } catch (err) {
       setCouponError(err instanceof Error ? err.message : 'Coupon validation failed')
       setAppliedCoupon(null)
     } finally {
       setCouponBusy(false)
     }
+  }
+
+  async function handleApplyCoupon() {
+    await applyCouponByCode(couponCodeInput)
   }
 
   function pushConfirmation(bookingReference: string) {
@@ -303,7 +357,7 @@ export default function MultiRoomCheckoutForm({
         checkIn,
         checkOut,
         roomTypeName,
-        totalAmount: String(totalAmount),
+        totalAmount: String(effectiveTotalAmount),
         bookingReference,
       })
     )
@@ -450,11 +504,12 @@ export default function MultiRoomCheckoutForm({
                 icon={<ShieldCheck className="h-4.5 w-4.5" />}
                 label="Total"
                 value={
-                  <PriceWithMarketRate
-                    amount={Number(totalAmount)}
+                  <BookingTotalDisplay
+                    totalAmount={totalAmount}
                     marketAmount={marketTotal}
-                    size="default"
-                    showTaxBreakup={false}
+                    couponDiscount={appliedCoupon?.discountAmount ?? 0}
+                    couponCode={appliedCoupon?.code ?? null}
+                    appliedKey={couponAppliedKey}
                   />
                 }
               />
@@ -597,7 +652,7 @@ export default function MultiRoomCheckoutForm({
                   <>
                     Complete payment online for{' '}
                     <PriceWithMarketRate
-                      amount={Number(totalAmount)}
+                      amount={effectiveTotalAmount}
                       marketAmount={marketTotal}
                       size="sm"
                       showTaxBreakup={false}
@@ -654,6 +709,14 @@ export default function MultiRoomCheckoutForm({
               <label className="block text-sm font-medium text-foreground" htmlFor="mrCouponCode">
                 Offer code
               </label>
+              {!appliedCoupon &&
+                initialCouponCode &&
+                couponCodeInput.trim().toUpperCase() ===
+                  initialCouponCode.trim().toUpperCase() && (
+                  <p className="mt-1 text-xs font-medium text-primary">
+                    Code ready — click Apply to unlock your discount.
+                  </p>
+                )}
               <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                 <input
                   id="mrCouponCode"
@@ -667,32 +730,81 @@ export default function MultiRoomCheckoutForm({
                   className="h-12 w-full rounded-[1rem] border border-border/70 bg-background/70 px-4 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/50"
                   placeholder="Enter coupon"
                 />
-                <button
+                <motion.button
+                  ref={applyButtonRef}
                   type="button"
                   onClick={handleApplyCoupon}
-                  disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim()}
-                  className="inline-flex h-12 items-center justify-center rounded-[1rem] bg-primary px-5 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim() || Boolean(appliedCoupon)}
+                  whileTap={
+                    !appliedCoupon && !couponBusy && couponCodeInput.trim() && pointsToRedeem === 0
+                      ? { scale: 0.96 }
+                      : undefined
+                  }
+                  className={`relative inline-flex h-12 min-w-[120px] items-center justify-center overflow-hidden rounded-[1rem] px-5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                    appliedCoupon
+                      ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-8px_rgba(16,185,129,0.55)] dark:bg-emerald-400 dark:text-emerald-950'
+                      : 'bg-primary text-primary-foreground'
+                  }`}
                 >
-                  {couponBusy ? 'Applying…' : 'Apply'}
-                </button>
+                  {couponBusy && (
+                    <motion.span
+                      aria-hidden
+                      initial={{ x: '-130%' }}
+                      animate={{ x: '160%' }}
+                      transition={{ duration: 1.1, ease: 'linear', repeat: Infinity }}
+                      className="pointer-events-none absolute inset-0 -skew-x-12 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.42),transparent)]"
+                    />
+                  )}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {couponBusy ? (
+                      <motion.span
+                        key="busy"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.18 }}
+                        className="relative inline-flex items-center gap-2"
+                      >
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Applying…
+                      </motion.span>
+                    ) : appliedCoupon ? (
+                      <motion.span
+                        key="applied"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative inline-flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Applied
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="apply"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.18 }}
+                        className="relative"
+                      >
+                        Apply
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
               </div>
-              {appliedCoupon && (
-                <div className="mt-2 flex items-center justify-between text-sm text-emerald-600">
-                  <span>
-                    Applied {appliedCoupon.code} - saved ₹{Math.round(appliedCoupon.discountAmount)}
-                  </span>
-                  <button
-                    type="button"
-                    className="font-medium text-foreground hover:underline"
-                    onClick={() => {
-                      setAppliedCoupon(null)
-                      setCouponError(null)
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
+              <CouponCelebration
+                applied={appliedCoupon}
+                appliedKey={couponAppliedKey}
+                originalAmount={totalAmount}
+                originRef={applyButtonRef}
+                onRemove={() => {
+                  setAppliedCoupon(null)
+                  setCouponError(null)
+                }}
+              />
               {couponError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{couponError}</p>}
               {pointsToRedeem > 0 && (
                 <p className="mt-2 text-xs text-muted-foreground">
