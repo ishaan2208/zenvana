@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { RestaurantTestimonials } from '@/components/RestaurantTestimonials'
 import { RestaurantStats } from '@/components/RestaurantStats'
+import { EventBookingForm } from '@/components/EventBookingForm'
 
 export const revalidate = 86400
 
@@ -374,31 +375,31 @@ export default function RestaurantPage() {
         </div>
       </section>
 
-      {/* SECTION 8 — RESERVATION / BOOK TABLE */}
+      {/* SECTION 8 — EVENT ENQUIRY / BOOK EVENT */}
       <section className="section-rule bg-muted/10">
         <div className="container-shell py-14 sm:py-16 lg:py-20">
           <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
             <div className="lg:col-span-5">
-              <div className="eyebrow">Reservations</div>
+              <div className="eyebrow">Events</div>
               <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-                Reserve a table
+                Book an event
               </h2>
               <p className="body-copy mt-5">
-                Share a few details and we&apos;ll confirm availability and preferred seating.
+                Share your event details and we&apos;ll help you plan the perfect celebration.
               </p>
 
               <div className="mt-7 grid gap-3 text-sm leading-7 text-muted-foreground">
                 <div className="flex items-start gap-3">
                   <Award className="mt-1 h-4 w-4 text-primary" />
-                  <span>Private dining requests</span>
+                  <span>Birthday and anniversary events</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <Award className="mt-1 h-4 w-4 text-primary" />
-                  <span>Rooftop seating availability</span>
+                  <span>Corporate and group gatherings</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <Award className="mt-1 h-4 w-4 text-primary" />
-                  <span>Celebration add-ons</span>
+                  <span>Custom decor and catering options</span>
                 </div>
               </div>
             </div>
@@ -406,80 +407,12 @@ export default function RestaurantPage() {
             <div className="quiet-card lg:col-span-7 p-6 sm:p-7">
               <div className="eyebrow">Book</div>
               <h3 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
-                Table booking form
+                Event booking form
               </h3>
               <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                Placeholder form layout inspired by premium restaurant sites.
+                Share your requirements and our team will connect with availability and pricing.
               </p>
-
-              <form className="mt-6 grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Name
-                  </span>
-                  <input
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="Your name"
-                  />
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Email
-                  </span>
-                  <input
-                    type="email"
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="you@example.com"
-                  />
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Phone
-                  </span>
-                  <input
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="+91 00000 00000"
-                  />
-                </label>
-
-                <label className="grid gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Date
-                  </span>
-                  <input
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="Select date"
-                  />
-                </label>
-
-                <label className="grid gap-2 sm:col-span-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Number of Guests
-                  </span>
-                  <input
-                    className="h-12 rounded-2xl border border-border/70 bg-background px-4 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="2"
-                  />
-                </label>
-
-                <label className="grid gap-2 sm:col-span-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-foreground/70">
-                    Message
-                  </span>
-                  <textarea
-                    className="min-h-[140px] resize-none rounded-2xl border border-border/70 bg-background px-4 py-3 text-sm text-foreground shadow-sm outline-none transition focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-                    placeholder="Any preferences?"
-                  />
-                </label>
-
-                <div className="sm:col-span-2 pt-2">
-                  <button type="button" className="site-button-dark w-full sm:w-auto">
-                    Reserve Table
-                  </button>
-                </div>
-              </form>
+              <EventBookingForm />
             </div>
           </div>
         </div>
