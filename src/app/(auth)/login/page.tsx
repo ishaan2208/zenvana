@@ -35,7 +35,7 @@ export default function GuestLoginPage() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [resendIn, setResendIn] = useState(0)
-  const redirectTo = searchParams.get('redirect') || '/account'
+  const redirectTo = searchParams?.get('redirect') || '/account'
 
   useEffect(() => {
     if (resendIn <= 0) return
