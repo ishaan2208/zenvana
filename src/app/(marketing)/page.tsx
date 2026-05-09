@@ -548,11 +548,11 @@ function StayDirectSection() {
   ]
 
   return (
-    <section className="section-rule">
+    <section className="section-rule p-4">
       <div className="container-shell section-pad">
         <div className="overflow-hidden rounded-[2rem] bg-ink-gradient text-white">
-          <div className="grid gap-0 lg:grid-cols-12">
-            <div className="px-6 pt-10 sm:px-10 sm:pt-14 lg:col-span-5 lg:px-12 lg:pt-16">
+          <div className="grid gap-0 lg:grid-cols-12 lg:items-stretch">
+            <div className="border-b border-white/10 px-5 py-10 sm:px-8 sm:py-12 lg:col-span-5 lg:flex lg:flex-col lg:justify-center lg:border-b-0 lg:px-10 lg:py-16 xl:px-12">
               <span className="stay-direct-pill">
                 <Sparkles className="h-3 w-3" />
                 Stay direct
@@ -583,11 +583,11 @@ function StayDirectSection() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-px bg-white/10 sm:grid-cols-2 lg:col-span-7">
+            <div className="grid min-h-0 grid-cols-1 gap-px bg-white/10 sm:grid-cols-2 lg:col-span-7 lg:self-stretch">
               {benefits.map(({ icon: Icon, title, text }) => (
                 <div
                   key={title}
-                  className="bg-ink-800/85 p-6 sm:p-7 lg:p-8"
+                  className="bg-ink-800/85 p-6 sm:p-7 lg:flex lg:items-center lg:p-8"
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-300/15 text-gold-200">
