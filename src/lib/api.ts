@@ -99,6 +99,40 @@ export async function getPublicPropertyBySlug(
   }
 }
 
+/**
+ * Public bookings count for a given user/owner. Used by the homepage trust
+ * strip to render a live scoreboard-style number.
+ *
+ * Backend endpoint contract (adjust if your backend exposes a different path):
+ *   GET /api/v1/public/stats/bookings?userId=1
+ *   → { count: number } | { bookingCount: number } | { data: { count: number } }
+ *
+ * Returns null on any failure so the UI can fall back to a static label.
+ */
+export async function getPublicBookingsCount(
+  userId: number,
+  options: { revalidate?: number } = {},
+): Promise<number | null> {
+  try {
+    const url = `${BACKEND_URL}/public/stats/bookings?userId=${encodeURIComponent(userId)}`
+    const res = await fetch(url, {
+      next: { revalidate: options.revalidate ?? 60 },
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    const pick = (v: unknown) =>
+      typeof v === 'number' && Number.isFinite(v) ? v : null
+    const candidate =
+      pick(json?.count) ??
+      pick(json?.bookingCount) ??
+      pick(json?.data?.count) ??
+      pick(json?.data?.bookingCount)
+    return candidate
+  } catch {
+    return null
+  }
+}
+
 export async function getPublicDestinations(): Promise<
   Array<{ city: string; propertyCount: number }>
 > {
