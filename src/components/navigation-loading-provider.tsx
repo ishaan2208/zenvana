@@ -52,7 +52,7 @@ function shouldIgnoreAnchor(a: HTMLAnchorElement): boolean {
 function NavigationLoadingInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const queryKey = searchParams.toString()
+  const queryKey = searchParams?.toString() ?? ''
   const [isNavigating, setIsNavigating] = useState(false)
 
   const startNavigation = useCallback(() => {
