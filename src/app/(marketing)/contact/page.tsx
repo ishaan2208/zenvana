@@ -5,16 +5,31 @@ import { Container } from '@/components/Container'
 import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
 import { getPublicPropertyBySlug } from '@/lib/api'
 import { Mail, MapPin, Phone } from 'lucide-react'
+import { JsonLd } from '@/components/JsonLd'
+import { breadcrumbJsonLd } from '@/lib/structured-data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export const revalidate = 86400
 
 export const metadata: Metadata = {
-  title: 'Contact',
-  description: 'Get in touch with Zenvana Hotels.',
+  title: 'Contact Zenvana Hotels · Reservations & Enquiries',
+  description:
+    'Reach the Zenvana Hotels team in Dehradun for reservations, weddings, corporate events, and dining enquiries. Direct booking always gets the best rate.',
   alternates: { canonical: '/contact' },
+  openGraph: {
+    title: 'Contact Zenvana Hotels · Reservations & Enquiries',
+    description: 'Reach the Zenvana Hotels team in Dehradun for reservations and enquiries.',
+    url: `${SITE_URL}/contact`,
+    type: 'website',
+  },
 }
 
 export default async function ContactPage() {
+  const breadcrumbs = [
+    { name: 'Home', url: SITE_URL },
+    { name: 'Contact', url: `${SITE_URL}/contact` },
+  ]
   const limewood = await getPublicPropertyBySlug('limewood')
   const directionsUrl =
     limewood?.latitude != null && limewood?.longitude != null
@@ -25,6 +40,7 @@ export default async function ContactPage() {
 
   return (
     <div className="section-rule bg-muted/5">
+      <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
       <Container className="py-16 sm:py-20 lg:py-24">
         {/* SECTION 1 — CONTACT TITLE */}
         <div className="mx-auto max-w-3xl text-center">

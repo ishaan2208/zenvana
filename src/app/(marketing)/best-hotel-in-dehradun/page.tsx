@@ -1,14 +1,32 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { JsonLd } from '@/components/JsonLd'
+import { articleJsonLd, breadcrumbJsonLd } from '@/lib/structured-data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export const revalidate = 86400
 
 export const metadata: Metadata = {
-  title: 'Best Hotel in Dehradun 2026 | Luxury & Budget Stays – Zenvana Group',
+  title: 'Best Hotel in Dehradun (2026) · Luxury, Budget & Family Stays',
   description:
-    'Looking for the best hotel in Dehradun? Discover luxury, budget & family-friendly stays by Zenvana Group. Book now for best deals.',
+    'A complete guide to the best hotels in Dehradun. Compare Zenvana boutique properties — Rosewood, Limewood, Silkwood, Monteverde, Serenwood — and book direct.',
+  keywords: [
+    'best hotel in Dehradun',
+    'luxury hotels Dehradun',
+    'budget hotels Dehradun',
+    'family hotels Dehradun',
+    'Zenvana hotels',
+    'Rajpur Road hotels',
+  ],
   alternates: { canonical: '/best-hotel-in-dehradun' },
+  openGraph: {
+    title: 'Best Hotel in Dehradun (2026) · Luxury, Budget & Family Stays',
+    description: 'A complete guide to the best hotels in Dehradun.',
+    url: `${SITE_URL}/best-hotel-in-dehradun`,
+    type: 'article',
+  },
 }
 
 type HotelBlock = {
@@ -114,8 +132,22 @@ const galleryImages = [
 ]
 
 export default function BestHotelInDehradunPage() {
+  const url = `${SITE_URL}/best-hotel-in-dehradun`
+  const breadcrumbs = [
+    { name: 'Home', url: SITE_URL },
+    { name: 'Best Hotel in Dehradun', url },
+  ]
+  const article = articleJsonLd({
+    title: 'Best Hotel in Dehradun (2026) · Luxury, Budget & Family Stays',
+    description:
+      'A complete guide to the best hotels in Dehradun. Compare Zenvana boutique properties — Rosewood, Limewood, Silkwood, Monteverde, Serenwood — and book direct.',
+    url,
+    image: `${SITE_URL}/images/dehradun/Rosewood.png`,
+    section: 'Hotel Guides',
+  })
   return (
     <article className="section-rule">
+      <JsonLd data={[breadcrumbJsonLd(breadcrumbs), article]} />
       <header className="brand-gradient">
         <div className="container-shell py-16 text-center sm:py-20 lg:py-24">
           <div className="mx-auto max-w-3xl">

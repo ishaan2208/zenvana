@@ -4,8 +4,9 @@ export const revalidate = 86400
 
 export const metadata = {
   title: 'Privacy Policy',
-  description: 'Privacy policy for Zenvana Hotels.',
+  description: 'How Zenvana Hotels collects, uses, and protects guest information.',
   alternates: { canonical: '/privacypolicy' },
+  robots: { index: true, follow: true },
 }
 
 export default function PrivacyPolicyPage() {

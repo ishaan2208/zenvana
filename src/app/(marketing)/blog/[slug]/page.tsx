@@ -4,6 +4,10 @@ import { notFound } from 'next/navigation'
 
 import { Container } from '@/components/Container'
 import { blogPosts, getBlogPostBySlug, isBlogSlugIndexable } from '@/lib/blogPosts'
+import { JsonLd } from '@/components/JsonLd'
+import { articleJsonLd, breadcrumbJsonLd } from '@/lib/structured-data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 type BlogPostPageProps = {
   params: {
@@ -59,8 +63,22 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
   const post = getBlogPostBySlug(params.slug)
   if (!post || post.href) notFound()
 
+  const url = `${SITE_URL}/blog/${params.slug}`
+  const breadcrumbs = [
+    { name: 'Home', url: SITE_URL },
+    { name: 'Journal', url: `${SITE_URL}/blog` },
+    { name: post.title, url },
+  ]
+  const article = articleJsonLd({
+    title: post.title,
+    description: post.excerpt,
+    url,
+    section: 'Travel',
+  })
+
   return (
     <article className="section-rule">
+      <JsonLd data={[breadcrumbJsonLd(breadcrumbs), article]} />
       <Container className="py-16 sm:py-20 lg:py-24">
         <div className="max-w-3xl">
           <div className="eyebrow">Blog Post</div>

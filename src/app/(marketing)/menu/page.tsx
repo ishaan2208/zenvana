@@ -3,9 +3,10 @@ import type { Metadata } from 'next'
 import { MenuSection } from '@/components/MenuSection'
 
 export const metadata: Metadata = {
-  title: 'Menu | Zenvana Hotels - Rajpur Road Dehradun',
+  title: 'Restaurant Menu · Zenvana Hotels, Rajpur Road Dehradun',
   description:
-    'Explore our full restaurant menu at Zenvana Hotels, Rajpur Road Dehradun. Freshly prepared dishes, beverages, and signature mains.',
+    'Full menu at Feasta by Zenvana — North Indian, continental, Chinese, beverages, and desserts. Fresh, seasonal, and made for slow evenings on Rajpur Road.',
+  alternates: { canonical: '/menu' },
 }
 
 const menuData = {

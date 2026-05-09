@@ -3,8 +3,10 @@ import Image from 'next/image'
 import {
   ArrowRight,
   BadgeCheck,
+  CalendarCheck,
   MapPin,
   Mountain,
+  Phone,
   Sparkles,
   Tag,
   Trees,
@@ -23,14 +25,31 @@ import { HotelListingPlanPrice } from '@/components/HotelListingPlanPrice'
 import { Card, CardContent } from '@/components/ui/Card'
 import { addDaysYmd, kolkataYmd } from '@/lib/kolkata-calendar'
 import { pickHeroAndGallery } from '@/lib/media'
+import { JsonLd } from '@/components/JsonLd'
+import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/structured-data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export const revalidate = 3600
 
 export const metadata = {
-  title: 'All Hotels',
+  title: 'All Hotels in Dehradun · Zenvana Collection',
   description:
-    'Explore the Zenvana collection of luxury hotels in Dehradun.',
+    'Browse every Zenvana boutique hotel on Rajpur Road, Dehradun — Rosewood, Silkwood, Monte Verde, Silverwood and Cherrywood. Compare rooms, see real photos, and book direct.',
+  keywords: [
+    'hotels in Dehradun',
+    'best hotel in Dehradun',
+    'Zenvana hotels',
+    'Rajpur Road hotels',
+    'boutique hotel Dehradun',
+  ],
   alternates: { canonical: '/hotels' },
+  openGraph: {
+    title: 'All Hotels in Dehradun · Zenvana Collection',
+    description: 'Browse every Zenvana boutique hotel on Rajpur Road, Dehradun.',
+    url: `${SITE_URL}/hotels`,
+    type: 'website',
+  },
 }
 
 const highlights = [
@@ -133,8 +152,25 @@ export default async function HotelsPage({ searchParams }: Props) {
       return a.publicName.localeCompare(b.publicName)
     })
 
+  const breadcrumbs = [
+    { name: 'Home', url: SITE_URL },
+    { name: 'Hotels', url: `${SITE_URL}/hotels` },
+  ]
+
+  const itemListData = itemListJsonLd({
+    name: 'Zenvana Hotels Collection',
+    url: `${SITE_URL}/hotels`,
+    items: propertiesForGrid.map((p) => ({
+      name: p.publicName,
+      url: `${SITE_URL}/hotels/${p.slug}`,
+      image: p.heroImageUrl,
+      description: p.shortDescription ?? undefined,
+    })),
+  })
+
   return (
-    <main className="bg-background text-foreground">
+    <main className="mobile-cta-pad bg-background text-foreground">
+      <JsonLd data={[breadcrumbJsonLd(breadcrumbs), itemListData]} />
       {/* <HotelsHero />
       <HighlightsStrip /> */}
 
@@ -261,6 +297,22 @@ export default async function HotelsPage({ searchParams }: Props) {
           )}
         </Container>
       </section>
+
+      <div className="mobile-cta-bar lg:hidden">
+        <div className="mx-auto flex max-w-7xl items-center gap-2">
+          <a
+            href="tel:+919084051774"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-foreground transition hover:bg-muted"
+            aria-label="Call Zenvana Hotels"
+          >
+            <Phone className="h-4.5 w-4.5" />
+          </a>
+          <span className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-foreground text-sm font-medium text-background">
+            <CalendarCheck className="h-4 w-4" />
+            Tap a hotel above to check availability
+          </span>
+        </div>
+      </div>
     </main>
   )
 }

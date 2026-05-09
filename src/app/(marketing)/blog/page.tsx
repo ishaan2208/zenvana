@@ -4,16 +4,38 @@ import Link from 'next/link'
 
 import { Container } from '@/components/Container'
 import { blogPosts } from '@/lib/blogPosts'
+import { JsonLd } from '@/components/JsonLd'
+import { breadcrumbJsonLd } from '@/lib/structured-data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export const revalidate = 86400
 
 export const metadata: Metadata = {
-  title: 'Blog — Travel & Stay Guides for Dehradun',
-  description: 'Hotel guides, travel tips, and seasonal recommendations for Dehradun and Rajpur Road.',
+  title: 'Journal · Dehradun Travel & Hotel Guides',
+  description:
+    'Slow-paced guides to staying, eating, and exploring Dehradun, Rajpur Road, and the Mussoorie foothills. Written by the Zenvana team.',
+  keywords: [
+    'Dehradun travel guide',
+    'best hotel Dehradun',
+    'Rajpur Road guide',
+    'family hotels Dehradun',
+    'budget hotels Dehradun',
+  ],
   alternates: { canonical: '/blog' },
+  openGraph: {
+    title: 'Journal · Dehradun Travel & Hotel Guides',
+    description: 'Slow-paced guides to staying and exploring Dehradun.',
+    url: `${SITE_URL}/blog`,
+    type: 'website',
+  },
 }
 
 export default function BlogPage() {
+  const breadcrumbs = [
+    { name: 'Home', url: SITE_URL },
+    { name: 'Journal', url: `${SITE_URL}/blog` },
+  ]
   const featured = blogPosts[0]
   const rest = blogPosts.slice(1)
   const categories = ['Hotel Guides', 'Budget Stays', 'Luxury Stays', 'Family Travel', 'Travel Tips']
@@ -35,6 +57,7 @@ export default function BlogPage() {
 
   return (
     <div>
+      <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
       <section className="section-rule brand-gradient">
         <Container className="py-16 sm:py-20 lg:py-24">
           <div className="max-w-3xl">

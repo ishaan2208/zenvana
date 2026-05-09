@@ -15,13 +15,32 @@ import {
 import { RestaurantTestimonials } from '@/components/RestaurantTestimonials'
 import { RestaurantStats } from '@/components/RestaurantStats'
 import { EventBookingForm } from '@/components/EventBookingForm'
+import { JsonLd } from '@/components/JsonLd'
+import { breadcrumbJsonLd, restaurantJsonLd } from '@/lib/structured-data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export const revalidate = 86400
 
 export const metadata: Metadata = {
-  title: 'Restaurant',
-  description: 'Discover the restaurant experience at Zenvana.',
+  title: 'Rooftop Restaurant on Rajpur Road, Dehradun',
+  description:
+    'Feasta — the rooftop restaurant by Zenvana on Rajpur Road, Dehradun. Indian and continental cuisine, calm ambience, and skyline views. Open daily.',
+  keywords: [
+    'best restaurant in Dehradun',
+    'rooftop restaurant Dehradun',
+    'Rajpur Road restaurant',
+    'fine dining Dehradun',
+    'Feasta Dehradun',
+  ],
   alternates: { canonical: '/restaurant' },
+  openGraph: {
+    title: 'Rooftop Restaurant on Rajpur Road, Dehradun',
+    description: 'Indian and continental cuisine, calm ambience, and skyline views.',
+    url: `${SITE_URL}/restaurant`,
+    type: 'website',
+    images: [{ url: `${SITE_URL}/images/dehradun/feasta.png`, alt: 'Feasta rooftop restaurant Dehradun' }],
+  },
 }
 
 export default function RestaurantPage() {
@@ -100,8 +119,21 @@ export default function RestaurantPage() {
     '/images/dehradun/restaurantImage.png',
   ]
 
+  const breadcrumbs = [
+    { name: 'Home', url: SITE_URL },
+    { name: 'Restaurant', url: `${SITE_URL}/restaurant` },
+  ]
+
   return (
     <>
+      <JsonLd
+        data={[
+          breadcrumbJsonLd(breadcrumbs),
+          restaurantJsonLd({
+            image: `${SITE_URL}/images/dehradun/feasta.png`,
+          }),
+        ]}
+      />
       {/* SECTION 1 — RESTAURANT INTRODUCTION */}
       <section className="section-rule">
         <div className="container-shell py-14 sm:py-16 lg:py-20">
