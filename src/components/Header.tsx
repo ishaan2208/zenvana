@@ -76,7 +76,7 @@ function isActivePath(pathname: string, href: string) {
 }
 
 export function Header() {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? '/'
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [guest, setGuest] = useState<ZenvanaGuestMe | null>(null)
