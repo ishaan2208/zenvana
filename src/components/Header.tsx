@@ -21,6 +21,7 @@ import {
   Menu,
   MoonStar,
   NotebookPen,
+  PartyPopper,
   Phone,
   Sparkles,
   UserCircle2,
@@ -52,6 +53,7 @@ const nav: NavItem[] = [
   { href: '/', label: 'Home', icon: Home, blurb: 'Start here' },
   { href: '/hotels', label: 'Hotels', icon: Building2, blurb: 'Find your stay' },
   { href: '/restaurant', label: 'Restaurant', icon: UtensilsCrossed, blurb: 'Dining & café' },
+  { href: '/weddings', label: 'Weddings', icon: PartyPopper, blurb: 'Events & celebrations' },
   { href: '/blog', label: 'Blog', icon: NotebookPen, blurb: 'Stories & guides' },
   { href: '/contact', label: 'Contact', icon: Phone, blurb: 'Get in touch' },
   { href: '/about', label: 'About', icon: Info, blurb: 'Our philosophy' },
@@ -61,6 +63,7 @@ const nav: NavItem[] = [
 const desktopNav: { href: string; label: string }[] = [
   { href: '/hotels', label: 'Hotels' },
   { href: '/restaurant', label: 'Restaurant' },
+  { href: '/weddings', label: 'Weddings' },
   { href: '/offers', label: 'Offers' },
   { href: '/blog', label: 'Blog' },
   { href: '/about', label: 'About' },

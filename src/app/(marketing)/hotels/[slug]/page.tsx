@@ -98,8 +98,12 @@ export default async function PropertyPage({ params, searchParams }: Props) {
   const { slug } = await params
   const q = await searchParams
   const couponCode = q.couponCode?.trim().toUpperCase() ?? ''
-  const property = await getPublicPropertyBySlug(slug)
+  const [property, allProperties] = await Promise.all([
+    getPublicPropertyBySlug(slug),
+    getPublicProperties().catch(() => []),
+  ])
   if (!property) notFound()
+  const otherProperties = allProperties.filter((p) => p.slug !== slug).slice(0, 4)
 
   const galleryData = pickHeroAndGallery(property.images)
   const heroUrl = galleryData.heroUrl
@@ -212,6 +216,13 @@ export default async function PropertyPage({ params, searchParams }: Props) {
             </aside>
           </div>
         </Container>
+
+        {otherProperties.length > 0 && (
+          <CompareOtherProperties
+            currentName={property.publicName}
+            others={otherProperties}
+          />
+        )}
 
         <section className="border-t border-border/60 bg-background">
           <Container className="py-8">
@@ -931,5 +942,94 @@ function PropertyMobileBookingBar({
         </Button>
       </div>
     </div>
+  )
+}
+
+function CompareOtherProperties({
+  currentName,
+  others,
+}: {
+  currentName: string
+  others: Array<{
+    slug: string
+    publicName: string
+    heroImageUrl?: string | null
+    city?: string | null
+    state?: string | null
+    shortDescription?: string | null
+  }>
+}) {
+  return (
+    <section className="border-t border-border/60 bg-card/30">
+      <Container className="py-12 sm:py-16 lg:py-20">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
+            <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+              Same road, different mood
+            </div>
+            <h2 className="mt-3 font-serif text-3xl leading-[0.96] tracking-[-0.04em] text-foreground sm:text-4xl">
+              Compare {currentName} with the rest of the collection.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
+              Five hotels on the same Rajpur Road. Each with its own character — pick the
+              one that matches the mood of your trip.
+            </p>
+          </div>
+          <Link
+            href="/hotels"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-border/70 bg-background px-5 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+          >
+            See all hotels
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="mt-8 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+          {others.map((p) => {
+            const location = [p.city, p.state].filter(Boolean).join(', ')
+            return (
+              <Link
+                key={p.slug}
+                href={`/hotels/${p.slug}`}
+                className="group min-w-[260px] max-w-[320px] flex-1 snap-start overflow-hidden rounded-[1.5rem] border border-border/60 bg-card/80 transition duration-500 ease-out hover:-translate-y-0.5 hover:shadow-editorial sm:min-w-0 sm:max-w-none dark:bg-card/60"
+              >
+                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                  {p.heroImageUrl ? (
+                    <Image
+                      src={p.heroImageUrl}
+                      alt={`${p.publicName} by Zenvana`}
+                      fill
+                      sizes="(max-width: 640px) 80vw, (max-width: 1024px) 40vw, 25vw"
+                      className="object-cover transition duration-700 group-hover:scale-[1.04]"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_60%,rgba(0,0,0,0.45)_100%)]" />
+                </div>
+                <div className="p-4 sm:p-5">
+                  <div className="font-serif text-xl tracking-[-0.02em] text-foreground sm:text-2xl">
+                    {p.publicName}
+                  </div>
+                  {location && (
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      {location}
+                    </div>
+                  )}
+                  {p.shortDescription && (
+                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                      {p.shortDescription}
+                    </p>
+                  )}
+                  <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition group-hover:translate-x-0.5">
+                    Explore
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </Container>
+    </section>
   )
 }

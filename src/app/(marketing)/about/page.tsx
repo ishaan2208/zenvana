@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 
 import { AboutSplit } from '@/components/AboutSplit'
 import { AboutStory } from '@/components/AboutStory'
+import { JsonLd } from '@/components/JsonLd'
+import { breadcrumbJsonLd } from '@/lib/structured-data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export const revalidate = 86400
 
@@ -20,8 +24,13 @@ export const metadata: Metadata = {
 }
 
 export default function AboutPage() {
+  const breadcrumbs = [
+    { name: 'Home', url: SITE_URL },
+    { name: 'About', url: `${SITE_URL}/about` },
+  ]
   return (
     <div className="bg-background text-foreground">
+      <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
       <AboutStory />
 
       <section className="section-rule">

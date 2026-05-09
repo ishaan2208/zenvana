@@ -7,8 +7,29 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
-        disallow: ['/api/', '/book/*/checkout', '/book/*/confirmation', '/booking/confirmation'],
+        allow: ['/'],
+        disallow: [
+          '/api/',
+          '/book/*/checkout',
+          '/book/*/confirmation',
+          '/booking/confirmation',
+          '/login',
+          '/register',
+          '/guest/signup',
+          '/account',
+          '/my-bookings',
+          '/*?couponCode=*',
+          '/*?utm_*',
+        ],
+      },
+      {
+        userAgent: 'GPTBot',
+        allow: ['/'],
+        disallow: ['/book/', '/booking/', '/account', '/my-bookings'],
+      },
+      {
+        userAgent: 'Google-Extended',
+        allow: ['/'],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

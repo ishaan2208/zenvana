@@ -1,0 +1,27 @@
+{
+  "name": "Zenvana Hotels",
+  "short_name": "Zenvana",
+  "description": "Boutique hotels on Rajpur Road, Dehradun. Calm, owner-operated stays in the foothills of Mussoorie.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#001F3F",
+  "theme_color": "#001F3F",
+  "lang": "en-IN",
+  "scope": "/",
+  "categories": ["travel", "hotels", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "64x64",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

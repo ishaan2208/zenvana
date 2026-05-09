@@ -49,6 +49,18 @@
 
     --radius: 1rem;
 
+    /* Tier accents (light) */
+    --tier-essential: 110 38% 48%;   /* mantis green — entry, fresh */
+    --tier-refined: 218 65% 38%;     /* sapphire — confident */
+    --tier-signature: 38 50% 56%;    /* gold — premium */
+
+    /* Editorial palette (light) */
+    --ink: 222 24% 6%;
+    --sand: 66 39% 95%;
+    --gold: 38 50% 56%;
+    --sapphire: 218 65% 38%;
+    --forest: 156 50% 25%;
+
     /* react-day-picker (shadcn-style) – light */
     --rdp-accent-color: hsl(var(--primary));
     --rdp-background-color: hsl(var(--accent) / 0.2);
@@ -94,6 +106,18 @@
     --border: 220 14% 18%;
     --input: 220 14% 18%;
     --ring: 64 76% 60%;
+
+    /* Tier accents (dark) — same hues, brighter values for legibility on ink */
+    --tier-essential: 110 44% 58%;
+    --tier-refined: 218 65% 56%;
+    --tier-signature: 38 60% 64%;
+
+    /* Editorial palette (dark) */
+    --ink: 222 24% 6%;
+    --sand: 60 20% 96%;
+    --gold: 38 60% 64%;
+    --sapphire: 218 65% 56%;
+    --forest: 110 44% 58%;
 
     /* react-day-picker – dark theme (hover bg dark so light text stays visible) */
     --rdp-accent-color: hsl(var(--primary));
@@ -246,5 +270,111 @@
       hsl(var(--midnight-mirage)) 50%,
       hsl(var(--book-green)) 100%
     );
+  }
+
+  /* ── Editorial typography ─────────────────────────────── */
+  .editorial-display {
+    @apply font-serif tracking-[-0.045em];
+    font-feature-settings: "ss01" 1, "ss02" 1, "calt" 1, "kern" 1;
+    font-optical-sizing: auto;
+  }
+
+  .editorial-eyebrow {
+    @apply text-[10px] font-medium uppercase tracking-[0.32em] text-foreground/60;
+  }
+
+  .gold-text {
+    background: linear-gradient(135deg, #E8D693 0%, #C8A85A 50%, #8C6E2B 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .underline-gold {
+    background-image: linear-gradient(to right, hsl(var(--gold)), hsl(var(--gold)));
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 100% 1px;
+    padding-bottom: 2px;
+  }
+
+  /* ── Tier badges (Essential / Refined / Signature) ───── */
+  .tier-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em];
+  }
+  .tier-pill-essential {
+    border-color: hsl(var(--tier-essential) / 0.4);
+    background-color: hsl(var(--tier-essential) / 0.12);
+    color: hsl(var(--tier-essential));
+  }
+  .tier-pill-refined {
+    border-color: hsl(var(--tier-refined) / 0.4);
+    background-color: hsl(var(--tier-refined) / 0.14);
+    color: hsl(var(--tier-refined));
+  }
+  .tier-pill-signature {
+    border-color: hsl(var(--tier-signature) / 0.5);
+    background-color: hsl(var(--tier-signature) / 0.16);
+    color: hsl(var(--tier-signature));
+  }
+
+  /* ── Mobile-first sticky booking CTA ──────────────────── */
+  .mobile-cta-bar {
+    @apply fixed inset-x-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-xl;
+    bottom: 0;
+    padding: 10px max(env(safe-area-inset-left), 12px) calc(10px + env(safe-area-inset-bottom)) max(env(safe-area-inset-right), 12px);
+    box-shadow: 0 -10px 30px -12px rgba(8, 17, 31, 0.35);
+  }
+
+  .mobile-cta-pad {
+    /* Body padding on mobile so the sticky bar never covers content */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+  @screen lg {
+    .mobile-cta-pad {
+      padding-bottom: 0;
+    }
+  }
+
+  /* ── Trust strip (review / press logos rail) ──────────── */
+  .trust-rail {
+    @apply flex items-center gap-8 whitespace-nowrap;
+    animation: marquee 32s linear infinite;
+  }
+  .trust-rail:hover { animation-play-state: paused; }
+
+  /* ── Mobile-friendly section padding ──────────────────── */
+  .section-pad {
+    @apply py-12 sm:py-16 lg:py-20;
+  }
+  .section-pad-lg {
+    @apply py-16 sm:py-20 lg:py-28;
+  }
+
+  /* ── Editorial photo ratio used across cards ──────────── */
+  .photo-card {
+    @apply relative overflow-hidden rounded-[1.75rem] bg-muted shadow-editorial;
+  }
+
+  /* ── Stay-Direct badge (used on offers / hero) ────────── */
+  .stay-direct-pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-gold-300/40 bg-gold-50/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.22em];
+    color: hsl(var(--gold));
+  }
+
+  /* ── Gold rule (thin section divider) ─────────────────── */
+  .rule-gold {
+    @apply mx-auto h-px w-12 origin-center;
+    background: linear-gradient(to right, transparent, hsl(var(--gold)), transparent);
+  }
+}
+
+/* Reduced motion: kill marquee + heavy entrance animations */
+@media (prefers-reduced-motion: reduce) {
+  .trust-rail { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }

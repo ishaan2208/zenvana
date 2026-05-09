@@ -5,13 +5,24 @@ import { getPublicOffers } from '@/lib/api'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, CheckCircle2, Sparkles } from 'lucide-react'
+import { JsonLd } from '@/components/JsonLd'
+import { breadcrumbJsonLd } from '@/lib/structured-data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Offers',
-  description: 'Special offers and packages at Zenvana Hotels. Book direct for the best rates.',
+  title: 'Offers · Direct-Booking Value at Zenvana Hotels Dehradun',
+  description:
+    'Live offers and packages for Zenvana Hotels in Dehradun. Booking direct always beats OTA pricing — see this month\'s coupons and seasonal stays.',
   alternates: { canonical: '/offers' },
+  openGraph: {
+    title: 'Offers · Direct-Booking Value at Zenvana Hotels',
+    description: 'Live offers and packages for Zenvana Hotels in Dehradun.',
+    url: `${SITE_URL}/offers`,
+    type: 'website',
+  },
 }
 
 export default async function OffersPage() {
@@ -42,8 +53,14 @@ export default async function OffersPage() {
     ],
   }))
 
+  const breadcrumbs = [
+    { name: 'Home', url: SITE_URL },
+    { name: 'Offers', url: `${SITE_URL}/offers` },
+  ]
+
   return (
     <div className="section-rule bg-muted/5">
+      <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
       <Container className="py-16 sm:py-20 lg:py-24">
         {/* SECTION 1 — PAGE INTRO */}
         <div className="mx-auto max-w-3xl text-center">

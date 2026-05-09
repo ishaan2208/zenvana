@@ -2,100 +2,244 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  BriefcaseBusiness,
+  ArrowRight,
+  BadgeCheck,
+  CalendarCheck,
+  Clock,
+  Crown,
+  Gem,
+  Leaf,
   MapPin,
   MapPinned,
   PartyPopper,
+  Phone,
+  ShieldCheck,
+  Sparkles,
   Star,
   UtensilsCrossed,
+  Wallet,
 } from 'lucide-react'
 import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
-import { RoomsCarousel } from '@/components/RoomsCarousel'
 import type { PublicPropertyListItem } from '@/lib/api'
-import { getPublicProperties, getPublicPropertyBySlug } from '@/lib/api'
+import {
+  getPublicBookingsCount,
+  getPublicProperties,
+  getPublicPropertyBySlug,
+} from '@/lib/api'
 import { HeroBookBar } from './HeroBookBar'
+import { JsonLd } from '@/components/JsonLd'
+import { LiveBookingsCounter } from '@/components/LiveBookingsCounter'
+import { GuestVoicesSection } from '@/components/GuestVoicesSection'
+import { faqPageJsonLd, hotelGroupJsonLd } from '@/lib/structured-data'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export const revalidate = 3600
 
 export const metadata: Metadata = {
-  title: 'Zenvana Hotels | Dehradun stays, book direct',
+  title: 'Zenvana Hotels · Boutique stays on Rajpur Road, Dehradun',
   description:
-    'Discover boutique and family-friendly stays on Rajpur Road, Dehradun. Book direct with Zenvana for calmer stays, better value, and thoughtful hospitality.',
+    'A quietly considered collection of boutique hotels on Rajpur Road, Dehradun. Owner-operated, family-friendly, and built for calm. Book direct for the best rate.',
+  keywords: [
+    'best hotel in Dehradun',
+    'boutique hotel Dehradun',
+    'Rajpur Road hotels',
+    'hotels in Dehradun',
+    'family hotels Dehradun',
+    'hotels near Mussoorie',
+    'wedding venue Dehradun',
+    'rooftop restaurant Dehradun',
+    'Zenvana Hotels',
+  ],
   alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Zenvana Hotels · Boutique stays on Rajpur Road, Dehradun',
+    description:
+      'Owner-operated boutique hotels in Dehradun. Calm interiors, real hospitality, and direct-booking value.',
+    url: SITE_URL,
+    type: 'website',
+  },
 }
+
+const HOME_FAQS = [
+  {
+    question: 'Where exactly are Zenvana Hotels in Dehradun located?',
+    answer:
+      'All Zenvana properties are on or near Rajpur Road, Dehradun — about 15 minutes from the city centre and 35–45 minutes from Mussoorie. The exact address for each hotel is on its individual property page.',
+  },
+  {
+    question: 'How many properties are in the Zenvana collection?',
+    answer:
+      'Zenvana operates a small collection of boutique hotels — Rosewood, Silkwood, Monte Verde, Silverwood, and Cherrywood — each with its own character and price point, all on or near Rajpur Road.',
+  },
+  {
+    question: 'Why book direct on zenvanahotels.com instead of OTAs?',
+    answer:
+      'Direct bookings get our best public rate, faster confirmation, easier date changes, and direct coordination with the property team for early check-ins, room preferences, or airport transfers.',
+  },
+  {
+    question: 'Are Zenvana Hotels family-friendly?',
+    answer:
+      'Yes. Most of our rooms accept up to two adults and one child, and we have triple and connecting room options across the collection. Cribs, early breakfast, and quiet floors are arranged on request.',
+  },
+  {
+    question: 'Do you have a restaurant on site?',
+    answer:
+      'Yes — Feasta by Zenvana is our rooftop restaurant on Rajpur Road, open daily for breakfast, lunch, and dinner. The kitchen serves North Indian, continental, and Chinese options, and is open to non-residents.',
+  },
+  {
+    question: 'Can Zenvana host weddings or corporate events?',
+    answer:
+      'Yes. With multiple properties on the same road we can absorb 50+ rooms and host weddings, corporate offsites, and private celebrations as a single combined venue. Email us via the contact page for an event proposal.',
+  },
+  {
+    question: 'How far is Zenvana from Dehradun airport (DED) and ISBT?',
+    answer:
+      'Jolly Grant Airport (DED) is roughly 45 minutes by car and ISBT/Dehradun railway station is 20–25 minutes. We can arrange paid airport transfers on request when you book direct.',
+  },
+  {
+    question: 'What are check-in and check-out times?',
+    answer:
+      'Standard check-in is 1:00 PM and standard check-out is 11:00 AM. Early check-in or late check-out can usually be arranged subject to availability — easier to confirm if you book direct.',
+  },
+]
+
+/* ──────────────────────────────────────────────────────────────
+ * Property pyramid — Essential / Refined / Signature
+ * Mapping is editable; defaults reflect operator's intent.
+ * ────────────────────────────────────────────────────────────── */
+type Tier = 'essential' | 'refined' | 'signature'
+
+type PyramidEntry = {
+  name: string
+  slug: string
+  tier: Tier
+  imageSrc: string
+  intent: string
+}
+
+const PYRAMID_CONFIG: PyramidEntry[] = [
+  {
+    name: 'Rosewood',
+    slug: 'rosewood',
+    tier: 'essential',
+    imageSrc: '/images/dehradun/Rosewood.png',
+    intent: 'A clean, light-led entry stay — designed around the bed, the morning, and the road back into the city.',
+  },
+  {
+    name: 'Silkwood',
+    slug: 'silkwood',
+    tier: 'refined',
+    imageSrc: '/images/dehradun/silkwood .png',
+    intent: 'A few quiet steps up — softer materials, more space, and the kind of room that suits longer evenings.',
+  },
+  {
+    name: 'Cherrywood',
+    slug: 'cherrywood',
+    tier: 'refined',
+    imageSrc: '/images/dehradun/cherrwood building pic 1.png',
+    intent: 'A higher vantage point, calmer evenings, and a slower city to watch from above.',
+  },
+  {
+    name: 'Monte Verde',
+    slug: 'monteverde',
+    tier: 'signature',
+    imageSrc: '/images/dehradun/MonteVerde.png',
+    intent: 'Our most considered stay — generous proportions, soft lighting, and a rhythm built for unhurried days.',
+  },
+  {
+    name: 'Silverwood',
+    slug: 'silverwood',
+    tier: 'signature',
+    imageSrc: '/images/dehradun/SILVER W BUILDING PIC.png',
+    intent: 'Framed views of the foothills and a quieter pace — the room you choose when the trip itself is the point.',
+  },
+]
+
+const TIER_META: Record<
+  Tier,
+  { label: string; tagline: string; pillClass: string; ringClass: string; icon: typeof Leaf }
+> = {
+  essential: {
+    label: 'Essential',
+    tagline: 'Considered value, built around comfort.',
+    pillClass: 'tier-pill tier-pill-essential',
+    ringClass: 'ring-1 ring-tier-essential/30',
+    icon: Leaf,
+  },
+  refined: {
+    label: 'Refined',
+    tagline: 'A little more space, a little more quiet.',
+    pillClass: 'tier-pill tier-pill-refined',
+    ringClass: 'ring-1 ring-tier-refined/40',
+    icon: Gem,
+  },
+  signature: {
+    label: 'Signature',
+    tagline: 'Our most considered, slow-paced stays.',
+    pillClass: 'tier-pill tier-pill-signature',
+    ringClass: 'ring-1 ring-tier-signature/45',
+    icon: Crown,
+  },
+}
+
+function resolvePyramidHref(slug: string, properties: PublicPropertyListItem[]) {
+  const hit = properties.find((p) => p.slug === slug)
+  return hit ? `/hotels/${hit.slug}` : '/hotels'
+}
+
+const TRUST_OWNER_USER_ID = 1
+const BOOKINGS_ENDPOINT = `/api/public/bookings-count?userId=${TRUST_OWNER_USER_ID}`
 
 export default async function HomePage() {
   const properties = await getPublicProperties()
   const limewood = await getPublicPropertyBySlug('limewood')
+  const initialBookingsCount = await getPublicBookingsCount(TRUST_OWNER_USER_ID)
   const heroProperties = properties.map((p) => ({
     slug: p.slug,
     publicName: p.publicName,
   }))
+  const groupProperties = properties.map((p) => ({
+    slug: p.slug,
+    publicName: p.publicName,
+    heroImageUrl: p.heroImageUrl ?? undefined,
+  }))
 
   return (
-    <>
+    <div className="mobile-cta-pad">
+      <JsonLd
+        data={[
+          hotelGroupJsonLd(groupProperties),
+          faqPageJsonLd(HOME_FAQS),
+        ]}
+      />
+
       <HeroSection properties={heroProperties} />
-      <IntroTextSection />
-      <RoomsSection properties={properties} />
-      <SpecialOffersSection />
+      <TrustStripSection initialBookingsCount={initialBookingsCount} />
+      <WhyZenvanaSection />
+      <PropertyPyramidSection properties={properties} />
+      <StayDirectSection />
       <DiningSection />
-      <EventsSection />
+      <WeddingsTeaserSection />
       <GallerySection />
-      <TestimonialsSection />
+      <GuestVoicesSection />
+      <PressTrustStrip />
       <LocationSection
         latitude={limewood?.latitude}
         longitude={limewood?.longitude}
         mapPlaceUrl={limewood?.googleMapPlaceUrl}
       />
+      <HomeFaqSection />
       <BookingCtaSection />
-    </>
+
+      <MobileBookingCta />
+    </div>
   )
 }
 
-function IntroTextSection() {
-  return (
-    <section className="section-rule bg-background">
-      <div className="container-shell py-10 sm:py-14 lg:py-16">
-        <div className="mx-auto max-w-4xl text-center text-foreground">
-          <h1 className="font-serif text-2xl font-semibold tracking-[-0.03em] sm:text-3xl lg:text-4xl">
-            Best Hotel in Dehradun | Zenvana Hotels Rajpur Road Dehradun
-          </h1>
-          <h3 className="mt-2 font-serif text-xl tracking-[-0.02em] text-muted-foreground sm:text-2xl">
-            A Serene Luxury Hotel near Rajpur Road, Dehradun
-          </h3>
-          <div className="mt-3 mx-auto h-px w-16 bg-muted-foreground/40" />
-          <div className="mt-6 space-y-4 text-sm leading-7 text-muted-foreground sm:text-base">
-            <p>
-              In{' '}
-              <a
-                href="https://en.wikipedia.org/wiki/Dehradun"
-                target="_blank"
-                rel="noreferrer"
-                className="underline-offset-4 hover:underline"
-              >
-                Dehradun
-              </a>
-              , mornings start slow with fresh air, soft light, and the hills in the distance. At
-              Zenvana Hotels, we try to keep that same calm feeling inside the hotel, so your stay
-              feels simple, relaxed, and easy.
-            </p>
-            <p>
-              We sit between the energy of Rajpur Road and the quiet of the Mussoorie foothills,
-              giving you the best of both worlds. Step out for cafés, shopping, and city life, then
-              come back to warm service, clean rooms, and a peaceful place to unwind.
-            </p>
-            <p>
-              Whether you&apos;re here for a corporate event, a short staycation, or a longer
-              getaway, every moment at our Dehradun hotel is shaped to feel unhurried, attentive,
-              and quietly luxurious.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
+/* ──────────────────────────────────────────────────────────────
+ * HERO
+ * ────────────────────────────────────────────────────────────── */
 function HeroSection({
   properties,
 }: {
@@ -109,29 +253,35 @@ function HeroSection({
           alt="Dehradun foothills and Rajpur Road atmosphere at golden hour"
           fill
           priority
+          sizes="100vw"
           className="object-cover"
         />
-        <div className="hero-overlay absolute inset-0" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.22] mix-blend-soft-light">
-          <div className="h-full w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.16),_transparent_60%),repeating-linear-gradient(135deg,_rgba(255,255,255,0.09),_rgba(255,255,255,0.09)_1px,_transparent_1px,_transparent_10px)]" />
+        <div className="absolute inset-0 bg-hero-shade" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.18] mix-blend-soft-light">
+          <div className="h-full w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.16),_transparent_60%),repeating-linear-gradient(135deg,_rgba(255,255,255,0.06),_rgba(255,255,255,0.06)_1px,_transparent_1px,_transparent_10px)]" />
         </div>
       </div>
 
-      <div className="container-shell relative flex min-h-[92svh] flex-col items-center justify-center pb-10 pt-32 sm:pb-12 lg:pb-24">
-        <div className="relative z-10 max-w-4xl mx-auto text-center text-white">
-          <div className="relative space-y-5 sm:space-y-6 lg:space-y-7">
-            <h1 className="max-w-3xl font-serif text-3xl font-semibold leading-tight tracking-[-0.05em] sm:text-4xl lg:text-5xl">
-              Discover the Best Hotels in Dehradun with Zenvana
+      <div className="container-shell relative flex min-h-[92svh] flex-col items-center justify-end pb-10 pt-32 sm:items-center sm:justify-center sm:pb-12 lg:pb-24">
+        <div className="relative z-10 mx-auto max-w-4xl text-center text-white animate-fade-up">
+          <div className="space-y-5 sm:space-y-6 lg:space-y-7">
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.28em] text-white/82 backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5 text-gold-200" />
+              Boutique stays · Rajpur Road, Dehradun
+            </div>
+
+            <h1 className="editorial-display max-w-3xl text-[clamp(2.25rem,7vw,5.25rem)] font-semibold leading-[0.94] text-white">
+              A quieter way to stay in <span className="gold-text">Dehradun</span>.
             </h1>
 
-            <p className="max-w-xl mx-auto text-sm leading-7 text-white/85 sm:text-base lg:text-lg">
-              Zenvana brings together Dehradun-rooted stays shaped by Rajpur Road,
-              foothill calm, family comfort, and direct-booking ease.
+            <p className="mx-auto max-w-xl text-sm leading-7 text-white/85 sm:text-base lg:text-lg">
+              Owner-operated boutique hotels at the foothills of Mussoorie. Calm interiors,
+              real hospitality, direct-booking value.
             </p>
           </div>
         </div>
 
-        <div className="relative z-10 mt-10 max-w-6xl px-4 mx-auto">
+        <div className="relative z-10 mt-8 w-full max-w-6xl px-2 mx-auto sm:mt-10 sm:px-4">
           <HeroBookBar properties={properties} />
         </div>
       </div>
@@ -139,164 +289,76 @@ function HeroSection({
   )
 }
 
-/** Preferred URL segments; verified against API so we never link to a missing slug. */
-const ROOM_CARD_TO_SLUG: Record<string, string> = {
-  Rosewood: 'rosewood',
-  Silkwood: 'silkwood',
-  'Monte Verde': 'monteverde',
-  Silverwood: 'silverwood',
-  Cherrywood: 'cherrywood',
-}
-
-function hotelHrefForCard(label: string, properties: PublicPropertyListItem[]) {
-  const preferred = ROOM_CARD_TO_SLUG[label]
-  if (preferred) {
-    const hit = properties.find((p) => p.slug === preferred)
-    if (hit) return `/hotels/${hit.slug}`
+/* ──────────────────────────────────────────────────────────────
+ * TRUST STRIP — under hero
+ * ────────────────────────────────────────────────────────────── */
+function TrustStripSection({
+  initialBookingsCount,
+}: {
+  initialBookingsCount: number | null
+}) {
+  type StatCard = {
+    icon: typeof Star
+    headline: React.ReactNode
+    tag: string
+    sub: string
   }
-  const needle = label.trim().toLowerCase()
-  const byName = properties.find((p) => {
-    const n = p.publicName.toLowerCase()
-    return n.includes(needle) || n.replace(/\s+/g, '').includes(needle.replace(/\s+/g, ''))
-  })
-  if (byName) return `/hotels/${byName.slug}`
-  return '/hotels'
-}
-
-function RoomsSection({ properties }: { properties: PublicPropertyListItem[] }) {
-  const rooms = [
+  const stats: StatCard[] = [
     {
-      name: 'Rosewood',
-      description: 'A calm, light-filled room with plush comfort and an easy city rhythm.',
-      imageSrc: '/images/dehradun/Rosewood.png',
-      href: hotelHrefForCard('Rosewood', properties),
+      icon: Star,
+      headline: '4.0+',
+      tag: 'guest rating',
+      sub: 'Across MakeMyTrip, Booking & Google',
     },
     {
-      name: 'Silkwood',
-      description: 'Designed for friends and families with practical layout and warm details.',
-      imageSrc: '/images/dehradun/silkwood .png',
-      imageAlt: 'best hotels in dehradun',
-      href: hotelHrefForCard('Silkwood', properties),
+      icon: BadgeCheck,
+      headline: (
+        <LiveBookingsCounter
+          initialValue={initialBookingsCount}
+          endpoint={BOOKINGS_ENDPOINT}
+        />
+      ),
+      tag: 'verified stays',
+      sub: 'Across the Zenvana collection · live count',
     },
     {
-      name: 'Monte Verde',
-      description: 'More space, softer lighting, and a slower pace for longer stays.',
-      imageSrc: '/images/dehradun/MonteVerde.png',
-      href: hotelHrefForCard('Monte Verde', properties),
+      icon: MapPin,
+      headline: '5',
+      tag: 'properties',
+      sub: 'On or near Rajpur Road, Dehradun',
     },
     {
-      name: 'Silverwood',
-      description: 'Framed views of the hills with morning light and quieter evenings.',
-      imageSrc: '/images/dehradun/SILVER W BUILDING PIC.png',
-      href: hotelHrefForCard('Silverwood', properties),
-    },
-    {
-      name: 'Cherrywood',
-      description: 'Watch the city move from a higher, calmer vantage point.',
-      imageSrc: '/images/dehradun/cherrwood building pic 1.png',
-      imageAlt: 'best hotels in dehradun',
-      href: hotelHrefForCard('Cherrywood', properties),
+      icon: ShieldCheck,
+      headline: 'Best rate',
+      tag: 'when you book direct',
+      sub: 'Match-or-beat any public OTA price',
     },
   ]
 
   return (
-    <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="max-w-2xl">
-            <div className="eyebrow">Accommodation</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              Discover Rooms That Redefine Comfort in Dehradun.
-            </h2>
-            <p className="body-copy mt-5 max-w-xl">
-              Enjoy a relaxing stay with comfortable rooms, modern amenities, and warm hospitality.
-              Designed for both leisure and business travelers, our rooms offer the comfort and
-              convenience you expect from the <strong>best hotel in Dehradun</strong>. Experience a
-              peaceful stay where every detail is crafted for your comfort at the{' '}
-              <strong>best hotel in Dehradun</strong>.
-            </p>
-          </div>
-
-          <Link
-            href="/hotels"
-            className="site-button-light w-fit md:mt-[68px]"
-          >
-            Explore more
-          </Link>
-        </div>
-
-        <RoomsCarousel rooms={rooms} autoplayMs={4500} />
-      </div>
-    </section>
-  )
-}
-
-function SpecialOffersSection() {
-  const offers = [
-    {
-      title: 'Early Booking Discount - Best Hotel in Dehradun',
-      highlight: 'Save up to 15%',
-      description:
-        'Plan ahead and unlock premium savings at the best hotel in Dehradun. Enjoy elegant stays, seamless service, and exclusive early-bird pricing when you reserve in advance.',
-    },
-    {
-      title: 'Weekend Getaway Offer - Escape to Dehradun',
-      highlight: 'City-to-hills reset',
-      description:
-        'Recharge your weekends at the best hotel in Dehradun with a curated getaway. Enjoy late checkouts, slower mornings, and easy access to scenic locations.',
-    },
-    {
-      title: 'Dining Special Offer - Stay & Dine in Style',
-      highlight: 'Taste-led stays',
-      description:
-        'Enhance your stay at the best hotel in Dehradun with curated dining experiences. From local flavors to premium meals, make every moment memorable.',
-    },
-  ]
-
-  return (
-    <section className="section-rule bg-muted/20">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <div className="eyebrow">SPECIAL OFFERS</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              Value that feels curated, not noisy.
-            </h2>
-            <p className="body-copy mt-5 max-w-xl">
-              Discover exclusive deals at the best hotel in Dehradun, where every offer is
-              thoughtfully designed to elevate your stay-not complicate it.
-            </p>
-          </div>
-
-          <Link href="/offers" className="site-button-dark w-fit">
-            View Offers
-          </Link>
-        </div>
-
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {offers.map((offer) => (
-            <article
-              key={offer.title}
-              className="quiet-card group overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl"
+    <section className="border-y border-border/60 bg-card/40">
+      <div className="container-shell py-6 sm:py-8 lg:py-10">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          {stats.map(({ icon: Icon, headline, tag, sub }) => (
+            <div
+              key={tag}
+              className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/70 px-4 py-3 sm:px-5 sm:py-4"
             >
-              <div className="p-6">
-                <div className="inline-flex rounded-full bg-accent/20 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-accent-foreground">
-                  {offer.highlight}
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                  {tag}
                 </div>
-                <h3 className="mt-4 text-xl font-semibold tracking-tight text-foreground">
-                  {offer.title}
-                </h3>
-                <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  {offer.description}
-                </p>
-                <div className="mt-6">
-                  <Link href="/offers" className="site-link">
-                    View Offer
-                  </Link>
+                <div className="mt-0.5 font-serif text-xl tracking-[-0.02em] text-foreground sm:text-2xl">
+                  {headline}
+                </div>
+                <div className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">
+                  {sub}
                 </div>
               </div>
-              <div className="h-1 bg-gradient-to-r from-primary/30 via-accent/25 to-primary/30 opacity-0 transition group-hover:opacity-100" />
-            </article>
+            </div>
           ))}
         </div>
       </div>
@@ -304,42 +366,294 @@ function SpecialOffersSection() {
   )
 }
 
+/* ──────────────────────────────────────────────────────────────
+ * WHY ZENVANA — H1-equivalent SEO + owner-operator narrative
+ * ────────────────────────────────────────────────────────────── */
+function WhyZenvanaSection() {
+  return (
+    <section className="section-rule bg-background">
+      <div className="container-shell section-pad">
+        <div className="mx-auto max-w-4xl text-center text-foreground">
+          <div className="editorial-eyebrow">A note from the owner</div>
+          <div className="rule-gold mt-3" />
+          <h2 className="editorial-display mt-6 text-3xl font-semibold sm:text-4xl lg:text-5xl">
+            Best Hotel in Dehradun · Zenvana on Rajpur Road
+          </h2>
+          <p className="mt-4 text-base text-muted-foreground sm:text-lg">
+            A serene boutique collection at the foothills of Mussoorie.
+          </p>
+
+          <div className="mx-auto mt-8 max-w-3xl space-y-5 text-left text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
+            <p>
+              Zenvana started with a simple idea: most hotels in Dehradun ask you to
+              compromise. Either the building is beautiful and the service distant, or the
+              service is warm and the room feels franchised. We wanted a small collection of
+              hotels where neither half had to give in.
+            </p>
+            <p>
+              Today we run five properties on or around{' '}
+              <a
+                href="https://en.wikipedia.org/wiki/Rajpur_Road"
+                target="_blank"
+                rel="noreferrer"
+                className="underline-gold underline-offset-4 hover:text-foreground"
+              >
+                Rajpur Road
+              </a>
+              {' '}— each with its own character, but all owner-operated, all on the same
+              quiet stretch of city, and all built for the kind of guest who notices when a
+              morning is unhurried.
+            </p>
+            <p>
+              You will find the names of our hotels on this page. The pages they lead to are
+              honest — real photos, real rooms, and the kind of pricing we will defend if
+              you book direct. We hope it gives Dehradun the gentler welcome it has always
+              deserved.
+            </p>
+            <p className="font-serif text-base text-foreground">
+              — The Zenvana team
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PROPERTY PYRAMID — Essential / Refined / Signature
+ * ────────────────────────────────────────────────────────────── */
+function PropertyPyramidSection({ properties }: { properties: PublicPropertyListItem[] }) {
+  const tiers: Tier[] = ['essential', 'refined', 'signature']
+  const grouped = tiers.map((tier) => ({
+    tier,
+    items: PYRAMID_CONFIG.filter((p) => p.tier === tier),
+  }))
+
+  return (
+    <section id="collection" className="section-rule bg-background">
+      <div className="container-shell section-pad">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-2xl">
+            <div className="editorial-eyebrow">The collection</div>
+            <h2 className="editorial-display mt-4 text-3xl font-semibold sm:text-4xl lg:text-5xl">
+              Five hotels. One quiet stretch of road.
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+              Pick the room that fits the trip. Every property is on or near Rajpur Road —
+              you don&apos;t lose anything by choosing differently.
+            </p>
+          </div>
+          <Link href="/hotels" className="site-button-light w-fit md:mt-2">
+            Compare all hotels
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="mt-12 space-y-12 sm:space-y-16">
+          {grouped.map(({ tier, items }) => {
+            const meta = TIER_META[tier]
+            const Icon = meta.icon
+            return (
+              <div key={tier}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className={meta.pillClass}>
+                      <Icon className="h-3 w-3" />
+                      {meta.label}
+                    </span>
+                    <span className="text-sm text-muted-foreground sm:text-base">
+                      {meta.tagline}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-6 grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2">
+                  {items.map((item) => {
+                    const href = resolvePyramidHref(item.slug, properties)
+                    return (
+                      <Link
+                        key={item.slug}
+                        href={href}
+                        className={`group relative block overflow-hidden rounded-[1.75rem] border border-border/60 bg-card transition duration-500 ease-editorial hover:-translate-y-1 hover:shadow-editorial ${meta.ringClass}`}
+                      >
+                        <div className="relative aspect-[16/11] overflow-hidden">
+                          <Image
+                            src={item.imageSrc}
+                            alt={`${item.name} by Zenvana — ${meta.label} stay in Dehradun`}
+                            fill
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                            className="object-cover transition duration-700 ease-editorial group-hover:scale-[1.04]"
+                          />
+                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_30%,rgba(0,0,0,0.45)_100%)]" />
+                          <span
+                            className={`${meta.pillClass} absolute left-4 top-4 backdrop-blur`}
+                          >
+                            <Icon className="h-3 w-3" />
+                            {meta.label}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-3 p-5 sm:p-6">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <h3 className="editorial-display text-2xl text-foreground sm:text-3xl">
+                              {item.name}
+                            </h3>
+                            <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground/80 transition group-hover:translate-x-0.5 group-hover:text-foreground">
+                              Explore
+                              <ArrowRight className="h-4 w-4" />
+                            </span>
+                          </div>
+                          <p className="text-sm leading-7 text-muted-foreground sm:text-base">
+                            {item.intent}
+                          </p>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * STAY DIRECT PROMISE — productized
+ * ────────────────────────────────────────────────────────────── */
+function StayDirectSection() {
+  const benefits = [
+    {
+      icon: ShieldCheck,
+      title: 'Best public rate, guaranteed',
+      text: 'Find the same dates cheaper on any OTA — we will match it and give you ₹500 toward your stay.',
+    },
+    {
+      icon: Crown,
+      title: 'Free upgrade window',
+      text: 'On book-direct stays we open a 24-hour window before arrival to lift you a tier when rooms allow.',
+    },
+    {
+      icon: Clock,
+      title: 'Late check-out till 1 PM',
+      text: 'Direct guests get an extra two hours at no charge. Easier mornings, lighter exits.',
+    },
+    {
+      icon: Wallet,
+      title: '₹500 wallet on every stay',
+      text: 'Spend it on F&B, the next room, or the next stay — it follows you across the collection.',
+    },
+  ]
+
+  return (
+    <section className="section-rule">
+      <div className="container-shell section-pad">
+        <div className="overflow-hidden rounded-[2rem] bg-ink-gradient text-white">
+          <div className="grid gap-0 lg:grid-cols-12">
+            <div className="px-6 pt-10 sm:px-10 sm:pt-14 lg:col-span-5 lg:px-12 lg:pt-16">
+              <span className="stay-direct-pill">
+                <Sparkles className="h-3 w-3" />
+                Stay direct
+              </span>
+              <h2 className="editorial-display mt-5 text-3xl leading-[0.96] sm:text-4xl lg:text-5xl">
+                Book direct, and<br />
+                <span className="gold-text">we make it worth it.</span>
+              </h2>
+              <p className="mt-5 max-w-md text-sm leading-7 text-white/80 sm:text-base">
+                Four small promises that make the direct route quietly better than any
+                travel-agent or OTA route. No fine print.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link
+                  href="/hotels"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-gold-300 px-5 py-3 text-sm font-medium text-ink-800 transition hover:bg-gold-200"
+                >
+                  <CalendarCheck className="h-4 w-4" />
+                  Book direct
+                </Link>
+                <Link
+                  href="/stay-direct"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/8 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/14"
+                >
+                  Learn more
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-px bg-white/10 sm:grid-cols-2 lg:col-span-7">
+              {benefits.map(({ icon: Icon, title, text }) => (
+                <div
+                  key={title}
+                  className="bg-ink-800/85 p-6 sm:p-7 lg:p-8"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-300/15 text-gold-200">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-gold-200/90">
+                        {title}
+                      </h3>
+                      <p className="mt-2 text-sm leading-7 text-white/80">
+                        {text}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * DINING — refined, restaurant-led entry to Feasta
+ * ────────────────────────────────────────────────────────────── */
 function DiningSection() {
   return (
     <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
+      <div className="container-shell section-pad">
         <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
-          <div className="lg:col-span-7">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[2rem] bg-muted">
+          <div className="order-2 lg:order-1 lg:col-span-7">
+            <div className="photo-card aspect-[16/10]">
               <Image
                 src="/images/dehradun/feasta.png"
-                alt="best hotels in dehradun"
+                alt="Feasta by Zenvana — rooftop restaurant on Rajpur Road, Dehradun"
                 fill
+                sizes="(max-width: 1024px) 100vw, 60vw"
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.12))]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.18))]" />
+              <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/35 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/90 backdrop-blur">
+                <UtensilsCrossed className="h-3.5 w-3.5" />
+                Feasta · Rooftop restaurant
+              </span>
             </div>
           </div>
 
-          <div className="lg:col-span-5">
-            <div className="eyebrow">DINING</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              Rooftop restaurant in Dehradun with a refined dining experience.
+          <div className="order-1 lg:order-2 lg:col-span-5">
+            <div className="editorial-eyebrow">Dining</div>
+            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
+              An evening in Dehradun, slowed down by a few floors of altitude.
             </h2>
-            <p className="body-copy mt-5">
-              Discover a premium restaurant in Dehradun where ambiance meets exceptional
-              taste. Our rooftop dining experience is designed for relaxed evenings, elegant
-              settings, and thoughtfully curated menus. From locally inspired dishes to modern
-              cuisine, every plate is crafted to deliver a fine dining experience in Dehradun
-              that feels both elevated and welcoming.
+            <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+              Feasta is our rooftop restaurant on Rajpur Road. North Indian, continental,
+              and Chinese — built around seasonal ingredients, calm music, and the kind
+              of skyline you only get from this part of the foothills.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/restaurant" className="site-button-dark inline-flex items-center gap-2">
                 <UtensilsCrossed className="h-4 w-4" />
-                Explore Dining
+                Explore dining
               </Link>
-              <Link href="/contact" className="site-button-light">
-                Enquire
+              <Link href="/menu" className="site-button-light">
+                See the full menu
               </Link>
             </div>
           </div>
@@ -349,58 +663,79 @@ function DiningSection() {
   )
 }
 
-function EventsSection() {
-  const events = [
-    {
-      title: 'Wedding events',
-      icon: <PartyPopper className="h-5 w-5" />,
-      text: 'Celebrate your special day at one of the most elegant wedding venues in Dehradun. From intimate ceremonies to grand celebrations, our spaces are designed with warmth, beauty, and flexibility.',
-    },
-    {
-      title: 'Corporate meetings',
-      icon: <BriefcaseBusiness className="h-5 w-5" />,
-      text: 'Host productive corporate meetings in Dehradun with well-equipped spaces tailored for workshops, conferences, and business gatherings, ensuring a smooth and professional experience.',
-    },
-    {
-      title: 'Private celebrations',
-      icon: <PartyPopper className="h-5 w-5" />,
-      text: 'Plan birthdays, anniversaries, and intimate gatherings in a refined setting. Our event spaces in Dehradun offer the perfect balance of comfort, ambiance, and personalized service.',
-    },
-  ]
-
+/* ──────────────────────────────────────────────────────────────
+ * WEDDINGS / EVENTS TEASER — single bold block → /weddings
+ * ────────────────────────────────────────────────────────────── */
+function WeddingsTeaserSection() {
   return (
-    <section className="section-rule bg-muted/10">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="text-center">
-          <div className="eyebrow">EVENTS</div>
-          <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-            Event spaces in Dehradun designed for effortless celebrations.
-          </h2>
-          <p className="body-copy mt-5">
-            Host weddings, corporate events, and private gatherings at a premium venue in
-            Dehradun, where every detail is thoughtfully managed for a seamless and elegant
-            experience.
-          </p>
-        </div>
-
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {events.map((item) => (
-            <div key={item.title} className="quiet-card p-6">
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/20 text-accent-foreground">
-                {item.icon}
-              </div>
-              <h3 className="mt-4 text-lg font-semibold tracking-tight text-foreground">
-                {item.title}
-              </h3>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.text}</p>
+    <section className="section-rule bg-card/40">
+      <div className="container-shell section-pad">
+        <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
+          <div className="lg:col-span-5">
+            <div className="editorial-eyebrow">Celebrations</div>
+            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
+              The only Rajpur Road brand that can absorb a 150-room weekend.
+            </h2>
+            <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+              Five hotels on the same stretch of road means weddings, corporate offsites,
+              and private celebrations don&apos;t need to compromise on capacity. We can
+              flex from an intimate 30-cover dinner to a 200-guest weekend across multiple
+              properties.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                href="/weddings"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-medium text-background transition hover:opacity-95"
+              >
+                <PartyPopper className="h-4 w-4" />
+                Plan an event
+              </Link>
+              <Link href="/contact" className="site-button-light">
+                Request a proposal
+              </Link>
             </div>
-          ))}
+          </div>
+
+          <div className="lg:col-span-7">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="photo-card col-span-2 aspect-[16/9]">
+                <Image
+                  src="/images/dehradun/IMG_4477.JPG"
+                  alt="Wedding setup at Zenvana Hotels in Dehradun"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
+                />
+              </div>
+              <div className="photo-card aspect-square">
+                <Image
+                  src="/images/dehradun/IMG_4478.JPG"
+                  alt="Corporate event venue Dehradun"
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover"
+                />
+              </div>
+              <div className="photo-card aspect-square">
+                <Image
+                  src="/images/dehradun/IMG_4505.jpg"
+                  alt="Private celebration at Zenvana Dehradun"
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
   )
 }
 
+/* ──────────────────────────────────────────────────────────────
+ * GALLERY
+ * ────────────────────────────────────────────────────────────── */
 function GallerySection() {
   const galleryImages = [
     '/images/dehradun/Rosewood.png',
@@ -415,36 +750,33 @@ function GallerySection() {
 
   return (
     <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
+      <div className="container-shell section-pad">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
-            <div className="eyebrow">Gallery</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
+            <div className="editorial-eyebrow">Gallery</div>
+            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
               A visual feel for the stay.
             </h2>
-            <p className="body-copy mt-5 max-w-xl">
-              A small grid preview — with hover motion — to set the tone without noise.
+            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+              Real interiors, real F&amp;B, real evenings. No stock library.
             </p>
           </div>
-
           <Link href="/hotels" className="site-button-light w-fit">
-            View Full Gallery
+            View full gallery
           </Link>
         </div>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {galleryImages.map((src, idx) => (
-            <div
-              key={`${src}-${idx}`}
-              className="group relative aspect-[4/3] overflow-hidden rounded-[1.6rem] bg-muted"
-            >
+            <div key={`${src}-${idx}`} className="photo-card aspect-[4/3]">
               <Image
                 src={src}
-                alt="best hotels in dehradun"
+                alt="Zenvana Hotels Dehradun · interior"
                 fill
-                className="object-cover transition duration-300 group-hover:scale-[1.03]"
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="object-cover transition duration-500 ease-editorial hover:scale-[1.03]"
               />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))] transition duration-300 group-hover:opacity-80" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.16),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))]" />
             </div>
           ))}
         </div>
@@ -453,79 +785,36 @@ function GallerySection() {
   )
 }
 
-function TestimonialsSection() {
-  const testimonials = [
-    {
-      name: 'Yogesh Kumar',
-      text: 'From the moment we arrived, everything felt seamless and well-organized. The rooms were spacious, clean, and thoughtfully designed for comfort. The staff was polite, responsive, and always ready to help, making our stay truly relaxing. The smooth check-in process and attention to detail made this one of the best hotel experiences in Dehradun for us.',
-      stars: 5,
-      imageSrc: '/images/dehradun/Yogesh.png',
-    },
-    {
-      name: 'Shailja Singh',
-      text: 'The ambiance of the hotel is elegant and calming, perfect for both short and long stays. The property is very well maintained, and cleanliness is clearly a priority here. What stood out the most was the service quality-professional yet warm-which truly reflects the standard you expect from the best hotel in Dehradun.',
-      stars: 5,
-      imageSrc: '/images/dehradun/Shailja Singh.png',
-    },
-    {
-      name: 'Shashank Satlaksh',
-      text: 'A perfect place for families as well as couples looking for a comfortable and peaceful stay. The location is convenient, the rooms are cozy, and the hospitality is genuinely welcoming. Every small detail is taken care of, making it easy to relax and enjoy your time. Definitely one of the best hotel stays in Dehradun.',
-      stars: 4,
-      imageSrc: '/images/dehradun/Shashank Satlaksh.png',
-    },
-    {
-      name: 'Jasleen Kaur',
-      text: 'We had a wonderful experience staying here. The location is excellent, with easy access to key areas of Dehradun. The staff was supportive throughout our stay, and the overall atmosphere felt warm and inviting. It is a reliable and comfortable choice for anyone searching for the best hotel in Dehradun.',
-      stars: 5,
-      imageSrc: '/images/dehradun/Jasleen Kaur.png',
-    },
+/* GuestVoicesSection: live + fallback in src/components/GuestVoicesSection.tsx */
+
+/* ──────────────────────────────────────────────────────────────
+ * PRESS / CERTIFICATIONS STRIP — text-based for now
+ * ────────────────────────────────────────────────────────────── */
+function PressTrustStrip() {
+  const items = [
+    'Listed on Adani One',
+    'MakeMyTrip 4.0+',
+    'Booking · Agoda · Expedia partner',
+    'FSSAI registered',
+    'Uttarakhand Tourism · Approved',
+    'GST Compliant',
   ]
+  // Duplicate so the marquee animation seams cleanly.
+  const looped = [...items, ...items]
 
   return (
-    <section className="section-rule bg-muted/15">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="text-center">
-          <div className="eyebrow">TESTIMONIALS</div>
-          <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
-            Why guests call us the best hotel in Dehradun.
-          </h2>
-          <p className="body-copy mt-5">
-            Real experiences from guests who have enjoyed their stay at one of the best hotels in
-            Dehradun, known for comfort, service, and thoughtful hospitality.
-          </p>
-        </div>
-
-        <div className="mt-10 flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {testimonials.map((t, idx) => (
-            <article
-              key={idx}
-              className="quiet-card min-w-[280px] max-w-[360px] flex-1 snap-start p-6 sm:min-w-[340px]"
+    <section className="border-y border-border/60 bg-card/30">
+      <div className="overflow-hidden py-4 sm:py-5">
+        <div className="trust-rail">
+          {looped.map((label, i) => (
+            <span
+              key={`${label}-${i}`}
+              className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground"
             >
-              <div className="flex items-center gap-3">
-                <div className="relative h-11 w-11 overflow-hidden rounded-full bg-muted">
-                  <Image
-                    src={t.imageSrc}
-                    alt="best hotels in dehradun"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-foreground">{t.name}</div>
-                  <div className="mt-1 flex items-center gap-1 text-amber-500">
-                    {Array.from({ length: 5 }, (_, s) => (
-                      <Star
-                        key={s}
-                        className={
-                          s < t.stars ? 'h-4 w-4 fill-current' : 'h-4 w-4 opacity-30'
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">{t.text}</p>
-            </article>
+              <BadgeCheck className="h-3.5 w-3.5 text-gold-400" />
+              {label}
+              <span className="mx-6 h-1 w-1 rounded-full bg-muted-foreground/30" />
+            </span>
           ))}
         </div>
       </div>
@@ -533,6 +822,9 @@ function TestimonialsSection() {
   )
 }
 
+/* ──────────────────────────────────────────────────────────────
+ * LOCATION
+ * ────────────────────────────────────────────────────────────── */
 function LocationSection({
   latitude,
   longitude,
@@ -546,25 +838,30 @@ function LocationSection({
     'Easy access to city cafés and local shopping',
     'A short drive toward foothill viewpoints and trails',
     'Good starting point for day trips and longer stays',
+    'Mussoorie 35–45 mins · Jolly Grant Airport ~45 mins',
   ]
 
   return (
     <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
+      <div className="container-shell section-pad">
         <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
           <div className="lg:col-span-5">
-            <div className="eyebrow">Location</div>
-            <h2 className="display-title mt-4 text-3xl sm:text-4xl lg:text-5xl">
+            <div className="editorial-eyebrow">Location</div>
+            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
               Where the city meets the hills.
             </h2>
-            <p className="body-copy mt-5">
-              A clear base for exploring nearby attractions while keeping the stay calm and connected.
+            <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg">
+              A clear base for exploring nearby attractions while keeping the stay calm
+              and connected.
             </p>
 
             <div className="mt-7 grid gap-3">
               {highlights.map((h) => (
-                <div key={h} className="flex items-start gap-3 text-sm leading-7 text-muted-foreground">
-                  <MapPin className="mt-1 h-4 w-4 text-primary" />
+                <div
+                  key={h}
+                  className="flex items-start gap-3 text-sm leading-7 text-muted-foreground sm:text-base"
+                >
+                  <MapPin className="mt-1 h-4 w-4 shrink-0 text-gold-400" />
                   <span>{h}</span>
                 </div>
               ))}
@@ -572,7 +869,7 @@ function LocationSection({
           </div>
 
           <div className="lg:col-span-7">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[2rem] bg-muted">
+            <div className="photo-card aspect-[16/10]">
               <HomeLimewoodMap
                 latitude={latitude}
                 longitude={longitude}
@@ -580,7 +877,7 @@ function LocationSection({
               />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.22),transparent_58%),linear-gradient(to_bottom,_rgba(0,0,0,0.05),rgba(0,0,0,0.12))]" />
 
-              <div className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-2xl bg-background/70 px-4 py-2 text-sm text-foreground shadow-sm backdrop-blur">
+              <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-2xl bg-background/80 px-3.5 py-2 text-sm text-foreground shadow-sm backdrop-blur">
                 <MapPinned className="h-4 w-4" />
                 Nearby highlights
               </div>
@@ -592,30 +889,106 @@ function LocationSection({
   )
 }
 
+/* ──────────────────────────────────────────────────────────────
+ * FAQ
+ * ────────────────────────────────────────────────────────────── */
+function HomeFaqSection() {
+  return (
+    <section className="section-rule">
+      <div className="container-shell section-pad">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="editorial-eyebrow">Useful to know</div>
+          <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
+            Quiet answers to common questions.
+          </h2>
+          <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg">
+            Practical details about our hotels, location, dining, and direct booking —
+            written for the way you actually plan a stay.
+          </p>
+        </div>
+
+        <div className="mx-auto mt-10 grid max-w-3xl gap-3">
+          {HOME_FAQS.map((faq) => (
+            <details key={faq.question} className="group quiet-card p-5 sm:p-6">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-medium tracking-tight text-foreground sm:text-lg">
+                <span>{faq.question}</span>
+                <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition group-open:rotate-45">
+                  +
+                </span>
+              </summary>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">
+                {faq.answer}
+              </p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * BOOKING CTA
+ * ────────────────────────────────────────────────────────────── */
 function BookingCtaSection() {
   return (
     <section className="section-rule">
-      <div className="container-shell py-14 sm:py-16 lg:py-20">
-        <div className="brand-gradient overflow-hidden rounded-[2rem] px-6 py-10 text-white sm:px-8 lg:px-10">
+      <div className="container-shell section-pad">
+        <div className="overflow-hidden rounded-[2rem] bg-signature-gradient px-6 py-12 text-white sm:px-8 sm:py-14 lg:px-10 lg:py-16">
           <div className="text-center">
-            <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-white/70">
-              Booking
-            </div>
-            <h2 className="mt-4 font-serif text-3xl tracking-[-0.03em] sm:text-4xl lg:text-5xl">
+            <div className="editorial-eyebrow text-white/70">Booking</div>
+            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
               A quieter stay starts with a clean booking.
             </h2>
             <p className="mt-4 text-sm leading-7 text-white/80 sm:text-base">
-              Reserve your stay with direct support and a smoother arrival experience.
+              Reserve direct for the best rate, easier coordination, and a smoother
+              arrival.
             </p>
-
-            <div className="mt-6 flex justify-center">
-              <Link href="/hotels" className="site-button-light border-white/20 bg-white/12 dark:text-white hover:bg-white/16">
-                Book Your Stay
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link
+                href="/hotels"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-gold-300 px-5 py-3 text-sm font-medium text-ink-800 transition hover:bg-gold-200"
+              >
+                <CalendarCheck className="h-4 w-4" />
+                Book your stay
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/8 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/16"
+              >
+                <Phone className="h-4 w-4" />
+                Talk to us
               </Link>
             </div>
           </div>
         </div>
       </div>
     </section>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * MOBILE STICKY BOOKING CTA
+ * ────────────────────────────────────────────────────────────── */
+function MobileBookingCta() {
+  return (
+    <div className="mobile-cta-bar lg:hidden">
+      <div className="mx-auto flex max-w-7xl items-center gap-2">
+        <a
+          href="tel:+919084051774"
+          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-foreground transition hover:bg-muted"
+          aria-label="Call Zenvana Hotels"
+        >
+          <Phone className="h-4.5 w-4.5" />
+        </a>
+        <Link
+          href="/hotels"
+          className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-foreground text-sm font-medium text-background transition hover:opacity-95"
+        >
+          <CalendarCheck className="h-4 w-4" />
+          Check availability
+        </Link>
+      </div>
+    </div>
   )
 }
