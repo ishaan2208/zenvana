@@ -194,6 +194,7 @@ const BOOKINGS_ENDPOINT = `/api/public/bookings-count?userId=${TRUST_OWNER_USER_
 export default async function HomePage() {
   const properties = await getPublicProperties()
   const limewood = await getPublicPropertyBySlug('limewood')
+  console.log("limewood", limewood?.latitude)
   const initialBookingsCount = await getPublicBookingsCount(TRUST_OWNER_USER_ID)
   const heroProperties = properties.map((p) => ({
     slug: p.slug,
