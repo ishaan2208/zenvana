@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 
+import { nearestLandmarksForMap } from '@/lib/landmarks'
+
 declare global {
   interface Window {
     google?: any
@@ -112,6 +114,13 @@ export function HomeLimewoodMap({ latitude, longitude, mapPlaceUrl }: HomeLimewo
           styles: darkMapStyles,
         })
 
+        const nearby = nearestLandmarksForMap(latitude, longitude, 5)
+        const bounds = new window.google.maps.LatLngBounds()
+        bounds.extend(center)
+        for (const p of nearby) {
+          bounds.extend({ lat: p.lat, lng: p.lng })
+        }
+
         const marker = new window.google.maps.Marker({
           position: center,
           map,
@@ -124,13 +133,45 @@ export function HomeLimewoodMap({ latitude, longitude, mapPlaceUrl }: HomeLimewo
           },
         })
 
-        const infoWindow = new window.google.maps.InfoWindow({
-          content:
-            '<div style="font-size:13px;font-weight:600;line-height:1.35;color:#111827;">Zenvana Limewood</div>',
-        })
+        const infoWindow = new window.google.maps.InfoWindow()
 
         marker.addListener('click', () => {
+          infoWindow.setContent(
+            '<div style="font-size:13px;font-weight:600;line-height:1.35;color:#111827;">Zenvana Limewood</div>',
+          )
           infoWindow.open({ map, anchor: marker })
+        })
+
+        for (const place of nearby) {
+          const m = new window.google.maps.Marker({
+            position: { lat: place.lat, lng: place.lng },
+            map,
+            title: place.name,
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 6,
+              fillColor: '#DBE64C',
+              fillOpacity: 0.95,
+              strokeColor: '#111827',
+              strokeWeight: 1.5,
+            },
+          })
+          m.addListener('click', () => {
+            const cat = place.category
+              ? `<div style="font-size:11px;color:#6b7280;margin-top:2px;">${place.category}</div>`
+              : ''
+            infoWindow.setContent(
+              `<div style="font-size:13px;font-weight:600;line-height:1.35;color:#111827;">${place.name}</div>${cat}`,
+            )
+            infoWindow.open({ map, anchor: m })
+          })
+        }
+
+        map.fitBounds(bounds, { top: 48, right: 48, bottom: 72, left: 48 })
+        window.google.maps.event.addListenerOnce(map, 'idle', () => {
+          const z = map.getZoom()
+          if (z != null && z > 15) map.setZoom(15)
+          if (z != null && z < 11) map.setZoom(11)
         })
       })
       .catch(() => {

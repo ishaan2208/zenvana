@@ -49,11 +49,52 @@ export function slugifyLandmark(raw: string): string {
  * Curated seed landmarks — used when the backend has none yet, so the
  * programmatic surface always renders a meaningful number of pages.
  * These are well-known Dehradun anchors that match real search intent.
+ *
+ * Rajpur Road row below: Rashtrapati Niketan coords from Wikipedia; Sakya Centre
+ * from OpenStreetMap (Nominatim); Sai Mandir, MDDA Park, St. Joseph's Academy from
+ * OSM nodes/ways (Komoot Photon geocoder). Rashtrapati Tapovan is the adjacent
+ * presidential forest estate on the same corridor (see presidentofindia.gov.in,
+ * June 2025) — add a separate pin when a stable map POI exists in OSM.
  */
 const SEED_LANDMARKS: Landmark[] = [
   { slug: 'pacific-mall-dehradun', name: 'Pacific Mall', category: 'Shopping', lat: 30.3433, lng: 78.0413 },
   { slug: 'forest-research-institute', name: 'Forest Research Institute (FRI)', category: 'Heritage', lat: 30.3414, lng: 77.9994 },
   { slug: 'rajpur-road', name: 'Rajpur Road', category: 'Neighbourhood', lat: 30.3622, lng: 78.0808 },
+  {
+    slug: 'rashtrapati-niketan-dehradun',
+    name: 'Rashtrapati Niketan',
+    category: 'Heritage · Rajpur Road',
+    lat: 30.3568025,
+    lng: 78.0661364,
+  },
+  {
+    slug: 'sakya-centre-rajpur',
+    name: 'Sakya Centre Buddhist Monastery',
+    category: 'Spiritual · Rajpur Road',
+    lat: 30.3793399,
+    lng: 78.0870745,
+  },
+  {
+    slug: 'sai-mandir-rajpur-road',
+    name: 'Sai Mandir (Sai Darbar)',
+    category: 'Temples · Rajpur Road',
+    lat: 30.3798038,
+    lng: 78.0874513,
+  },
+  {
+    slug: 'mdda-park-rajpur',
+    name: 'MDDA Park, Rajpur',
+    category: 'Parks · Rajpur Road',
+    lat: 30.3905419,
+    lng: 78.0945953,
+  },
+  {
+    slug: 'st-josephs-academy-rajpur',
+    name: "St. Joseph's Academy",
+    category: 'Schools · Rajpur Road',
+    lat: 30.3295343,
+    lng: 78.0487559,
+  },
   { slug: 'doon-school', name: 'The Doon School', category: 'Schools', lat: 30.3245, lng: 78.0444 },
   { slug: 'welham-girls-school', name: 'Welham Girls\' School', category: 'Schools', lat: 30.3295, lng: 78.0481 },
   { slug: 'indian-military-academy', name: 'Indian Military Academy (IMA)', category: 'Institutions', lat: 30.3478, lng: 77.9665 },
@@ -184,6 +225,37 @@ export function haversineKm(
     Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2)
   const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
   return R * c
+}
+
+/** Curated Dehradun anchors for small maps (e.g. property hero map). */
+export type NearbyMapLandmark = {
+  name: string
+  lat: number
+  lng: number
+  category?: string
+}
+
+/**
+ * Closest seed landmarks to a point — capped for readability on embedded maps
+ * (Pacific Mall, transit, attractions, etc. from {@link SEED_LANDMARKS}).
+ */
+export function nearestLandmarksForMap(
+  centerLat: number,
+  centerLng: number,
+  limit = 5,
+): NearbyMapLandmark[] {
+  const center = { lat: centerLat, lng: centerLng }
+  return SEED_LANDMARKS.filter((l): l is Landmark & { lat: number; lng: number } => l.lat != null && l.lng != null)
+    .map((l) => ({
+      name: l.name,
+      lat: l.lat,
+      lng: l.lng,
+      category: l.category,
+      _km: haversineKm(center, { lat: l.lat, lng: l.lng }),
+    }))
+    .sort((a, b) => a._km - b._km)
+    .slice(0, Math.max(1, Math.min(limit, 8)))
+    .map(({ _km, ...rest }) => rest)
 }
 
 type RateablePropertyInput = {
