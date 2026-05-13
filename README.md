@@ -26,6 +26,10 @@ npm run dev
 
 Finally, open [http://localhost:3000](http://localhost:3000) in your browser to view the website.
 
+## Browser support
+
+The marketing site targets **evergreen desktop browsers**, **iOS Safari 15+**, and **current Android Chrome / WebView**. Internet Explorer and legacy WebView are **not** supported. The exact query lives in `package.json` under `browserslist` and is documented in `docs/superpowers/specs/2026-05-14-zenvana-home-lighthouse-design.md`.
+
 ## Customizing
 
 You can start editing this template by modifying the files in the `/src` folder. The site will auto-update as you edit these files.

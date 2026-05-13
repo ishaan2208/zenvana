@@ -157,8 +157,6 @@ export default function RootLayout({
   return (
     <html lang="en-IN" className="h-full scroll-smooth" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://res.cloudinary.com" />
-        <link rel="preconnect" href="https://images.unsplash.com" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://connect.facebook.net" />
       </head>

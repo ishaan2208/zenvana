@@ -62,7 +62,7 @@ type HomeLimewoodMapProps = {
   mapPlaceUrl?: string
 }
 
-export function HomeLimewoodMap({ latitude, longitude, mapPlaceUrl }: HomeLimewoodMapProps) {
+function HomeLimewoodMap({ latitude, longitude, mapPlaceUrl }: HomeLimewoodMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const [mapError, setMapError] = useState<string | null>(null)
   const [shouldLoadMap, setShouldLoadMap] = useState(false)
@@ -214,3 +214,5 @@ export function HomeLimewoodMap({ latitude, longitude, mapPlaceUrl }: HomeLimewo
   )
 }
 
+export { HomeLimewoodMap }
+export default HomeLimewoodMap

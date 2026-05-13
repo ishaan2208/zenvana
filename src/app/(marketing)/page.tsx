@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
+import { Suspense } from 'react'
 import {
   ArrowRight,
   BadgeCheck,
@@ -19,7 +21,6 @@ import {
   UtensilsCrossed,
   Wallet,
 } from 'lucide-react'
-import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
 import type { PublicPropertyListItem } from '@/lib/api'
 import {
   getPublicBookingsCount,
@@ -31,6 +32,26 @@ import { JsonLd } from '@/components/JsonLd'
 import { LiveBookingsCounter } from '@/components/LiveBookingsCounter'
 import { GuestVoicesSection } from '@/components/GuestVoicesSection'
 import { faqPageJsonLd, hotelGroupJsonLd } from '@/lib/structured-data'
+
+function GuestVoicesSectionFallback() {
+  return (
+    <section className="section-rule bg-background" aria-busy="true">
+      <div className="container-shell section-pad">
+        <div className="h-48 animate-pulse rounded-2xl bg-muted/60 sm:h-56" />
+      </div>
+    </section>
+  )
+}
+
+const HomeLimewoodMapLazy = dynamic(() => import('@/components/HomeLimewoodMap'), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="h-full w-full min-h-[12rem] animate-pulse bg-muted/50"
+      aria-hidden
+    />
+  ),
+})
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
@@ -194,7 +215,6 @@ const BOOKINGS_ENDPOINT = `/api/public/bookings-count?userId=${TRUST_OWNER_USER_
 export default async function HomePage() {
   const properties = await getPublicProperties()
   const limewood = await getPublicPropertyBySlug('limewood')
-  console.log("limewood", limewood?.latitude)
   const initialBookingsCount = await getPublicBookingsCount(TRUST_OWNER_USER_ID)
   const heroProperties = properties.map((p) => ({
     slug: p.slug,
@@ -223,7 +243,9 @@ export default async function HomePage() {
       <DiningSection />
       <WeddingsTeaserSection />
       <GallerySection />
-      <GuestVoicesSection />
+      <Suspense fallback={<GuestVoicesSectionFallback />}>
+        <GuestVoicesSection />
+      </Suspense>
       <PressTrustStrip />
       <LocationSection
         latitude={limewood?.latitude}
@@ -255,6 +277,7 @@ function HeroSection({
           fill
           priority
           sizes="100vw"
+          quality={70}
           className="object-cover"
         />
         <div className="absolute inset-0 bg-hero-shade" />
@@ -871,7 +894,7 @@ function LocationSection({
 
           <div className="lg:col-span-7">
             <div className="photo-card aspect-[16/10]">
-              <HomeLimewoodMap
+              <HomeLimewoodMapLazy
                 latitude={latitude}
                 longitude={longitude}
                 mapPlaceUrl={mapPlaceUrl}
