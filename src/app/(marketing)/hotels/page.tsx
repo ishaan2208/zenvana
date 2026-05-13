@@ -13,12 +13,10 @@ import {
 } from 'lucide-react'
 
 import {
-  cheapestPlanAcrossRoomTypes,
   cheapestStayFromBulk,
   getPublicProperties,
   getPublicPropertyBySlug,
   getPublicRatesBulk,
-  getPublicRatesWithPlans,
 } from '@/lib/api'
 import { Container } from '@/components/Container'
 import { HotelListingPlanPrice } from '@/components/HotelListingPlanPrice'
@@ -77,71 +75,51 @@ type Props = {
 export default async function HotelsPage({ searchParams }: Props) {
   const q = await searchParams
   const couponCode = q.couponCode?.trim().toUpperCase() ?? ''
-  const properties = await getPublicProperties()
-
-  const fullDetails = await Promise.all(properties.map((p) => getPublicPropertyBySlug(p.slug)))
-
-  const propertiesWithImages = properties.map((p, i) => {
-    const full = fullDetails[i]
-    const heroUrl = p.heroImageUrl ?? pickHeroAndGallery(full?.images).heroUrl
-    // List + detail both carry showValueBadge; OR them so a stale cached slug response
-    // (missing the field) cannot wipe a true from the fresher /public/properties list.
-    const showValueBadge =
-      p.showValueBadge === true || full?.showValueBadge === true
-    return {
-      ...p,
-      heroImageUrl: heroUrl,
-      roomTypes: full?.roomTypes ?? [],
-      showValueBadge,
-    }
-  })
-
   const checkInYmd = kolkataYmd()
   const checkOutYmd = addDaysYmd(checkInYmd, 1)
   const cacheListing = { next: { revalidate: 300 } } as const
 
-  const planTasks: Array<Promise<Awaited<ReturnType<typeof getPublicRatesWithPlans>>>> = []
-  const planPropIndex: number[] = []
-  propertiesWithImages.forEach((p, propIdx) => {
-    for (const rt of p.roomTypes) {
-      planTasks.push(
-        getPublicRatesWithPlans(p.slug, rt.id, checkInYmd, checkOutYmd, 1, cacheListing)
-      )
-      planPropIndex.push(propIdx)
-    }
-  })
+  const properties = await getPublicProperties()
 
-  const [planResults, bulkResults] = await Promise.all([
-    planTasks.length ? Promise.all(planTasks) : Promise.resolve([] as Awaited<ReturnType<typeof getPublicRatesWithPlans>>[]),
+  const needsDetailFetch = properties.map((p) => !p.heroImageUrl)
+
+  const [fullDetails, bulkResults] = await Promise.all([
     Promise.all(
-      propertiesWithImages.map((p) =>
+      properties.map((p, i) =>
+        needsDetailFetch[i] ? getPublicPropertyBySlug(p.slug) : Promise.resolve(null)
+      )
+    ),
+    Promise.all(
+      properties.map((p) =>
         getPublicRatesBulk(p.slug, checkInYmd, checkOutYmd, 1, cacheListing)
       )
     ),
   ])
 
-  const plansByProperty = propertiesWithImages.map(
-    () => [] as Array<Awaited<ReturnType<typeof getPublicRatesWithPlans>>>
-  )
-  planResults.forEach((res, i) => {
-    plansByProperty[planPropIndex[i]].push(res)
+  const propertiesWithImages = properties.map((p, i) => {
+    const full = fullDetails[i]
+    const heroUrl = p.heroImageUrl ?? pickHeroAndGallery(full?.images).heroUrl
+    const showValueBadge = needsDetailFetch[i]
+      ? p.showValueBadge === true || full?.showValueBadge === true
+      : p.showValueBadge === true
+    return {
+      ...p,
+      heroImageUrl: heroUrl,
+      showValueBadge,
+    }
   })
 
   const propertiesForGrid = propertiesWithImages
     .map((p, i) => {
-      const { roomTypes: _roomTypes, ...pub } = p
-      const plan = cheapestPlanAcrossRoomTypes(plansByProperty[i])
       const bulkLine = cheapestStayFromBulk(bulkResults[i])
-      const listingPrice = plan
-        ? { amount: plan.totalAmount, marketAmount: plan.marketTotalAmount }
-        : bulkLine
-          ? {
+      const listingPrice = bulkLine
+        ? {
             amount: bulkLine.totalAmount,
             marketAmount: bulkLine.totalMarketAmount,
           }
-          : null
+        : null
       return {
-        ...pub,
+        ...p,
         listingPrice,
       }
     })
@@ -187,6 +165,10 @@ export default async function HotelsPage({ searchParams }: Props) {
             <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground">
               Explore the Zenvana collection through location, atmosphere, and ease of stay.
             </p>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground/90">
+              “From” prices here are the lowest direct stay total for tonight (one night). Each
+              hotel page shows meal plans and full rate options.
+            </p>
           </div>
 
           {propertiesForGrid.length === 0 ? (
@@ -207,7 +189,7 @@ export default async function HotelsPage({ searchParams }: Props) {
                       {p.listingPrice != null ? (
                         <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/35 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
                           <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                            From today
+                            From · 1 night (direct)
                           </span>
                           <HotelListingPlanPrice
                             amount={p.listingPrice.amount}
