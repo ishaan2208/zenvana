@@ -24,6 +24,19 @@ export type PublicPropertyListItem = {
   showValueBadge?: boolean
 }
 
+export type PublicListingPriceEntry = {
+  totalAmount: number
+  totalMarketAmount?: number
+} | null
+
+export type PublicPropertiesListingResponse = {
+  checkIn: string
+  checkOut: string
+  currency: string
+  properties: PublicPropertyListItem[]
+  listingPriceBySlug: Record<string, PublicListingPriceEntry>
+}
+
 export type PublicPropertyDetail = {
   id: number
   slug: string
@@ -80,6 +93,27 @@ export async function getPublicProperties(): Promise<PublicPropertyListItem[]> {
     return json?.data ?? []
   } catch {
     return []
+  }
+}
+
+export async function getPublicPropertiesListing(
+  checkIn: string,
+  checkOut: string,
+  occupancy?: number,
+): Promise<PublicPropertiesListingResponse | null> {
+  try {
+    const params = new URLSearchParams({ checkIn, checkOut })
+    if (occupancy != null) params.set('occupancy', String(occupancy))
+    const res = await fetch(`${BACKEND_URL}/public/properties/listing?${params}`, {
+      next: { revalidate: 300 },
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    const data = json?.data
+    if (!data?.properties || typeof data.listingPriceBySlug !== 'object') return null
+    return data as PublicPropertiesListingResponse
+  } catch {
+    return null
   }
 }
 

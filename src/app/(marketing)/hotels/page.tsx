@@ -13,10 +13,8 @@ import {
 } from 'lucide-react'
 
 import {
-  cheapestStayFromBulk,
-  getPublicProperties,
+  getPublicPropertiesListing,
   getPublicPropertyBySlug,
-  getPublicRatesBulk,
 } from '@/lib/api'
 import { Container } from '@/components/Container'
 import { HotelListingPlanPrice } from '@/components/HotelListingPlanPrice'
@@ -77,24 +75,18 @@ export default async function HotelsPage({ searchParams }: Props) {
   const couponCode = q.couponCode?.trim().toUpperCase() ?? ''
   const checkInYmd = kolkataYmd()
   const checkOutYmd = addDaysYmd(checkInYmd, 1)
-  const cacheListing = { next: { revalidate: 300 } } as const
 
-  const properties = await getPublicProperties()
+  const snapshot = await getPublicPropertiesListing(checkInYmd, checkOutYmd, 1)
+  const properties = snapshot?.properties ?? []
+  const listingPriceBySlug = snapshot?.listingPriceBySlug ?? {}
 
   const needsDetailFetch = properties.map((p) => !p.heroImageUrl)
 
-  const [fullDetails, bulkResults] = await Promise.all([
-    Promise.all(
-      properties.map((p, i) =>
-        needsDetailFetch[i] ? getPublicPropertyBySlug(p.slug) : Promise.resolve(null)
-      )
-    ),
-    Promise.all(
-      properties.map((p) =>
-        getPublicRatesBulk(p.slug, checkInYmd, checkOutYmd, 1, cacheListing)
-      )
-    ),
-  ])
+  const fullDetails = await Promise.all(
+    properties.map((p, i) =>
+      needsDetailFetch[i] ? getPublicPropertyBySlug(p.slug) : Promise.resolve(null)
+    )
+  )
 
   const propertiesWithImages = properties.map((p, i) => {
     const full = fullDetails[i]
@@ -110,14 +102,18 @@ export default async function HotelsPage({ searchParams }: Props) {
   })
 
   const propertiesForGrid = propertiesWithImages
-    .map((p, i) => {
-      const bulkLine = cheapestStayFromBulk(bulkResults[i])
-      const listingPrice = bulkLine
-        ? {
-            amount: bulkLine.totalAmount,
-            marketAmount: bulkLine.totalMarketAmount,
-          }
-        : null
+    .map((p) => {
+      const line = listingPriceBySlug[p.slug]
+      const listingPrice =
+        line &&
+        typeof line === 'object' &&
+        typeof line.totalAmount === 'number' &&
+        line.totalAmount > 0
+          ? {
+              amount: line.totalAmount,
+              marketAmount: line.totalMarketAmount,
+            }
+          : null
       return {
         ...p,
         listingPrice,
