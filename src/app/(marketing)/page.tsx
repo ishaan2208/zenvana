@@ -27,7 +27,7 @@ import {
   getPublicProperties,
   getPublicPropertyBySlug,
 } from '@/lib/api'
-import { HeroBookBar } from './HeroBookBar'
+import { HeroBookBarDeferred } from './HeroBookBarDeferred'
 import { JsonLd } from '@/components/JsonLd'
 import { LiveBookingsCounter } from '@/components/LiveBookingsCounter'
 import { GuestVoicesSection } from '@/components/GuestVoicesSection'
@@ -306,7 +306,7 @@ function HeroSection({
         </div>
 
         <div className="relative z-10 mt-8 w-full max-w-6xl px-2 mx-auto sm:mt-10 sm:px-4">
-          <HeroBookBar properties={properties} />
+          <HeroBookBarDeferred properties={properties} />
         </div>
       </div>
     </section>
