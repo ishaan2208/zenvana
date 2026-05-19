@@ -16,7 +16,7 @@ export function Logo({
         alt="Zenvana"
         width={140}
         height={60}
-        className="block h-full w-auto object-contain border-0 outline-none dark:[clip-path:inset(1px_0_0_1px)]"
+        className="block h-16 w-[149px] object-contain border-0 outline-none sm:h-[4.5rem] sm:w-[168px] dark:[clip-path:inset(1px_0_0_1px)]"
         priority
       />
     </div>

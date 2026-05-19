@@ -147,7 +147,7 @@ export function InitialSplash() {
             alt="Zenvana"
             width={320}
             height={112}
-            className="zv-logo mx-auto h-auto w-[clamp(180px,38vw,320px)]"
+            className="zv-logo mx-auto h-auto w-[clamp(180px,38vw,320px)] [aspect-ratio:20/7]"
             priority
             unoptimized
             sizes="(max-width: 640px) 180px, (max-width: 1024px) 38vw, 320px"
@@ -226,30 +226,31 @@ const zvCss = `
 
 /* ---------- Iris bloom behind logo ---------- */
 .zv-iris {
-  width: 1px; height: 1px;
+  width: 620px; height: 620px;
   border-radius: 9999px;
   background: radial-gradient(circle,
     rgba(232,214,147,0.85) 0%,
     rgba(232,214,147,0.18) 40%,
     rgba(232,214,147,0)    70%);
   filter: blur(8px);
+  transform: scale(0.001);
   animation: zv-iris-bloom 1700ms cubic-bezier(0.16, 1, 0.3, 1) 220ms forwards;
 }
 @keyframes zv-iris-bloom {
-  0%   { width: 0;     height: 0;     opacity: 0;    filter: blur(2px); }
+  0%   { transform: scale(0.001); opacity: 0;    filter: blur(2px); }
   35%  {                              opacity: 0.95; }
-  100% { width: 620px; height: 620px; opacity: 0;    filter: blur(32px); }
+  100% { transform: scale(1);     opacity: 0;    filter: blur(32px); }
 }
 
 /* ---------- Welcome ---------- */
 .zv-welcome {
   opacity: 0;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.34em;
+  transform: translateY(4px);
   animation: zv-welcome-in 1200ms cubic-bezier(0.22, 0.61, 0.36, 1) 180ms forwards;
 }
 @keyframes zv-welcome-in {
-  0%   { opacity: 0; letter-spacing: 0.18em; }
-  100% { opacity: 1; letter-spacing: 0.42em; }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ---------- Title ---------- */
@@ -340,12 +341,14 @@ const zvCss = `
 /* ---------- Gold rule that draws from the center ---------- */
 .zv-rule {
   height: 1px;
-  width: 0;
+  width: 8rem;
   background: linear-gradient(to right, transparent, #E8D693 50%, transparent);
+  transform: scaleX(0);
+  transform-origin: center;
   animation: zv-rule-draw 1100ms cubic-bezier(0.22, 0.61, 0.36, 1) 1200ms forwards;
 }
 @keyframes zv-rule-draw {
-  to { width: 8rem; }
+  to { transform: scaleX(1); }
 }
 
 /* ---------- Three dots ---------- */
