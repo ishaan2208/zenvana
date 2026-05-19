@@ -12,6 +12,7 @@ import {
   Loader2,
   Lock,
   MapPin,
+  MessageCircle,
   Luggage,
   Sparkles,
   XCircle,
@@ -281,17 +282,26 @@ function BookingCard({ booking }: { booking: ZenvanaGuestBookingRow }) {
             <Hash className="h-3.5 w-3.5" />
             <span className="font-mono tabular-nums">{booking.bookingReference}</span>
           </div>
-          {booking.slug ? (
+          <div className="flex flex-wrap items-center gap-4">
             <Link
-              href={`/hotels/${booking.slug}`}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+              href={`/guest/stay?bookingId=${booking.id}`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
-              View property
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              Get help
+              <MessageCircle className="h-3.5 w-3.5" />
             </Link>
-          ) : (
-            <span className="text-xs text-muted-foreground">Direct booking</span>
-          )}
+            {booking.slug ? (
+              <Link
+                href={`/hotels/${booking.slug}`}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+              >
+                View property
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            ) : (
+              <span className="text-xs text-muted-foreground">Direct booking</span>
+            )}
+          </div>
         </div>
       </div>
 
