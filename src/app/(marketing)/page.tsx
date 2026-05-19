@@ -272,13 +272,22 @@ function HeroSection({
     <section className="relative min-h-[92svh] overflow-hidden">
       <div className="absolute inset-0">
         <Image
+          src="/images/dehradun/Gemini_Generated_Image_jps3jcjps3jcjps3.png"
+          alt="Dehradun foothills and Rajpur Road atmosphere at golden hour"
+          fill
+          priority
+          sizes="100vw"
+          quality={70}
+          className="object-cover sm:hidden"
+        />
+        <Image
           src="/images/dehradun/dehradun-hero.jpg"
           alt="Dehradun foothills and Rajpur Road atmosphere at golden hour"
           fill
           priority
           sizes="100vw"
           quality={70}
-          className="object-cover"
+          className="hidden object-cover sm:block"
         />
         <div className="absolute inset-0 bg-hero-shade" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.18] mix-blend-soft-light">
@@ -288,12 +297,7 @@ function HeroSection({
 
       <div className="container-shell relative flex min-h-[92svh] flex-col items-center justify-end pb-10 pt-32 sm:items-center sm:justify-center sm:pb-12 lg:pb-24">
         <div className="relative z-10 mx-auto max-w-4xl text-center text-white animate-fade-up">
-          <div className="space-y-5 sm:space-y-6 lg:space-y-7">
-            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3.5 py-1.5 text-[11px] font-medium uppercase tracking-[0.28em] text-white/82 backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5 text-gold-200" />
-              Boutique stays · Rajpur Road, Dehradun
-            </div>
-
+          <div className="space-y-4 sm:space-y-6 lg:space-y-7">
             <h1 className="editorial-display max-w-3xl text-[clamp(2.25rem,7vw,5.25rem)] font-semibold leading-[0.94] text-white">
               A quieter way to stay in <span className="gold-text">Dehradun</span>.
             </h1>
@@ -999,20 +1003,37 @@ function MobileBookingCta() {
     <div className="mobile-cta-bar lg:hidden">
       <div className="mx-auto flex max-w-7xl items-center gap-2">
         <a
-          href="tel:+919084051774"
+          href="tel:9084051774"
           className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-foreground transition hover:bg-muted"
           aria-label="Call Zenvana Hotels"
         >
           <Phone className="h-4.5 w-4.5" />
+        </a>
+        <a
+          href="https://wa.me/919084051774"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white transition hover:bg-[#20c45a]"
+          aria-label="WhatsApp Zenvana Hotels"
+        >
+          <WhatsAppIcon className="h-5 w-5" />
         </a>
         <Link
           href="/hotels"
           className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-foreground text-sm font-medium text-background transition hover:opacity-95"
         >
           <CalendarCheck className="h-4 w-4" />
-          Check availability
+          Browse hotels
         </Link>
       </div>
     </div>
+  )
+}
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <path d="M19.05 4.91A9.82 9.82 0 0 0 12.03 2C6.62 2 2.2 6.4 2.2 11.83c0 1.74.45 3.43 1.31 4.93L2 22l5.39-1.42a9.85 9.85 0 0 0 4.64 1.18h.01c5.41 0 9.83-4.4 9.83-9.83A9.77 9.77 0 0 0 19.05 4.9Zm-7.02 15.2h-.01a8.2 8.2 0 0 1-4.17-1.14l-.3-.18-3.2.84.85-3.12-.2-.32a8.08 8.08 0 0 1-1.25-4.36c0-4.46 3.63-8.09 8.1-8.09 2.16 0 4.18.84 5.7 2.36a7.99 7.99 0 0 1 2.37 5.73c0 4.47-3.63 8.1-8.09 8.1Zm4.44-6.06c-.24-.12-1.42-.7-1.64-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.01-.37-1.93-1.18-.71-.63-1.19-1.4-1.33-1.64-.14-.24-.02-.37.1-.49.1-.1.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.48-.4-.42-.54-.42h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.31.98 2.47c.12.16 1.68 2.56 4.08 3.6.57.24 1.01.38 1.36.49.57.18 1.08.16 1.48.1.45-.06 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28Z" />
+    </svg>
   )
 }

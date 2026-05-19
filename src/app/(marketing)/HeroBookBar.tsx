@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAppRouter } from '@/hooks/useAppRouter'
+import { usePrefetchBookRooms } from '@/hooks/usePrefetchBookRooms'
+import { buildBookRoomsPath } from '@/lib/book-rooms-url'
 import { Calendar as CalendarIcon, ChevronRight, MapPinned, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -123,17 +125,34 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
     checkIn != null && checkOut != null && checkOut > checkIn
   const canSubmit = Boolean(slug) && isCheckOutValid
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!canSubmit || !checkIn || !checkOut) return
-    const params = new URLSearchParams({
+  const roomsUrl = useMemo(() => {
+    if (!canSubmit || !checkIn || !checkOut || !slug) return null
+    return buildBookRoomsPath({
+      slug,
       checkIn: toDateString(checkIn),
       checkOut: toDateString(checkOut),
-      rooms,
-      guests: String(totalGuests),
+      rooms: roomsNum,
+      totalGuests,
+      ...(useGuestsPerRoomMode ? { guestsPerRoom: guestsNum } : {}),
     })
-    if (useGuestsPerRoomMode) params.set('guestsPerRoom', guests)
-    router.push(`/book/${slug}/rooms?${params.toString()}`)
+  }, [
+    slug,
+    checkIn,
+    checkOut,
+    roomsNum,
+    totalGuests,
+    useGuestsPerRoomMode,
+    guestsNum,
+    canSubmit,
+  ])
+
+  const { prefetchRooms } = usePrefetchBookRooms(roomsUrl)
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!roomsUrl) return
+    prefetchRooms()
+    router.push(roomsUrl)
   }
 
   return (
@@ -254,7 +273,13 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
             </SelectContent>
           </Select>
 
-          <Button type="submit" disabled={!canSubmit} className="h-10 shrink-0 w-full md:w-fit">
+          <Button
+            type="submit"
+            disabled={!canSubmit}
+            className="h-10 shrink-0 w-full md:w-fit"
+            onMouseEnter={prefetchRooms}
+            onFocus={prefetchRooms}
+          >
             Book
             <ChevronRight className="ml-1 h-4 w-4" />
           </Button>

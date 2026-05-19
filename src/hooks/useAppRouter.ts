@@ -16,7 +16,7 @@ export function useAppRouter() {
 
   const push = useCallback(
     (href: string, options?: PushOptions) => {
-      startNavigation()
+      startNavigation(href)
       router.push(href, options)
     },
     [router, startNavigation],
@@ -24,7 +24,7 @@ export function useAppRouter() {
 
   const replace = useCallback(
     (href: string, options?: PushOptions) => {
-      startNavigation()
+      startNavigation(href)
       router.replace(href, options)
     },
     [router, startNavigation],

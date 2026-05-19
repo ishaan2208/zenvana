@@ -3,11 +3,12 @@
 import type { FormEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppRouter } from '@/hooks/useAppRouter'
+import { usePrefetchBookRooms } from '@/hooks/usePrefetchBookRooms'
+import { buildBookRoomsPath } from '@/lib/book-rooms-url'
 import { differenceInCalendarDays, format } from 'date-fns'
 import {
   BedDouble,
   CalendarCheck,
-  Loader2,
   LogIn,
   LogOut,
   Minus,
@@ -100,7 +101,6 @@ export function BookSearchForm({
 
   const [rooms, setRooms] = useState(1)
   const [guests, setGuests] = useState(2)
-  const [isLoading, setIsLoading] = useState(false)
 
   const useGuestsPerRoomMode = rooms >= ROOMS_FOR_GUESTS_PER_ROOM_MODE
   const totalGuests = useGuestsPerRoomMode ? rooms * guests : guests
@@ -142,6 +142,31 @@ export function BookSearchForm({
     ? MAX_GUESTS_PER_ROOM
     : getMaxTotalGuests(rooms)
 
+  const roomsUrl = useMemo(() => {
+    if (!isCheckOutValid || !checkIn || !checkOut) return null
+    return buildBookRoomsPath({
+      slug,
+      checkIn: toDateString(checkIn),
+      checkOut: toDateString(checkOut),
+      rooms,
+      totalGuests,
+      ...(useGuestsPerRoomMode ? { guestsPerRoom: guests } : {}),
+      ...(initialCouponCode ? { couponCode: initialCouponCode } : {}),
+    })
+  }, [
+    slug,
+    checkIn,
+    checkOut,
+    rooms,
+    totalGuests,
+    useGuestsPerRoomMode,
+    guests,
+    initialCouponCode,
+    isCheckOutValid,
+  ])
+
+  const { prefetchRooms } = usePrefetchBookRooms(roomsUrl)
+
   const handleCheckInSelect = (date: Date | undefined) => {
     setCheckIn(date ?? undefined)
 
@@ -159,31 +184,11 @@ export function BookSearchForm({
     if (date) setCheckOutOpen(false)
   }
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!isCheckOutValid || !checkIn || !checkOut) return
-
-    const params = new URLSearchParams({
-      checkIn: toDateString(checkIn),
-      checkOut: toDateString(checkOut),
-      rooms: String(rooms),
-      guests: String(totalGuests),
-    })
-
-    if (useGuestsPerRoomMode) {
-      params.set('guestsPerRoom', String(guests))
-    }
-    if (initialCouponCode) {
-      params.set('couponCode', initialCouponCode)
-    }
-
-    setIsLoading(true)
-
-    try {
-      router.push(`/book/${slug}/rooms?${params.toString()}`)
-    } catch {
-      setIsLoading(false)
-    }
+    if (!roomsUrl) return
+    prefetchRooms()
+    router.push(roomsUrl)
   }
 
   return (
@@ -404,14 +409,12 @@ export function BookSearchForm({
             type="submit"
             color="blue"
             className="h-14 w-full rounded-[1.15rem] text-sm font-medium shadow-[0_14px_34px_rgba(37,99,235,0.22)]"
-            disabled={!isCheckOutValid || isLoading}
+            disabled={!isCheckOutValid}
+            onMouseEnter={prefetchRooms}
+            onFocus={prefetchRooms}
           >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <CalendarCheck className="mr-2 h-4 w-4" aria-hidden />
-            )}
-            {isLoading ? 'Loading rooms…' : 'See rooms & rates'}
+            <CalendarCheck className="mr-2 h-4 w-4" aria-hidden />
+            See rooms & rates
           </Button>
 
           <p className="px-1 text-center text-xs leading-6 text-muted-foreground">

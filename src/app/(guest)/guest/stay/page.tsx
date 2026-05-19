@@ -46,6 +46,37 @@ export default function GuestStayPage() {
       }
 
       try {
+        // Prefer phone-session flow first so in-hotel login works
+        // even when a website guest cookie is present.
+        const phone = session?.phoneNumber ? String(session.phoneNumber) : ''
+        if (phone) {
+          try {
+            const data = await fetchStayContext(bookingId, phone)
+            if (cancelled) return
+
+            const roomNumberId = localStorage.getItem('roomNumberId')
+            hydrateStayFromContext(
+              roomNumberId ? 'qr' : 'walkin',
+              bookingId,
+              phone,
+              data.phase,
+              data.slug,
+              data.booking,
+              roomNumberId ? Number(roomNumberId) : undefined,
+            )
+
+            if (data.phase === 'expired') {
+              setLoadState({ status: 'expired', slug: data.slug })
+              return
+            }
+
+            setLoadState({ status: 'ready' })
+            return
+          } catch {
+            // If phone-based lookup fails, try account lookup below.
+          }
+        }
+
         const zenvanaMe = await getZenvanaGuestMe()
         if (zenvanaMe && bookingIdParam) {
           const data = await fetchBookingStayContext(bookingId)
@@ -70,32 +101,7 @@ export default function GuestStayPage() {
           return
         }
 
-        const phone = session?.phoneNumber ? String(session.phoneNumber) : ''
-        if (!phone) {
-          router.replace('/guest/login')
-          return
-        }
-
-        const data = await fetchStayContext(bookingId, phone)
-        if (cancelled) return
-
-        const roomNumberId = localStorage.getItem('roomNumberId')
-        hydrateStayFromContext(
-          roomNumberId ? 'qr' : 'walkin',
-          bookingId,
-          phone,
-          data.phase,
-          data.slug,
-          data.booking,
-          roomNumberId ? Number(roomNumberId) : undefined,
-        )
-
-        if (data.phase === 'expired') {
-          setLoadState({ status: 'expired', slug: data.slug })
-          return
-        }
-
-        setLoadState({ status: 'ready' })
+        router.replace('/guest/login')
       } catch (error) {
         if (cancelled) return
         const message = error instanceof Error ? error.message : 'Could not load your stay'

@@ -10,10 +10,12 @@ import {
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
+import { isBookRoomsPath } from '@/lib/book-rooms-url'
 import { cn } from '@/lib/utils'
 
 type NavigationLoadingContextValue = {
-  startNavigation: () => void
+  /** Pass destination href to skip overlay on routes that use their own loading UI. */
+  startNavigation: (href?: string) => void
 }
 
 const NavigationLoadingContext = createContext<NavigationLoadingContextValue | null>(
@@ -55,7 +57,8 @@ function NavigationLoadingInner({ children }: { children: React.ReactNode }) {
   const queryKey = searchParams?.toString() ?? ''
   const [isNavigating, setIsNavigating] = useState(false)
 
-  const startNavigation = useCallback(() => {
+  const startNavigation = useCallback((href?: string) => {
+    if (href && isBookRoomsPath(href)) return
     setIsNavigating(true)
   }, [])
 
@@ -85,6 +88,7 @@ function NavigationLoadingInner({ children }: { children: React.ReactNode }) {
       const nextPath = `${url.pathname}${url.search}`
       const currentPath = `${window.location.pathname}${window.location.search}`
       if (nextPath === currentPath) return
+      if (isBookRoomsPath(nextPath)) return
       setIsNavigating(true)
     }
 
