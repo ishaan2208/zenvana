@@ -214,14 +214,7 @@ function PropertyBookingHeader({
 
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,12,22,0.10)_0%,rgba(6,12,22,0.55)_100%)]" />
 
-          <div className="absolute bottom-3 left-3 right-3 rounded-[1.2rem] border border-white/12 bg-black/25 p-3 text-white backdrop-blur-xl sm:bottom-4 sm:left-4 sm:right-4 sm:rounded-[1.4rem] sm:p-4">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-white/70">
-              Steps to book
-            </div>
-            <p className="mt-2 text-sm leading-6 text-white/85">
-              Pick your dates now. Available rooms and plans come next.
-            </p>
-          </div>
+
         </div>
       </div>
     </section>

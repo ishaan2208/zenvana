@@ -1158,7 +1158,7 @@ function CompareOtherProperties({
               Same road, different mood.
             </h2>
             <p className="mt-5 max-w-xl text-[15px] leading-[1.85] text-muted-foreground">
-              Five hotels on the same Rajpur Road. Each with its own character — pick the
+              Seven hotels on the same Rajpur Road. Each with its own character — pick the
               one that matches the mood of your trip.
             </p>
           </div>
