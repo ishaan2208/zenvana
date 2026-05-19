@@ -2,14 +2,17 @@
 
 import type { FC } from 'react'
 import { LogOut, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import ChatAvatar from './Avatar'
 import { hardSignout } from '@/features/guest-assistant/lib/sessionGuard'
+import { useStayStore } from '@/features/guest-assistant/stores/stayStore'
 
 const Header: FC = () => {
   const router = useRouter()
+  const slug = useStayStore((s) => s.ctx?.slug)
 
   const handleLogout = () => {
     hardSignout()
@@ -29,6 +32,16 @@ const Header: FC = () => {
       </div>
 
       <div className="flex items-center gap-2">
+        {slug ? (
+          <>
+            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+              <Link href={`/book/${slug}`}>Book again</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+              <Link href="/my-bookings">My bookings</Link>
+            </Button>
+          </>
+        ) : null}
         <Button
           type="button"
           variant="ghost"

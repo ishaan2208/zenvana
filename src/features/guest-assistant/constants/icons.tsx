@@ -76,6 +76,17 @@ export const ITEM_ICON: Record<string, ReactNode> = {
   CHECKOUT_REQUEST: i(LogOut),
   LOST_KEYCARD: i(KeyRound),
   BOOK_TAXI: i(Car),
+
+  // Pre / post stay
+  EARLY_CHECKIN: i(CalendarCheck2),
+  AIRPORT_PICKUP: i(Car),
+  PRE_ARRIVAL_NOTE: i(Sparkles),
+  INVOICE_DETAILS: i(FolderOpen),
+  INVOICE_COPY: i(FolderOpen),
+  LOST_AND_FOUND: i(KeyRound),
+  POST_STAY_FEEDBACK: i(Sparkles),
+  DEPARTURE_TRANSFER: i(Car),
+  PROPERTY_CONTACT: i(Phone),
 };
 
 export const CATEGORY_ICON: Record<string, ReactNode> = {
@@ -83,6 +94,9 @@ export const CATEGORY_ICON: Record<string, ReactNode> = {
   Maintenance: i(Wrench),
   "Food & Room Service": i(UtensilsCrossed),
   "Reception & Communication": i(Phone),
+  "Before your stay": i(CalendarCheck2),
+  "Helpful info": i(Phone),
+  "After your stay": i(LogOut),
 };
 
 export const UI_ICON = {
