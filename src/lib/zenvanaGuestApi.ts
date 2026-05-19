@@ -205,3 +205,17 @@ export async function getZenvanaGuestBookings(): Promise<ZenvanaGuestBookingRow[
   if (!res.ok) throw new Error(json?.error ?? 'Could not load bookings')
   return json.data ?? []
 }
+
+export async function fetchBookingStayContext(bookingId: number) {
+  const res = await fetch(`${guestApiBase()}/bookings/${bookingId}/stay-context`, {
+    credentials: 'include',
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json?.error ?? 'Could not load stay context')
+  return json.data as {
+    booking: unknown
+    phase: string
+    phoneNumber: string
+    slug: string | null
+  }
+}
