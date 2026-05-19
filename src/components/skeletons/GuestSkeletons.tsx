@@ -27,7 +27,7 @@ export function GuestStayLoadingSkeleton() {
         <div className="mt-6 rounded-2xl border border-border/60 bg-card/70 p-5">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="mt-4 h-64 w-full rounded-xl" />
-        </motion.div>
+        </div>
         <div className="flex gap-2">
           <Skeleton className="h-10 flex-1 rounded-full" />
           <Skeleton className="h-10 flex-1 rounded-full" />
@@ -44,7 +44,7 @@ export function GuestRoomLoadingSkeleton() {
         <div className="space-y-2 text-center">
           <Skeleton className="mx-auto h-8 w-56" />
           <Skeleton className="mx-auto h-4 w-64" />
-        </motion.div>
+        </div>
 
         <div className="rounded-xl border border-border/50 bg-card/70 p-5 shadow-lg">
           <Skeleton className="h-5 w-40" />
