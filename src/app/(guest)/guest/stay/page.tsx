@@ -5,11 +5,12 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { Container } from '@/components/Container'
+import ChatbotLayout from '@/features/guest-assistant/components/ChatbotLayout'
+import GuestChatBot from '@/features/guest-assistant/components/GuestChatBot'
 import { fetchStayContext } from '@/features/guest-assistant/api/chatbotClient'
 import { guestStorage } from '@/features/guest-assistant/lib/guestStorage'
 import { hydrateStayFromContext } from '@/features/guest-assistant/lib/guestLoginHelpers'
 import { useStayStore } from '@/features/guest-assistant/stores/stayStore'
-import type { GuestStayPhase } from '@/features/guest-assistant/types'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import { fetchBookingStayContext, getZenvanaGuestMe } from '@/lib/zenvanaGuestApi'
 
@@ -29,6 +30,7 @@ export default function GuestStayPage() {
   const searchParams = useSearchParams()
   const bookingIdParam = searchParams?.get('bookingId')
   const ctx = useStayStore((s) => s.ctx)
+  const booking = useStayStore((s) => s.booking)
 
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' })
 
@@ -163,19 +165,18 @@ export default function GuestStayPage() {
     )
   }
 
-  const phase = ctx?.phase as GuestStayPhase | undefined
+  if (!booking) {
+    return (
+      <Container className="py-12 sm:py-16">
+        <p className="text-sm text-muted-foreground">Preparing your guest assistant…</p>
+      </Container>
+    )
+  }
 
   return (
-    <Container className="py-12 sm:py-16">
-      <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-border/80 bg-muted/20 px-6 py-10 text-center">
-        <p className="text-sm font-medium text-foreground">Assistant loading</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {phase
-            ? `Your stay is in the ${phase} phase. The full assistant UI will appear here next.`
-            : 'Preparing your guest assistant…'}
-        </p>
-      </div>
-    </Container>
+    <ChatbotLayout>
+      <GuestChatBot />
+    </ChatbotLayout>
   )
 }
 

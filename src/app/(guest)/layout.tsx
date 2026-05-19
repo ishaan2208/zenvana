@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
 import { Container } from '@/components/Container'
@@ -9,6 +12,14 @@ export default function GuestLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const isFullScreenAssistant =
+    pathname?.startsWith('/guest/stay') || pathname?.startsWith('/guest/room')
+
+  if (isFullScreenAssistant) {
+    return <>{children}</>
+  }
+
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
