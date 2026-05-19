@@ -48,26 +48,34 @@ export default function GuestStayPage() {
       try {
         const zenvanaMe = await getZenvanaGuestMe()
         if (zenvanaMe && bookingIdParam) {
-          const data = await fetchBookingStayContext(bookingId)
-          if (cancelled) return
-          guestStorage.setSession({
-            bookingId,
-            phoneNumber: data.phoneNumber,
-          })
-          hydrateStayFromContext(
-            'zenvana',
-            bookingId,
-            data.phoneNumber,
-            data.phase,
-            data.slug,
-            data.booking,
-          )
-          if (data.phase === 'expired') {
-            setLoadState({ status: 'expired', slug: data.slug })
+          try {
+            const data = await fetchBookingStayContext(bookingId)
+            if (cancelled) return
+            guestStorage.setSession({
+              bookingId,
+              phoneNumber: data.phoneNumber,
+            })
+            hydrateStayFromContext(
+              'zenvana',
+              bookingId,
+              data.phoneNumber,
+              data.phase,
+              data.slug,
+              data.booking,
+            )
+            if (data.phase === 'expired') {
+              setLoadState({ status: 'expired', slug: data.slug })
+              return
+            }
+            setLoadState({ status: 'ready' })
             return
+          } catch (error) {
+            const message = error instanceof Error ? error.message : ''
+            // If booking isn't in the website-account scope, fall back to phone-based stay context.
+            if (!message.toUpperCase().includes('BOOKING_NOT_FOUND')) {
+              throw error
+            }
           }
-          setLoadState({ status: 'ready' })
-          return
         }
 
         const phone = session?.phoneNumber ? String(session.phoneNumber) : ''
