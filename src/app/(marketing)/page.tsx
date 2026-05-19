@@ -262,13 +262,22 @@ function HeroSection({
     <section className="relative min-h-[92svh] overflow-hidden">
       <div className="absolute inset-0">
         <Image
+          src="/images/dehradun/Gemini_Generated_Image_jps3jcjps3jcjps3.png"
+          alt="Dehradun foothills and Rajpur Road atmosphere at golden hour"
+          fill
+          priority
+          sizes="100vw"
+          quality={70}
+          className="object-cover sm:hidden"
+        />
+        <Image
           src="/images/dehradun/dehradun-hero.jpg"
           alt="Dehradun foothills and Rajpur Road atmosphere at golden hour"
           fill
           priority
           sizes="100vw"
           quality={70}
-          className="object-cover"
+          className="hidden object-cover sm:block"
         />
         <div className="absolute inset-0 bg-hero-shade" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.18] mix-blend-soft-light">

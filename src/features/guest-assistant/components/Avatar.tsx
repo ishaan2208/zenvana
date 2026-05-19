@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import { Bot, User } from 'lucide-react'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 type Sender = 'bot' | 'guest' | 'typing'
@@ -19,6 +20,12 @@ const sizeMap: Record<NonNullable<ChatAvatarProps['size']>, string> = {
   sm: 'h-8 w-8 text-[12px]',
   md: 'h-9 w-9 text-[12px]',
   lg: 'h-10 w-10 text-[13px]',
+}
+
+const pixelSizeMap: Record<NonNullable<ChatAvatarProps['size']>, number> = {
+  sm: 32,
+  md: 36,
+  lg: 40,
 }
 
 function nameToInitials(name?: string) {
@@ -53,8 +60,13 @@ const ChatAvatar: FC<ChatAvatarProps> = ({
         aria-label={isBot ? 'Zenvana Concierge' : name || 'Guest'}
       >
         {src ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={name || sender} className="h-full w-full object-cover" />
+          <Image
+            src={src}
+            alt={name || sender}
+            fill
+            sizes={`${pixelSizeMap[size]}px`}
+            className="object-cover"
+          />
         ) : isBot ? (
           <Bot className="h-4 w-4" aria-hidden="true" />
         ) : name ? (

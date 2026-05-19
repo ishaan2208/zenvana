@@ -31,14 +31,24 @@ function HotelBookingSidebarSkeleton() {
 function HotelRoomCardSkeleton() {
   return (
     <article className="overflow-hidden rounded-[2rem] border border-border/60 bg-card/80 shadow-[0_18px_45px_rgba(8,17,31,0.04)] dark:bg-card/60">
-      <div className="grid gap-0 lg:grid-cols-[minmax(0,300px)_1fr]">
-        <Skeleton className="aspect-[4/3] rounded-none lg:aspect-auto lg:min-h-[240px]" />
-        <div className="space-y-4 p-5 sm:p-6 lg:p-7">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-8 w-2/3 max-w-xs" />
-          <Skeleton className="h-4 w-full max-w-md" />
-          <Skeleton className="h-4 w-11/12 max-w-sm" />
-          <Skeleton className="h-11 w-full rounded-full sm:w-48" />
+      <div className="flex items-baseline justify-between border-b border-border/60 px-5 py-4 sm:px-6">
+        <div className="flex items-baseline gap-3">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-7 w-40" />
+          </div>
+        </div>
+        <Skeleton className="hidden h-3 w-24 sm:block" />
+      </div>
+      <div className="grid gap-0 p-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(250px,0.75fr)] lg:gap-7 sm:p-6 lg:p-7">
+        <Skeleton className="aspect-[16/11] rounded-[1.25rem]" />
+        <div className="space-y-4 pt-5 lg:pt-0">
+          <Skeleton className="h-4 w-full max-w-sm" />
+          <Skeleton className="h-4 w-11/12 max-w-xs" />
+          <Skeleton className="h-4 w-10/12 max-w-sm" />
+          <Skeleton className="h-12 w-full rounded-full" />
+          <Skeleton className="h-12 w-full rounded-full" />
         </div>
       </div>
     </article>
@@ -153,6 +163,20 @@ export function HotelPropertyLoading() {
 
             {/* Map */}
             <Skeleton className="h-64 w-full rounded-[2rem] sm:h-80" />
+
+            {/* FAQ */}
+            <section>
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-4 h-10 w-80 max-w-full" />
+              <div className="mt-8 border-t border-border/60">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between border-b border-border/60 py-5">
+                    <Skeleton className="h-7 w-3/4" />
+                    <Skeleton className="h-6 w-6 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
 
           <aside className="hidden min-w-0 xl:block">
@@ -162,6 +186,37 @@ export function HotelPropertyLoading() {
           </aside>
         </div>
       </Container>
+
+      {/* Compare properties */}
+      <section className="border-t border-border/60 bg-card/25">
+        <Container className="py-12 sm:py-14">
+          <div className="flex items-end justify-between gap-4">
+            <div className="space-y-3">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-10 w-72 max-w-[70vw]" />
+            </div>
+            <Skeleton className="hidden h-10 w-28 rounded-full sm:block" />
+          </div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="overflow-hidden rounded-[1.25rem] border border-border/60 bg-card/70">
+                <Skeleton className="aspect-[4/5] w-full rounded-none" />
+                <div className="space-y-3 p-4">
+                  <Skeleton className="h-6 w-2/3" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      <section className="border-t border-border/60 bg-background">
+        <Container className="py-8">
+          <Skeleton className="h-4 w-36" />
+        </Container>
+      </section>
 
       {/* Mobile booking bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 p-4 backdrop-blur-xl xl:hidden">

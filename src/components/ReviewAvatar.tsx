@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 
 /**
  * Avatar with an initials-circle fallback for when the remote image fails
@@ -40,14 +41,12 @@ export function ReviewAvatar({
           .join(' ')}
         style={wrapperStyle}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={imageSrc}
           alt={`${name} — Zenvana guest`}
           width={size}
           height={size}
-          loading="lazy"
-          decoding="async"
+          sizes={`${size}px`}
           referrerPolicy="no-referrer"
           onError={() => setErrored(true)}
           className="h-full w-full object-cover"

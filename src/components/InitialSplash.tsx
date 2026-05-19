@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 
-const MIN_SPLASH_MS = 1500
+const MIN_SPLASH_MS = 2200
 const FADE_OUT_MS = 520
 const EMBER_COUNT = 30
 
@@ -136,13 +137,20 @@ export function InitialSplash() {
       <div className="relative z-10 px-6 text-center text-white">
         <p className="zv-welcome text-[10px] uppercase text-white/55">Welcome to</p>
 
+        <h1 className="zv-title mt-3 text-3xl font-semibold tracking-[0.18em] text-white sm:text-4xl">
+          Zenvana
+        </h1>
+
         <div className="zv-logo-wrap mx-auto mt-4">
-          <img
+          <Image
             src="/Zenvana%20logo/Zenvana%20logo%20(1).svg"
             alt="Zenvana"
+            width={320}
+            height={112}
             className="zv-logo mx-auto h-auto w-[clamp(180px,38vw,320px)]"
-            loading="eager"
-            decoding="async"
+            priority
+            unoptimized
+            sizes="(max-width: 640px) 180px, (max-width: 1024px) 38vw, 320px"
           />
         </div>
 
@@ -242,6 +250,17 @@ const zvCss = `
 @keyframes zv-welcome-in {
   0%   { opacity: 0; letter-spacing: 0.18em; }
   100% { opacity: 1; letter-spacing: 0.42em; }
+}
+
+/* ---------- Title ---------- */
+.zv-title {
+  opacity: 0;
+  transform: translateY(8px);
+  text-shadow: 0 0 22px rgba(232,214,147,0.22);
+  animation: zv-title-in 950ms cubic-bezier(0.22, 0.61, 0.36, 1) 360ms forwards;
+}
+@keyframes zv-title-in {
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ---------- Logo: scale + de-blur entrance, then breathe with halo ---------- */
@@ -351,7 +370,7 @@ const zvCss = `
 
 /* ---------- Accessibility: respect reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .zv-welcome, .zv-logo, .zv-tagline, .zv-rule, .zv-dots,
+  .zv-welcome, .zv-title, .zv-logo, .zv-tagline, .zv-rule, .zv-dots,
   .zv-logo-wrap::before, .zv-hearth {
     animation: none !important;
     opacity: 1 !important;
