@@ -4,6 +4,17 @@ export function isBookRoomsPath(path: string): boolean {
   return /^\/book\/[^/]+\/rooms\/?$/.test(pathname)
 }
 
+/** Routes that render dedicated `loading.tsx` skeletons (skip global nav overlay). */
+export function isBookFlowSkeletonPath(path: string): boolean {
+  const pathname = path.split('?')[0] ?? path
+  if (/^\/book\/[^/]+\/rooms\/?$/.test(pathname)) return true
+  if (/^\/book\/[^/]+\/checkout\/?$/.test(pathname)) return true
+  if (/^\/book\/[^/]+\/?$/.test(pathname)) return true
+  if (/^\/booking\/confirmation\/?$/.test(pathname)) return true
+  if (/^\/hotels\/[^/]+\/?$/.test(pathname)) return true
+  return false
+}
+
 export type BookRoomsUrlParams = {
   slug: string
   checkIn: string

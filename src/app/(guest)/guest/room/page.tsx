@@ -5,6 +5,7 @@ import { Bed, MapPin, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
+import { GuestRoomLoadingSkeleton } from '@/components/skeletons/GuestSkeletons'
 import axios from '@/features/guest-assistant/lib/axios.config'
 import { guestStorage } from '@/features/guest-assistant/lib/guestStorage'
 import { hardSignout } from '@/features/guest-assistant/lib/sessionGuard'
@@ -140,11 +141,7 @@ export default function GuestRoomPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground">Loading your stay…</p>
-      </div>
-    )
+    return <GuestRoomLoadingSkeleton />
   }
 
   if (error) {

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { Suspense } from 'react'
 import {
   ArrowRight,
@@ -31,6 +30,7 @@ import { HeroBookBarDeferred } from './HeroBookBarDeferred'
 import { JsonLd } from '@/components/JsonLd'
 import { LiveBookingsCounter } from '@/components/LiveBookingsCounter'
 import { GuestVoicesSection } from '@/components/GuestVoicesSection'
+import { DeferredLocationMap } from '../../components/DeferredLocationMap'
 import { faqPageJsonLd, hotelGroupJsonLd } from '@/lib/structured-data'
 
 function GuestVoicesSectionFallback() {
@@ -42,16 +42,6 @@ function GuestVoicesSectionFallback() {
     </section>
   )
 }
-
-const HomeLimewoodMapLazy = dynamic(() => import('@/components/HomeLimewoodMap'), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="h-full w-full min-h-[12rem] animate-pulse bg-muted/50"
-      aria-hidden
-    />
-  ),
-})
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
@@ -272,22 +262,13 @@ function HeroSection({
     <section className="relative min-h-[92svh] overflow-hidden">
       <div className="absolute inset-0">
         <Image
-          src="/images/dehradun/Gemini_Generated_Image_jps3jcjps3jcjps3.png"
-          alt="Dehradun foothills and Rajpur Road atmosphere at golden hour"
-          fill
-          priority
-          sizes="100vw"
-          quality={70}
-          className="object-cover sm:hidden"
-        />
-        <Image
           src="/images/dehradun/dehradun-hero.jpg"
           alt="Dehradun foothills and Rajpur Road atmosphere at golden hour"
           fill
           priority
           sizes="100vw"
           quality={70}
-          className="hidden object-cover sm:block"
+          className="object-cover"
         />
         <div className="absolute inset-0 bg-hero-shade" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.18] mix-blend-soft-light">
@@ -511,6 +492,9 @@ function PropertyPyramidSection({ properties }: { properties: PublicPropertyList
                             alt={`${item.name} by Zenvana — ${meta.label} stay in Dehradun`}
                             fill
                             sizes="(max-width: 768px) 100vw, 50vw"
+                            loading={item.slug === 'rosewood' ? 'eager' : 'lazy'}
+                            fetchPriority={item.slug === 'rosewood' ? 'high' : 'auto'}
+                            quality={65}
                             className="object-cover transition duration-700 ease-editorial group-hover:scale-[1.04]"
                           />
                           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_30%,rgba(0,0,0,0.45)_100%)]" />
@@ -655,6 +639,7 @@ function DiningSection() {
                 alt="Feasta by Zenvana — rooftop restaurant on Rajpur Road, Dehradun"
                 fill
                 sizes="(max-width: 1024px) 100vw, 60vw"
+                quality={65}
                 className="object-cover"
               />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.18),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.18))]" />
@@ -732,6 +717,7 @@ function WeddingsTeaserSection() {
                   alt="Wedding setup at Zenvana Hotels in Dehradun"
                   fill
                   sizes="(max-width: 1024px) 100vw, 50vw"
+                  quality={65}
                   className="object-cover"
                 />
               </div>
@@ -741,6 +727,7 @@ function WeddingsTeaserSection() {
                   alt="Corporate event venue Dehradun"
                   fill
                   sizes="(max-width: 768px) 50vw, 25vw"
+                  quality={60}
                   className="object-cover"
                 />
               </div>
@@ -750,6 +737,7 @@ function WeddingsTeaserSection() {
                   alt="Private celebration at Zenvana Dehradun"
                   fill
                   sizes="(max-width: 768px) 50vw, 25vw"
+                  quality={60}
                   className="object-cover"
                 />
               </div>
@@ -802,6 +790,7 @@ function GallerySection() {
                 alt="Zenvana Hotels Dehradun · interior"
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                quality={60}
                 className="object-cover transition duration-500 ease-editorial hover:scale-[1.03]"
               />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.16),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))]" />
@@ -898,7 +887,7 @@ function LocationSection({
 
           <div className="lg:col-span-7">
             <div className="photo-card aspect-[16/10]">
-              <HomeLimewoodMapLazy
+              <DeferredLocationMap
                 latitude={latitude}
                 longitude={longitude}
                 mapPlaceUrl={mapPlaceUrl}

@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Clock,
   Hash,
-  Loader2,
   Lock,
   MapPin,
   MessageCircle,
@@ -20,6 +19,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton'
+import { MyBookingsLoadingSkeleton } from '@/components/skeletons/AccountSkeletons'
 import {
   getZenvanaGuestBookings,
   getZenvanaGuestMe,
@@ -416,14 +416,7 @@ function EmptyState({ filter }: { filter: Filter }) {
 }
 
 function LoadingState() {
-  return (
-    <div className="container-shell py-20">
-      <div className="quiet-card flex items-center gap-4 p-6">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">Loading your bookings…</span>
-      </div>
-    </div>
-  )
+  return <MyBookingsLoadingSkeleton />
 }
 
 function SignedOutState() {

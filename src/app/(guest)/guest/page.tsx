@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, MessageCircle } from 'lucide-react'
 
 import { Container } from '@/components/Container'
+import { GuestHubLoadingSkeleton } from '@/components/skeletons/GuestSkeletons'
 import { guestStorage } from '@/features/guest-assistant/lib/guestStorage'
 
 type GuestSession = {
@@ -25,11 +26,7 @@ export default function GuestHubPage() {
     (session.bookingId != null || session.phoneNumber != null)
 
   if (session === undefined) {
-    return (
-      <Container className="py-12 sm:py-16">
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </Container>
-    )
+    return <GuestHubLoadingSkeleton />
   }
 
   return (

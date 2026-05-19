@@ -10,7 +10,7 @@ import {
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
-import { isBookRoomsPath } from '@/lib/book-rooms-url'
+import { isBookFlowSkeletonPath } from '@/lib/book-rooms-url'
 import { cn } from '@/lib/utils'
 
 type NavigationLoadingContextValue = {
@@ -58,7 +58,7 @@ function NavigationLoadingInner({ children }: { children: React.ReactNode }) {
   const [isNavigating, setIsNavigating] = useState(false)
 
   const startNavigation = useCallback((href?: string) => {
-    if (href && isBookRoomsPath(href)) return
+    if (href && isBookFlowSkeletonPath(href)) return
     setIsNavigating(true)
   }, [])
 
@@ -88,7 +88,7 @@ function NavigationLoadingInner({ children }: { children: React.ReactNode }) {
       const nextPath = `${url.pathname}${url.search}`
       const currentPath = `${window.location.pathname}${window.location.search}`
       if (nextPath === currentPath) return
-      if (isBookRoomsPath(nextPath)) return
+      if (isBookFlowSkeletonPath(nextPath)) return
       setIsNavigating(true)
     }
 

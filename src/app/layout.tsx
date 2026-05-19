@@ -146,7 +146,8 @@ const fraunces = Fraunces({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-fraunces',
-  weight: ['300', '400', '500', '600', '700'],
+  // Keep only actively used editorial weights to reduce critical font bytes.
+  weight: ['400', '600'],
 })
 
 export default function RootLayout({

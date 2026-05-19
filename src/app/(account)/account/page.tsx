@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Contact,
   KeyRound,
-  Loader2,
   Lock,
   LogOut,
   Mail,
@@ -21,6 +20,7 @@ import {
 import { useEffect, useState } from 'react'
 
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton'
+import { AccountPageLoadingSkeleton } from '@/components/skeletons/AccountSkeletons'
 import { BrandField } from '@/components/auth/BrandField'
 import { OtpInput } from '@/components/auth/OtpInput'
 import {
@@ -620,14 +620,7 @@ function ActionRow({
 }
 
 function LoadingState() {
-  return (
-    <div className="container-shell py-20">
-      <div className="quiet-card flex items-center gap-4 p-6">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">Loading your account…</span>
-      </div>
-    </div>
-  )
+  return <AccountPageLoadingSkeleton />
 }
 
 function SignedOutState() {

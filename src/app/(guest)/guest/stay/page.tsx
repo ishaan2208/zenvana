@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { Container } from '@/components/Container'
+import { GuestStayLoadingSkeleton } from '@/components/skeletons/GuestSkeletons'
 import ChatbotLayout from '@/features/guest-assistant/components/ChatbotLayout'
 import GuestChatBot from '@/features/guest-assistant/components/GuestChatBot'
 import { fetchStayContext } from '@/features/guest-assistant/api/chatbotClient'
@@ -120,11 +121,7 @@ export default function GuestStayPage() {
   }, [bookingIdParam, router])
 
   if (loadState.status === 'loading') {
-    return (
-      <Container className="py-12 sm:py-16">
-        <p className="text-sm text-muted-foreground">Loading your stay…</p>
-      </Container>
-    )
+    return <GuestStayLoadingSkeleton />
   }
 
   if (loadState.status === 'error') {
@@ -172,11 +169,7 @@ export default function GuestStayPage() {
   }
 
   if (!booking) {
-    return (
-      <Container className="py-12 sm:py-16">
-        <p className="text-sm text-muted-foreground">Preparing your guest assistant…</p>
-      </Container>
-    )
+    return <GuestStayLoadingSkeleton />
   }
 
   return (
