@@ -12,6 +12,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Analytics } from '@vercel/analytics/next'
 import { JsonLd } from '@/components/JsonLd'
 import { SiteAnalytics, GtmNoscript } from '@/components/SiteAnalytics'
+import { InitialSplash } from '@/components/InitialSplash'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
@@ -169,6 +170,7 @@ export default function RootLayout({
           fraunces.variable,
         )}
       >
+        <InitialSplash />
         <GtmNoscript />
         <ThemeProvider
           attribute="class"
