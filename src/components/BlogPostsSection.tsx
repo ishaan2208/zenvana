@@ -3,10 +3,15 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
-import type { BlogPost } from '@/lib/blogPosts'
+export type BlogPostCard = {
+  slug: string
+  title: string
+  excerpt: string
+  href?: string
+}
 
 type BlogPostsSectionProps = {
-  posts: BlogPost[]
+  posts: BlogPostCard[]
 }
 
 const STEP = 6

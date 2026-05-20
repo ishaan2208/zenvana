@@ -1,0 +1,225 @@
+import { BlogMediaType, BlogPostStatus, type BlogMedia, type BlogPost } from '@prisma/client'
+import { revalidatePath } from 'next/cache'
+
+import { getBlogPostHref } from '@/lib/blog'
+import { recordBlogSlugRedirect } from '@/lib/blogRedirects'
+import { prisma } from '@/lib/prisma'
+import { sanitizeBlogHtml } from '@/lib/sanitizeHtml'
+
+export type BlogPostAdminRecord = BlogPost & { media: BlogMedia[] }
+
+export type BlogPostInput = {
+  slug: string
+  title: string
+  excerpt: string
+  contentHtml: string
+  alternateHref?: string | null
+  seoTitle?: string | null
+  seoDescription?: string | null
+  seoKeywords?: string[]
+  canonicalUrl?: string | null
+  ogTitle?: string | null
+  ogDescription?: string | null
+  ogImageUrl?: string | null
+  twitterTitle?: string | null
+  twitterDescription?: string | null
+  twitterImageUrl?: string | null
+  heroImageUrl?: string | null
+  authorName?: string | null
+  status?: BlogPostStatus
+  isIndexable?: boolean
+}
+
+function normalizeSlug(slug: string): string {
+  return slug
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+function revalidateBlogPaths(post: Pick<BlogPost, 'slug' | 'alternateHref'>, previousSlug?: string) {
+  revalidatePath('/blog')
+  revalidatePath(`/blog/${post.slug}`)
+  if (previousSlug && previousSlug !== post.slug) {
+    revalidatePath(`/blog/${previousSlug}`)
+  }
+  if (post.alternateHref) {
+    revalidatePath(post.alternateHref)
+  }
+}
+
+export async function listAllBlogPostsAdmin(): Promise<BlogPostAdminRecord[]> {
+  return prisma.blogPost.findMany({
+    include: { media: { orderBy: { sortOrder: 'asc' } } },
+    orderBy: [{ updatedAt: 'desc' }],
+  })
+}
+
+export async function getBlogPostAdminById(id: string): Promise<BlogPostAdminRecord | null> {
+  return prisma.blogPost.findUnique({
+    where: { id },
+    include: { media: { orderBy: { sortOrder: 'asc' } } },
+  })
+}
+
+export async function createBlogPostAdmin(input: BlogPostInput): Promise<BlogPostAdminRecord> {
+  const slug = normalizeSlug(input.slug)
+  const status = input.status ?? BlogPostStatus.DRAFT
+  const post = await prisma.blogPost.create({
+    data: {
+      slug,
+      title: input.title.trim(),
+      excerpt: input.excerpt.trim(),
+      contentHtml: sanitizeBlogHtml(input.contentHtml),
+      alternateHref: input.alternateHref?.trim() || null,
+      seoTitle: input.seoTitle?.trim() || input.title.trim(),
+      seoDescription: input.seoDescription?.trim() || input.excerpt.trim(),
+      seoKeywords: input.seoKeywords ?? [],
+      canonicalUrl: input.canonicalUrl?.trim() || null,
+      ogTitle: input.ogTitle?.trim() || null,
+      ogDescription: input.ogDescription?.trim() || null,
+      ogImageUrl: input.ogImageUrl?.trim() || null,
+      twitterTitle: input.twitterTitle?.trim() || null,
+      twitterDescription: input.twitterDescription?.trim() || null,
+      twitterImageUrl: input.twitterImageUrl?.trim() || null,
+      heroImageUrl: input.heroImageUrl?.trim() || null,
+      authorName: input.authorName?.trim() || 'Zenvana Hotels',
+      status,
+      publishedAt: status === BlogPostStatus.PUBLISHED ? new Date() : null,
+      isIndexable: input.isIndexable ?? false,
+    },
+    include: { media: true },
+  })
+
+  revalidateBlogPaths(post)
+  return post
+}
+
+export async function updateBlogPostAdmin(
+  id: string,
+  input: BlogPostInput,
+): Promise<BlogPostAdminRecord> {
+  const existing = await prisma.blogPost.findUnique({ where: { id } })
+  if (!existing) {
+    throw new Error('Blog post not found')
+  }
+
+  const status = input.status ?? existing.status
+  const newSlug = normalizeSlug(input.slug)
+  const publishedAt =
+    status === BlogPostStatus.PUBLISHED
+      ? existing.publishedAt ?? new Date()
+      : existing.publishedAt
+
+  if (existing.publishedAt && existing.slug !== newSlug) {
+    await recordBlogSlugRedirect(existing.slug, newSlug)
+  }
+
+  const post = await prisma.blogPost.update({
+    where: { id },
+    data: {
+      slug: newSlug,
+      title: input.title.trim(),
+      excerpt: input.excerpt.trim(),
+      contentHtml: sanitizeBlogHtml(input.contentHtml),
+      alternateHref: input.alternateHref?.trim() || null,
+      seoTitle: input.seoTitle?.trim() || input.title.trim(),
+      seoDescription: input.seoDescription?.trim() || input.excerpt.trim(),
+      seoKeywords: input.seoKeywords ?? [],
+      canonicalUrl: input.canonicalUrl?.trim() || null,
+      ogTitle: input.ogTitle?.trim() || null,
+      ogDescription: input.ogDescription?.trim() || null,
+      ogImageUrl: input.ogImageUrl?.trim() || null,
+      twitterTitle: input.twitterTitle?.trim() || null,
+      twitterDescription: input.twitterDescription?.trim() || null,
+      twitterImageUrl: input.twitterImageUrl?.trim() || null,
+      heroImageUrl: input.heroImageUrl?.trim() || null,
+      authorName: input.authorName?.trim() || existing.authorName,
+      status,
+      publishedAt,
+      isIndexable: input.isIndexable ?? false,
+    },
+    include: { media: { orderBy: { sortOrder: 'asc' } } },
+  })
+
+  revalidateBlogPaths(existing, existing.slug)
+  revalidateBlogPaths(post, existing.slug)
+  return post
+}
+
+export async function deleteBlogPostAdmin(id: string): Promise<void> {
+  const existing = await prisma.blogPost.findUnique({ where: { id } })
+  if (!existing) return
+
+  await prisma.blogPost.delete({ where: { id } })
+  revalidateBlogPaths(existing)
+}
+
+export async function addBlogMediaAdmin(input: {
+  blogPostId: string
+  type: BlogMediaType
+  url: string
+  publicId?: string | null
+  width?: number | null
+  height?: number | null
+  duration?: number | null
+  altText?: string | null
+  sortOrder?: number
+}): Promise<BlogMedia> {
+  const media = await prisma.blogMedia.create({
+    data: {
+      blogPostId: input.blogPostId,
+      type: input.type,
+      url: input.url,
+      publicId: input.publicId ?? null,
+      width: input.width ?? null,
+      height: input.height ?? null,
+      duration: input.duration ?? null,
+      altText: input.altText ?? null,
+      sortOrder: input.sortOrder ?? 0,
+    },
+  })
+
+  const post = await prisma.blogPost.findUnique({ where: { id: input.blogPostId } })
+  if (post) revalidateBlogPaths(post)
+  return media
+}
+
+export async function deleteBlogMediaAdmin(id: string): Promise<void> {
+  const media = await prisma.blogMedia.findUnique({
+    where: { id },
+    include: { blogPost: true },
+  })
+  if (!media) return
+
+  await prisma.blogMedia.delete({ where: { id } })
+  revalidateBlogPaths(media.blogPost)
+}
+
+export async function setBlogHeroFromMediaAdmin(
+  blogPostId: string,
+  mediaId: string,
+): Promise<BlogPostAdminRecord> {
+  const media = await prisma.blogMedia.findFirst({
+    where: { id: mediaId, blogPostId },
+  })
+  if (!media) {
+    throw new Error('Media not found for this post')
+  }
+
+  const post = await prisma.blogPost.update({
+    where: { id: blogPostId },
+    data: {
+      heroImageUrl: media.url,
+      ogImageUrl: media.type === 'IMAGE' ? media.url : undefined,
+    },
+    include: { media: { orderBy: { sortOrder: 'asc' } } },
+  })
+
+  revalidateBlogPaths(post)
+  return post
+}
+
+export { getBlogPostHref, normalizeSlug }

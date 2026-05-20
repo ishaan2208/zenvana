@@ -3,8 +3,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { Container } from '@/components/Container'
-import { blogPosts } from '@/lib/blogPosts'
 import { JsonLd } from '@/components/JsonLd'
+import { getBlogPostHref, getPublishedBlogPosts } from '@/lib/blog'
 import { breadcrumbJsonLd } from '@/lib/structured-data'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
@@ -31,7 +31,8 @@ export const metadata: Metadata = {
   },
 }
 
-export default function BlogPage() {
+export default async function BlogPage() {
+  const blogPosts = await getPublishedBlogPosts()
   const breadcrumbs = [
     { name: 'Home', url: SITE_URL },
     { name: 'Journal', url: `${SITE_URL}/blog` },
@@ -55,6 +56,22 @@ export default function BlogPage() {
     '/images/dehradun/SILVER W BUILDING PIC.png',
   ]
 
+  if (!featured) {
+    return (
+      <div>
+        <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
+        <section className="section-rule brand-gradient">
+          <Container className="py-16 sm:py-20 lg:py-24">
+            <h1 className="font-serif text-4xl text-white">Stories from Zenvana</h1>
+            <p className="mt-4 text-white/85">Blog posts will appear here once published.</p>
+          </Container>
+        </section>
+      </div>
+    )
+  }
+
+  const featuredImage = featured.heroImageUrl || '/images/dehradun/restaurantImage.png'
+
   return (
     <div>
       <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
@@ -66,8 +83,7 @@ export default function BlogPage() {
               Stories from Zenvana
             </h1>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-white/85 sm:text-base">
-              Read local guides, stay recommendations, and hospitality insights for travelers
-              exploring Dehradun.
+              Read local guides, stay recommendations, and hospitality insights for travelers exploring Dehradun.
             </p>
           </div>
         </Container>
@@ -80,11 +96,12 @@ export default function BlogPage() {
               <article className="quiet-card overflow-hidden">
                 <div className="relative aspect-[16/9]">
                   <Image
-                    src="/images/dehradun/restaurantImage.png"
+                    src={featuredImage}
                     alt={featured.title}
                     fill
                     className="object-cover"
                     priority
+                    unoptimized={featuredImage.startsWith('http')}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
                 </div>
@@ -93,7 +110,7 @@ export default function BlogPage() {
                   <h2 className="display-title mt-3 text-2xl sm:text-3xl">{featured.title}</h2>
                   <p className="body-copy mt-4">{featured.excerpt}</p>
                   <div className="mt-6">
-                    <Link href={featured.href ?? `/blog/${featured.slug}`} className="site-button-dark">
+                    <Link href={getBlogPostHref(featured)} className="site-button-dark">
                       Read More
                     </Link>
                   </div>
@@ -105,17 +122,18 @@ export default function BlogPage() {
                   <article key={post.slug} className="quiet-card overflow-hidden">
                     <div className="relative aspect-[16/10]">
                       <Image
-                        src={thumbs[index % thumbs.length]}
+                        src={post.heroImageUrl || thumbs[index % thumbs.length]}
                         alt={post.title}
                         fill
                         className="object-cover"
+                        unoptimized={Boolean(post.heroImageUrl?.startsWith('http'))}
                       />
                     </div>
                     <div className="p-5">
                       <h3 className="text-lg font-semibold tracking-tight text-foreground">{post.title}</h3>
                       <p className="mt-3 text-sm leading-7 text-muted-foreground">{post.excerpt}</p>
                       <div className="mt-5">
-                        <Link href={post.href ?? `/blog/${post.slug}`} className="site-button-light">
+                        <Link href={getBlogPostHref(post)} className="site-button-light">
                           Read More
                         </Link>
                       </div>
@@ -152,7 +170,7 @@ export default function BlogPage() {
                 <ul className="mt-3 space-y-3">
                   {blogPosts.slice(0, 6).map((post) => (
                     <li key={post.slug}>
-                      <Link href={post.href ?? `/blog/${post.slug}`} className="site-link text-sm">
+                      <Link href={getBlogPostHref(post)} className="site-link text-sm">
                         {post.title}
                       </Link>
                     </li>
@@ -180,4 +198,3 @@ export default function BlogPage() {
     </div>
   )
 }
-

@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next'
 import { getPublicProperties } from '@/lib/api'
-import { getAllBlogSlugs } from '@/lib/blogPosts'
+import { getIndexablePublishedBlogSitemapEntries } from '@/lib/blog'
 import { getAllLandmarks } from '@/lib/landmarks'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
@@ -8,9 +8,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
 
-  const [properties, blogSlugs, landmarks] = await Promise.all([
+  const [properties, blogEntries, landmarks] = await Promise.all([
     getPublicProperties().catch(() => []),
-    Promise.resolve(getAllBlogSlugs()),
+    getIndexablePublishedBlogSitemapEntries().catch(() => []),
     getAllLandmarks().catch(() => []),
   ])
 
@@ -42,9 +42,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   }))
 
-  const blogPages: MetadataRoute.Sitemap = blogSlugs.map((slug) => ({
-    url: `${SITE_URL}/blog/${slug}`,
-    lastModified: now,
+  const blogPages: MetadataRoute.Sitemap = blogEntries.map((entry) => ({
+    url: `${SITE_URL}/blog/${entry.slug}`,
+    lastModified: entry.lastModified,
     changeFrequency: 'monthly' as const,
     priority: 0.6,
   }))

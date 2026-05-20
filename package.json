@@ -6,13 +6,22 @@
     "dev": "next dev -p 3009",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "dotenv -e .env.local -- prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
+    "db:push": "dotenv -e .env.local -- prisma db push",
+    "db:seed": "dotenv -e .env.local -- prisma db seed"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
   },
   "browserslist": "last 2 Chrome versions, last 2 Firefox versions, last 2 Edge versions, Safari >= 15, iOS >= 15, not dead",
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "@headlessui/tailwindcss": "^0.2.0",
     "@next/third-parties": "^14.2.3",
+    "@prisma/client": "^6.19.3",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-popover": "^1.1.15",
@@ -21,6 +30,11 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@react-pdf/renderer": "^4.3.2",
     "@tailwindcss/forms": "^0.5.3",
+    "@tiptap/extension-link": "^3.23.5",
+    "@tiptap/extension-placeholder": "^3.23.5",
+    "@tiptap/extension-underline": "^3.23.5",
+    "@tiptap/react": "^3.23.5",
+    "@tiptap/starter-kit": "^3.23.5",
     "@types/node": "^20.10.8",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
@@ -28,6 +42,7 @@
     "autoprefixer": "^10.4.12",
     "axios": "^1.6.8",
     "class-variance-authority": "^0.7.0",
+    "cloudinary": "^2.10.0",
     "clsx": "^2.1.0",
     "critters": "^0.0.23",
     "date-fns": "^3.6.0",
@@ -52,10 +67,13 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "dotenv-cli": "^11.0.0",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.0.4",
     "prettier": "^3.1.1",
     "prettier-plugin-tailwindcss": "^0.5.11",
-    "sharp": "0.33.1"
+    "prisma": "^6.19.3",
+    "sharp": "0.33.1",
+    "tsx": "^4.22.3"
   }
 }

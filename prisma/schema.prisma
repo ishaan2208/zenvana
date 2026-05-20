@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["blog"]
+}
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+
+  @@schema("blog")
+}
+
+enum BlogMediaType {
+  IMAGE
+  VIDEO
+
+  @@schema("blog")
+}
+
+enum BlogMediaRole {
+  HERO_DESKTOP
+  HERO_MOBILE
+  THUMBNAIL
+  OG
+  INLINE
+  GALLERY
+
+  @@schema("blog")
+}
+
+model BlogPost {
+  id            String  @id @default(cuid())
+  slug          String  @unique
+  title         String
+  excerpt       String
+  contentHtml   String  @db.Text
+  alternateHref String?
+
+  seoTitle           String?
+  seoDescription     String?
+  seoKeywords        String[] @default([])
+  canonicalUrl       String?
+  ogTitle            String?
+  ogDescription      String?
+  ogImageUrl         String?
+  twitterTitle       String?
+  twitterDescription String?
+  twitterImageUrl    String?
+
+  heroImageUrl String?
+  authorName   String  @default("Zenvana Hotels")
+
+  status      BlogPostStatus @default(DRAFT)
+  publishedAt DateTime?
+  isIndexable Boolean        @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  media BlogMedia[]
+
+  @@index([status, publishedAt])
+  @@schema("blog")
+}
+
+model BlogMedia {
+  id         String   @id @default(cuid())
+  blogPostId String
+  blogPost   BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+
+  type      BlogMediaType
+  role      BlogMediaRole @default(GALLERY)
+  url       String
+  publicId  String?
+  width     Int?
+  height    Int?
+  duration  Int?
+  bytes     Int?
+  format    String?
+  altText   String?
+  sortOrder Int           @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([blogPostId, sortOrder])
+  @@index([blogPostId, role])
+  @@schema("blog")
+}
+
+model BlogSlugRedirect {
+  fromSlug  String   @id
+  toSlug    String
+  createdAt DateTime @default(now())
+
+  @@index([toSlug])
+  @@schema("blog")
+}
