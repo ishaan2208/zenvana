@@ -347,16 +347,7 @@ export function restaurantJsonLd({
   }
 }
 
-export function articleJsonLd({
-  title,
-  description,
-  url,
-  image,
-  datePublished,
-  dateModified,
-  authorName = ORG_NAME,
-  section,
-}: {
+export type ArticleJsonLdInput = {
   title: string
   description: string
   url: string
@@ -365,7 +356,23 @@ export function articleJsonLd({
   dateModified?: string
   authorName?: string
   section?: string
-}): object {
+  /** Tags / topical keywords — emitted into schema.org Article.keywords for SEO. */
+  keywords?: string[]
+}
+
+export function articleJsonLd(input: ArticleJsonLdInput): object {
+  const {
+    title,
+    description,
+    url,
+    image,
+    datePublished,
+    dateModified,
+    authorName = ORG_NAME,
+    section,
+    keywords,
+  } = input
+
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -390,6 +397,7 @@ export function articleJsonLd({
       },
     },
     ...(section && { articleSection: section }),
+    ...(keywords && keywords.length > 0 && { keywords: keywords.join(', ') }),
     inLanguage: 'en-IN',
   }
 }

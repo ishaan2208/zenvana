@@ -4,6 +4,7 @@ import { BlogMediaRole, type BlogMedia } from '@prisma/client'
 import Image from 'next/image'
 import { useCallback, useMemo, useRef, useState } from 'react'
 
+import { compressBlogImage } from '@/lib/blogImageCompression'
 import {
   describeAllowedTypes,
   describeMaxSize,
@@ -67,41 +68,102 @@ export function BlogImageUploadSlot({
     previewUrl: string
     issues: ImageValidationIssue[]
     ok: boolean
+    originalBytes: number
+    originalType: string
+    optimizationNotes: string[]
   }>(null)
   const [altText, setAltText] = useState(current?.altText ?? '')
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [altSaving, setAltSaving] = useState(false)
   const [altSaved, setAltSaved] = useState(false)
+  const [autoCompress, setAutoCompress] = useState(true)
 
   const handleFile = useCallback(
     async (file: File) => {
       setError(null)
+      setProcessing(true)
+      const originalBytes = file.size
+      const originalType = file.type
       try {
-        const dimensions = await readImageDimensions(file)
+        // 1. Read original dimensions for nudges (pre-compression).
+        const originalDimensions = await readImageDimensions(file)
+        const oversizedWidth = originalDimensions.width > 2400
+        const looksLikeBlobbyPng =
+          file.type === 'image/png' && file.size > 200 * 1024
+        const aboveYellowThreshold = file.size > 500 * 1024
+        const aboveRedThreshold = file.size > 2 * 1024 * 1024
+
+        // 2. Compress if the toggle is on. Skips short-circuit if already small.
+        const compression = autoCompress
+          ? await compressBlogImage(file, spec)
+          : { file, changed: false, notes: ['Auto-compress is off — uploading the original file.'] }
+
+        const finalFile = compression.file
+        const finalDimensions = compression.changed
+          ? await readImageDimensions(finalFile).catch(() => originalDimensions)
+          : originalDimensions
+
+        // 3. Validate against the role spec using the final file.
         const validation = validateBlogImage({
           role,
-          file: { type: file.type, size: file.size, name: file.name },
-          dimensions,
-          // Skip alt-text check until upload step — we collect it after the preview.
+          file: { type: finalFile.type, size: finalFile.size, name: finalFile.name },
+          dimensions: finalDimensions,
           altText: 'placeholder',
         })
-        const previewUrl = URL.createObjectURL(file)
+
+        // 4. Editor-facing nudges layered on top of validation results.
+        const nudges: ImageValidationIssue[] = []
+        if (!autoCompress && aboveRedThreshold) {
+          nudges.push({
+            severity: 'fail',
+            code: 'too-large',
+            message: `Original is ${formatBytes(originalBytes)} — turn auto-compress on or re-export below 2 MB.`,
+          })
+        } else if (!autoCompress && aboveYellowThreshold) {
+          nudges.push({
+            severity: 'warn',
+            code: 'too-large',
+            message: `Original is ${formatBytes(originalBytes)} — slows mobile load. Auto-compress will fix this.`,
+          })
+        }
+        if (looksLikeBlobbyPng && finalFile.type === 'image/png') {
+          nudges.push({
+            severity: 'warn',
+            code: 'wrong-type',
+            message: 'PNG is heavier than JPEG for photographs — switching to JPEG would be ~70% smaller.',
+          })
+        }
+        if (oversizedWidth && finalDimensions.width > 2400) {
+          nudges.push({
+            severity: 'warn',
+            code: 'too-large-dimensions',
+            message: `Original is ${originalDimensions.width}px wide — anything past 2400 isn’t rendered.`,
+          })
+        }
+
+        const previewUrl = URL.createObjectURL(finalFile)
         setPending({
-          file,
-          width: dimensions.width,
-          height: dimensions.height,
+          file: finalFile,
+          width: finalDimensions.width,
+          height: finalDimensions.height,
           previewUrl,
-          issues: validation.issues,
-          ok: validation.ok,
+          issues: [...nudges, ...validation.issues],
+          ok: validation.ok && !nudges.some((n) => n.severity === 'fail'),
+          originalBytes,
+          originalType,
+          optimizationNotes: compression.notes,
         })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not read image')
         setPending(null)
+      } finally {
+        setProcessing(false)
       }
     },
-    [role],
+    [role, spec, autoCompress],
   )
 
   function clearPending() {
@@ -164,8 +226,13 @@ export function BlogImageUploadSlot({
         <SpecBadge spec={spec} />
       </header>
 
-      <div className="grid gap-5 p-5 lg:grid-cols-[1fr_280px]">
-        {/* Visual surface */}
+      {/*
+        Layout: stack vertically. Side-by-side was causing the 1fr grid
+        track to grow with the image's intrinsic width and push the
+        controls column underneath. Stacking is also kinder on mobile.
+      */}
+      <div className="flex flex-col gap-5 p-5">
+        {/* Visual surface — width + height capped so it never dominates */}
         <div
           onDragOver={(event) => {
             event.preventDefault()
@@ -178,7 +245,7 @@ export function BlogImageUploadSlot({
             const file = event.dataTransfer.files?.[0]
             if (file) void handleFile(file)
           }}
-          className={`relative flex min-h-[220px] items-center justify-center overflow-hidden rounded-xl border-2 border-dashed text-center transition ${
+          className={`relative mx-auto flex w-full min-w-0 max-w-[520px] items-center justify-center overflow-hidden rounded-xl border-2 border-dashed text-center transition ${
             dragging ? 'border-foreground bg-foreground/5' : 'border-border bg-background/60'
           }`}
           style={{ aspectRatio: pending ? `${pending.width} / ${pending.height}` : `${spec.aspectRatio}` }}
@@ -224,6 +291,11 @@ export function BlogImageUploadSlot({
               </span>
             </button>
           )}
+          {processing ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm text-sm">
+              Optimizing…
+            </div>
+          ) : null}
           {(uploading || busy) && pending ? (
             <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm text-sm">
               Uploading…
@@ -266,6 +338,23 @@ export function BlogImageUploadSlot({
             }}
           />
 
+          {/* Auto-compress control — always visible so writers know what we’re doing. */}
+          <label className="flex items-start gap-2 rounded-xl border border-border bg-background/60 p-3 text-[11px] leading-relaxed text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={autoCompress}
+              onChange={(event) => setAutoCompress(event.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 rounded border-border"
+            />
+            <span>
+              <span className="font-medium text-foreground/90">Auto-compress &amp; convert to JPEG</span>
+              <span className="block">
+                Strips EXIF, downsizes to {spec.recommended.width}px, and saves as JPEG at q=82. Photographs
+                lose ~70% of their bytes — pages load faster on mobile.
+              </span>
+            </span>
+          </label>
+
           {/* Validation panel (pending file) */}
           {pending ? (
             <div className="space-y-3 rounded-xl border border-border bg-background p-3 text-xs">
@@ -274,9 +363,27 @@ export function BlogImageUploadSlot({
                 <PassFailBadge ok={pending.ok} />
               </div>
               <ValidationList issues={pending.issues} />
+              {pending.optimizationNotes.length > 0 ? (
+                <ul className="space-y-1 rounded-lg bg-emerald-500/5 p-2 text-[11px] text-emerald-800 dark:text-emerald-300">
+                  {pending.optimizationNotes.map((note) => (
+                    <li key={note} className="flex items-start gap-1.5">
+                      <span className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
+                      <span>{note}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <div className="text-[11px] text-muted-foreground">
-                Detected: {pending.width}×{pending.height} · {formatBytes(pending.file.size)} ·{' '}
-                {pending.file.type || 'unknown'}
+                Will upload:{' '}
+                <span className="text-foreground">
+                  {pending.width}×{pending.height} · {formatBytes(pending.file.size)} ·{' '}
+                  {pending.file.type || 'unknown'}
+                </span>
+                {pending.originalBytes !== pending.file.size ? (
+                  <span className="block text-muted-foreground/80">
+                    Original: {formatBytes(pending.originalBytes)} · {pending.originalType || 'unknown'}
+                  </span>
+                ) : null}
               </div>
             </div>
           ) : null}

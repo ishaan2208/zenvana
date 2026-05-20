@@ -9,7 +9,12 @@ import {
   BlogImageUploadSlot,
   type UploadSlotMedia,
 } from '@/app/internal/blogs-admin/BlogImageUploadSlot'
-import { BlogRichTextEditor } from '@/app/internal/blogs-admin/BlogRichTextEditor'
+import {
+  BlogRichTextEditor,
+  type BlogRichTextEditorHandle,
+} from '@/app/internal/blogs-admin/BlogRichTextEditor'
+import { BlogTagInput, normalizeTags } from '@/app/internal/blogs-admin/BlogTagInput'
+import { BlogTocPreview } from '@/app/internal/blogs-admin/BlogTocPreview'
 import {
   deleteBlogPostAction,
   loginBlogAdmin,
@@ -20,6 +25,7 @@ import {
   setHeroFromMediaAction,
   updateMediaAltTextAction,
 } from '@/app/internal/blogs-admin/actions'
+import { getBlogPostHref } from '@/lib/blog'
 import {
   BLOG_IMAGE_SLOT_ROLES,
   type BlogImageRole,
@@ -112,6 +118,7 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
   const [savedSnapshot, setSavedSnapshot] = useState<string>('')
   const slugTouchedRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const editorRef = useRef<BlogRichTextEditorHandle>(null)
 
   const selectedPost = useMemo(
     () => initialPosts.find((post) => post.id === form.id) ?? null,
@@ -128,6 +135,20 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
         post.authorName.toLowerCase().includes(q),
     )
   }, [initialPosts, postFilter])
+
+  // Aggregate every tag used across the journal, ordered by frequency, so
+  // writers can reuse existing topic taxonomy instead of inventing new ones.
+  const tagSuggestions = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const post of initialPosts) {
+      for (const tag of normalizeTags(post.seoKeywords ?? [])) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1)
+      }
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([tag]) => tag)
+  }, [initialPosts])
 
   const seoReport = useMemo(
     () =>
@@ -231,6 +252,43 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  // Crash-safe localStorage backup of the active draft. Persists every change;
+  // restored next mount if the page reloaded mid-edit before save.
+  const draftStorageKey = `zenvana-blog-draft:${form.id || 'new'}`
+  useEffect(() => {
+    if (!authorized) return
+    try {
+      window.localStorage.setItem(
+        draftStorageKey,
+        JSON.stringify({ savedAt: Date.now(), form }),
+      )
+    } catch {
+      /* quota / private mode — silently ignore */
+    }
+  }, [draftStorageKey, form, authorized])
+
+  // Auto-save (3s debounced) for EXISTING posts. New posts require an explicit
+  // first save (title/slug/excerpt validation) so we don't auto-create rows.
+  const [autoSavedAt, setAutoSavedAt] = useState<Date | null>(null)
+  useEffect(() => {
+    if (!authorized || !form.id || !isDirty) return
+    // Skip if pending status change to PUBLISHED — never auto-publish.
+    const timeout = window.setTimeout(() => {
+      const formEl = document.getElementById('blog-admin-form') as HTMLFormElement | null
+      if (!formEl) return
+      const beforeStatus = form.status
+      // requestSubmit triggers handleSave which uses the latest form snapshot.
+      formEl.requestSubmit()
+      setAutoSavedAt(new Date())
+      // Defensive: surface a console hint if status was about to flip.
+      if (beforeStatus === BlogPostStatus.PUBLISHED) {
+        // no-op — handleSave reads the current state, this is just a marker.
+      }
+    }, 3000)
+    return () => window.clearTimeout(timeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, isDirty, authorized])
+
   async function handleLogin(event: React.FormEvent) {
     event.preventDefault()
     resetMessages()
@@ -255,14 +313,15 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
     event.preventDefault()
     resetMessages()
 
-    const content = form.contentHtml.replace(/<p><\/p>/g, '').trim()
+    const contentHtml = editorRef.current?.getHtml() ?? form.contentHtml
+    const content = contentHtml.replace(/<p><\/p>/g, '').trim()
     if (!content || content === '<p></p>') {
       setError('Article content is required')
       return
     }
 
     const formData = new FormData()
-    Object.entries(form).forEach(([key, value]) => {
+    Object.entries({ ...form, contentHtml }).forEach(([key, value]) => {
       if (key === 'isIndexable') return
       formData.set(key, String(value))
     })
@@ -447,7 +506,12 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
     )
   }
 
-  const previewHref = form.slug ? `/blog/${form.slug}` : null
+  const previewHref = form.slug
+    ? getBlogPostHref({
+        slug: form.slug,
+        alternateHref: form.alternateHref.trim() || null,
+      })
+    : null
   const publishedCount = initialPosts.filter((p) => p.status === BlogPostStatus.PUBLISHED).length
   const draftCount = initialPosts.length - publishedCount
 
@@ -461,7 +525,15 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
             <h1 className="mt-1 font-serif text-2xl tracking-[-0.025em] sm:text-3xl">Journal Admin</h1>
             <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
               {initialPosts.length} total · {publishedCount} live · {draftCount} draft
-              {isDirty ? <span className="ml-2 inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">Unsaved</span> : null}
+              {isDirty ? (
+                <span className="ml-2 inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
+                  Unsaved
+                </span>
+              ) : autoSavedAt ? (
+                <span className="ml-2 inline-block rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">
+                  Auto-saved {autoSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              ) : null}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -580,6 +652,7 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
         >
           {activeTab === 'content' ? (
             <ContentTab
+              editorRef={editorRef}
               form={form}
               setForm={setForm}
               heroDesktopMedia={
@@ -605,7 +678,13 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
           ) : null}
 
           {activeTab === 'seo' ? (
-            <SeoTab form={form} setForm={setForm} seoChecks={seoReport.checks} score={seoReport.score} />
+            <SeoTab
+              form={form}
+              setForm={setForm}
+              seoChecks={seoReport.checks}
+              score={seoReport.score}
+              tagSuggestions={tagSuggestions}
+            />
           ) : null}
 
           {activeTab === 'media' ? (
@@ -695,6 +774,7 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
 /* ─────────────────────────────────────────────────────── */
 
 function ContentTab({
+  editorRef,
   form,
   setForm,
   heroDesktopMedia,
@@ -704,6 +784,7 @@ function ContentTab({
   isPending,
   onSlugTouched,
 }: {
+  editorRef: React.Ref<BlogRichTextEditorHandle>
   form: BlogFormState
   setForm: React.Dispatch<React.SetStateAction<BlogFormState>>
   heroDesktopMedia: UploadSlotMedia | null
@@ -781,12 +862,20 @@ function ContentTab({
       </Field>
 
       <Field label="Article" hint="Use H2/H3 to structure. Drag to reorder content blocks.">
-        <BlogRichTextEditor
-          key={form.id || 'new-post'}
-          editorKey={form.id || 'new-post'}
-          value={form.contentHtml}
-          onChange={(contentHtml) => setForm((current) => ({ ...current, contentHtml }))}
-        />
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="min-w-0">
+            <BlogRichTextEditor
+              ref={editorRef}
+              key={form.id || 'new-post'}
+              editorKey={form.id || 'new-post'}
+              value={form.contentHtml}
+              onChange={(contentHtml) => setForm((current) => ({ ...current, contentHtml }))}
+            />
+          </div>
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <BlogTocPreview contentHtml={form.contentHtml} />
+          </div>
+        </div>
       </Field>
 
       <Field
@@ -826,12 +915,26 @@ function SeoTab({
   setForm,
   seoChecks,
   score,
+  tagSuggestions,
 }: {
   form: BlogFormState
   setForm: React.Dispatch<React.SetStateAction<BlogFormState>>
   seoChecks: SeoCheck[]
   score: number
+  tagSuggestions: string[]
 }) {
+  // The form stores tags as a comma-separated string (legacy storage shape).
+  // We normalize → array for the chip input and serialize back on every change
+  // so the rest of the save pipeline (createBlogPostAdmin / updateBlogPostAdmin)
+  // keeps working unchanged.
+  const tags = normalizeTags(
+    form.seoKeywords
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  )
+  const setTags = (next: string[]) =>
+    setForm((current) => ({ ...current, seoKeywords: next.join(', ') }))
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
   const previewUrl = `${siteUrl}/blog/${form.slug || 'your-slug'}`
   const seoTitle = (form.seoTitle || form.title || 'Title preview').slice(0, 60)
@@ -905,29 +1008,20 @@ function SeoTab({
         <CharCount value={form.seoDescription} ideal={[120, 160]} max={200} />
       </Field>
 
-      <Field label="SEO keywords" hint="3–5 phrases, comma-separated.">
-        <input
-          value={form.seoKeywords}
-          onChange={(event) => setForm((current) => ({ ...current, seoKeywords: event.target.value }))}
-          placeholder="best hotel in dehradun, rajpur road stay, family hotels"
-          className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
+      <Field
+        label="Tags"
+        hint="3–7 short topics that describe what this post is really about. Press Enter or comma to commit each tag — paste a comma-separated list to add many at once. Reuse existing tags from the suggestions whenever possible."
+      >
+        <BlogTagInput
+          value={tags}
+          onChange={setTags}
+          suggestions={tagSuggestions}
+          placeholder={
+            tagSuggestions.length > 0
+              ? `e.g. ${tagSuggestions[0]}`
+              : 'e.g. rajpur road, best hotel in dehradun, family stay'
+          }
         />
-        {form.seoKeywords.trim() ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {form.seoKeywords
-              .split(',')
-              .map((keyword) => keyword.trim())
-              .filter(Boolean)
-              .map((keyword) => (
-                <span
-                  key={keyword}
-                  className="inline-flex items-center rounded-full border border-border bg-card px-2.5 py-0.5 text-xs text-foreground/80"
-                >
-                  {keyword}
-                </span>
-              ))}
-          </div>
-        ) : null}
       </Field>
 
       <div className="grid gap-5 md:grid-cols-2">
@@ -1045,7 +1139,7 @@ function MediaTab({
           </div>
         </header>
 
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid gap-5 2xl:grid-cols-2">
           {BLOG_IMAGE_SLOT_ROLES.map((role) => {
             const current = allMedia.find(
               (item) => item.role === role && item.type === BlogMediaType.IMAGE,

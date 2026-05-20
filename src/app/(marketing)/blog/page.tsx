@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 
+import { BlogCoverPicture } from '@/components/blog/BlogCoverPicture'
 import { BlogNewsletter } from '@/components/blog/BlogNewsletter'
 import { BlogSearch, type BlogSearchItem } from '@/components/blog/BlogSearch'
+import { BlogStoryThumbnail } from '@/components/blog/BlogStoryThumbnail'
 import { Container } from '@/components/Container'
 import { JsonLd } from '@/components/JsonLd'
 import { getBlogPostHref, getPublishedBlogPosts } from '@/lib/blog'
@@ -12,13 +13,16 @@ import {
   groupPostsByCategory,
 } from '@/lib/blogContent'
 import {
+  resolveBlogHeroImages,
+  resolveBlogThumbnail,
+} from '@/lib/blogImageResolver'
+import {
   estimateReadingTimeMinutes,
   formatPublishedDate,
 } from '@/lib/blogReadingTime'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/structured-data'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
-const FALLBACK_HERO = '/images/dehradun/restaurantImage.png'
 
 export const revalidate = 3600
 
@@ -79,7 +83,6 @@ export default async function BlogPage() {
     { name: 'Journal', url: `${SITE_URL}/blog` },
   ]
 
-  // -------- EMPTY STATE --------
   if (blogPosts.length === 0) {
     return (
       <div className="overflow-x-clip">
@@ -104,38 +107,51 @@ export default async function BlogPage() {
     )
   }
 
-  // -------- DATA SHAPING --------
+  // ---- DATA SHAPING ---------------------------------------------------
   const [featured, ...rest] = blogPosts
-  const inThisIssue = rest.slice(0, 3)
+  const featuredHero = resolveBlogHeroImages(featured, featured.title)
+  const featuredHref = getBlogPostHref(featured)
+  const featuredCategory = deriveBlogCategory(featured)
+  const featuredReadTime = estimateReadingTimeMinutes(featured.contentHtml)
+  const featuredDate = featured.publishedAt ? formatPublishedDate(featured.publishedAt) : null
+
+  // Top-stories trio (positions 2–4).
+  const topStories = rest.slice(0, 3)
+  // The long read break — pick post #5 if available, else fall back to last top-story.
+  const longRead = rest.length >= 4 ? rest[3] : null
+  // Everything after the long read flows into the archive grid.
+  const archivePosts = rest.slice(longRead ? 4 : 3)
 
   const categoryGroups = groupPostsByCategory(blogPosts)
-
   const postsByCategory: Record<string, BlogPost[]> = {}
   for (const post of blogPosts) {
     const cat = deriveBlogCategory(post)
     if (!postsByCategory[cat]) postsByCategory[cat] = []
     postsByCategory[cat].push(post)
   }
-
   const departments = categoryGroups
     .filter((g) => g.count >= 2)
+    .slice(0, 4)
     .map((g) => ({
       category: g.category,
       count: g.count,
       posts: postsByCategory[g.category] || [],
     }))
 
-  const searchItems: BlogSearchItem[] = blogPosts.map((post) => ({
-    slug: post.slug,
-    title: post.title,
-    excerpt: post.excerpt,
-    href: getBlogPostHref(post),
-    category: deriveBlogCategory(post),
-    heroImageUrl: post.heroImageUrl,
-    publishedLabel: post.publishedAt ? formatPublishedDate(post.publishedAt) : null,
-    authorName: post.authorName,
-    keywords: post.seoKeywords ?? [],
-  }))
+  const searchItems: BlogSearchItem[] = blogPosts.map((post) => {
+    const thumb = resolveBlogThumbnail(post, post.title)
+    return {
+      slug: post.slug,
+      title: post.title,
+      excerpt: post.excerpt,
+      href: getBlogPostHref(post),
+      category: deriveBlogCategory(post),
+      heroImageUrl: thumb?.url ?? null,
+      publishedLabel: post.publishedAt ? formatPublishedDate(post.publishedAt) : null,
+      authorName: post.authorName,
+      keywords: post.seoKeywords ?? [],
+    }
+  })
 
   const itemList = itemListJsonLd({
     name: 'Zenvana Journal · Dehradun Travel & Hotel Guides',
@@ -143,16 +159,10 @@ export default async function BlogPage() {
     items: blogPosts.slice(0, 12).map((post) => ({
       name: post.title,
       url: `${SITE_URL}${getBlogPostHref(post)}`,
-      image: post.heroImageUrl || undefined,
+      image: resolveBlogThumbnail(post, post.title)?.url || undefined,
       description: post.excerpt,
     })),
   })
-
-  const featuredHref = getBlogPostHref(featured)
-  const featuredImage = featured.heroImageUrl || FALLBACK_HERO
-  const featuredCategory = deriveBlogCategory(featured)
-  const featuredReadTime = estimateReadingTimeMinutes(featured.contentHtml)
-  const featuredDate = featured.publishedAt ? formatPublishedDate(featured.publishedAt) : null
 
   return (
     <div className="overflow-x-clip">
@@ -160,97 +170,82 @@ export default async function BlogPage() {
 
       <Masthead issue={issue} count={blogPosts.length} />
 
-      {/* ----------- COVER STORY ----------- */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/*  THE COVER  — full-bleed hero, image-aspect-aware           */}
+      {/* ═════════════════════════════════════════════════════════ */}
       <section className="relative" aria-labelledby="cover-story">
-        <Container className="pb-12 pt-8 sm:pb-20 sm:pt-12 lg:pb-28 lg:pt-16">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-14">
-            <Link
-              href={featuredHref}
-              className="group relative block min-w-0 lg:col-span-7"
-              aria-label={featured.title}
-            >
-              <div className="relative aspect-[4/5] w-full overflow-hidden sm:aspect-[16/10] lg:aspect-[5/6]">
-                <Image
-                  src={featuredImage}
-                  alt={featured.title}
-                  fill
-                  priority
-                  sizes="(min-width: 1024px) 58vw, 100vw"
-                  className="object-cover transition duration-1000 ease-out group-hover:scale-[1.03]"
-                  unoptimized={featuredImage.startsWith('http')}
-                />
-                <div className="absolute inset-0 ring-1 ring-inset ring-black/5" aria-hidden="true" />
-              </div>
-              <div className="mt-4 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                <span className="truncate">The Cover · {issue.label}</span>
-                <span className="shrink-0">{featuredReadTime} min read</span>
-              </div>
+        <Container className="pt-6 sm:pt-10 lg:pt-12">
+          <div className="mb-4 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground sm:mb-6">
+            <span>On the Cover · Issue No. {String(issue.issueNumber).padStart(2, '0')}</span>
+            <span className="hidden sm:inline">{issue.label}</span>
+          </div>
+        </Container>
+
+        {/* Full-bleed image break — uses HERO_DESKTOP @ 16:9 on ≥md, HERO_MOBILE @ 4:5 on mobile.
+            The image fills the viewport edge-to-edge, matching CN Traveler hero treatment. */}
+        <Link href={featuredHref} aria-label={featured.title} className="block">
+          <BlogCoverPicture hero={featuredHero} priority className="w-full" />
+        </Link>
+
+        <Container className="pb-14 pt-8 sm:pb-20 sm:pt-12 lg:pb-28 lg:pt-16">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+              <span className="text-gold-600 dark:text-gold-300">{featuredCategory}</span>
+              <span aria-hidden="true">·</span>
+              <span>{featuredReadTime} min read</span>
+              {featuredDate ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <time dateTime={featured.publishedAt!.toISOString()}>{featuredDate}</time>
+                </>
+              ) : null}
+            </div>
+
+            <Link href={featuredHref} className="block">
+              <h2
+                id="cover-story"
+                className="mt-5 break-words font-serif text-[2rem] leading-[1.02] tracking-[-0.03em] text-foreground transition hover:opacity-80 sm:mt-6 sm:text-5xl lg:text-6xl xl:text-[4.25rem]"
+              >
+                {featured.title}
+              </h2>
             </Link>
 
-            <div className="min-w-0 lg:col-span-5 lg:pt-12 xl:pt-20">
-              <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
-                Cover Story · No. 01
-              </div>
-              <div className="mt-4">
-                <span className="blog-chip blog-chip-accent">{featuredCategory}</span>
-              </div>
-              <Link href={featuredHref}>
-                <h2
-                  id="cover-story"
-                  className="mt-5 break-words font-serif text-[1.75rem] leading-[1.08] tracking-[-0.025em] text-foreground transition hover:opacity-80 sm:text-4xl lg:text-5xl xl:text-[3.25rem]"
-                >
-                  {featured.title}
-                </h2>
-              </Link>
-              <p className="mt-5 text-[15px] leading-7 text-muted-foreground sm:text-lg sm:leading-9">
-                {featured.excerpt}
-              </p>
-              <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                <span className="font-medium text-foreground/85">By {featured.authorName}</span>
-                {featuredDate ? (
-                  <>
-                    <span aria-hidden="true">·</span>
-                    <time dateTime={featured.publishedAt!.toISOString()}>{featuredDate}</time>
-                  </>
-                ) : null}
-              </div>
+            <p className="mx-auto mt-6 max-w-2xl text-balance text-[15px] leading-8 text-muted-foreground sm:mt-7 sm:text-lg sm:leading-9">
+              {featured.excerpt}
+            </p>
+
+            <div className="mt-7 flex flex-col items-center gap-3 sm:mt-9">
+              <span className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+                By {featured.authorName}
+              </span>
               <Link
                 href={featuredHref}
-                className="group/cta mt-7 inline-flex items-center gap-2 border-b border-foreground/40 pb-1 text-sm font-medium tracking-wide text-foreground transition hover:border-foreground"
+                className="group/cta inline-flex items-center gap-2 border-b border-foreground/40 pb-1 text-sm font-medium tracking-wide text-foreground transition hover:border-foreground"
               >
                 Read the cover story
-                <svg
-                  viewBox="0 0 16 16"
-                  className="h-3.5 w-3.5 transition group-hover/cta:translate-x-0.5"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M2 8h11M9 4l4 4-4 4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <Arrow />
               </Link>
             </div>
           </div>
         </Container>
       </section>
 
-      {/* ----------- ALSO IN THIS ISSUE ----------- */}
-      {inThisIssue.length > 0 ? (
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/*  ALSO IN THIS ISSUE — 3-up at 3:2 (matches THUMBNAIL spec) */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      {topStories.length > 0 ? (
         <section className="border-t border-border/60" aria-labelledby="in-this-issue">
-          <Container className="py-12 sm:py-20 lg:py-24">
-            <div className="mb-8 flex flex-wrap items-end justify-between gap-4 sm:mb-12">
+          <Container className="py-14 sm:py-20 lg:py-24">
+            <div className="mb-10 flex flex-wrap items-end justify-between gap-3 sm:mb-14">
               <div className="min-w-0">
-                <div className="eyebrow">Also In This Issue</div>
+                <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+                  Also in this issue
+                </div>
                 <h2
                   id="in-this-issue"
-                  className="display-title mt-3 text-2xl tracking-[-0.025em] sm:text-3xl lg:text-4xl"
+                  className="mt-3 font-serif text-3xl tracking-[-0.025em] text-foreground sm:text-4xl lg:text-5xl"
                 >
-                  Three more worth your time
+                  Three more <span className="italic">worth your time</span>
                 </h2>
               </div>
               <Link
@@ -261,36 +256,42 @@ export default async function BlogPage() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-12 lg:grid-cols-3 lg:gap-x-10 lg:gap-y-14">
-              {inThisIssue.map((post, idx) => (
-                <IssueCard key={post.id} post={post} number={idx + 2} />
+            <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-x-6 md:gap-y-12 lg:gap-x-10">
+              {topStories.map((post, idx) => (
+                <StoryCard key={post.id} post={post} number={idx + 2} />
               ))}
             </div>
           </Container>
         </section>
       ) : null}
 
-      {/* ----------- DEPARTMENTS ----------- */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/*  THE LONG READ — photo essay break, full-bleed 16:9        */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      {longRead ? <LongReadBreak post={longRead} /> : null}
+
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/*  DEPARTMENTS — editorial table of contents                 */}
+      {/* ═════════════════════════════════════════════════════════ */}
       {departments.length > 0 ? (
-        <section
-          className="border-t border-border/60 bg-muted/20 dark:bg-card/30"
-          aria-labelledby="departments"
-        >
-          <Container className="py-12 sm:py-20 lg:py-28">
-            <div className="mx-auto mb-10 max-w-2xl text-center sm:mb-16">
-              <div className="eyebrow">Departments</div>
+        <section className="border-t border-border/60 bg-muted/20 dark:bg-card/30" aria-labelledby="departments">
+          <Container className="py-14 sm:py-20 lg:py-28">
+            <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-16">
+              <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+                Departments
+              </div>
               <h2
                 id="departments"
-                className="display-title mt-3 text-2xl tracking-[-0.025em] sm:text-3xl lg:text-4xl"
+                className="mt-3 font-serif text-3xl tracking-[-0.025em] text-foreground sm:text-4xl lg:text-5xl"
               >
-                Browse by section
+                Browse <span className="italic">by section</span>
               </h2>
-              <p className="body-copy mt-3 sm:mt-4">
-                Each department is curated by the editors of the journal — slow guides, not listicles.
+              <p className="body-copy mx-auto mt-4 max-w-xl">
+                Slow guides, not listicles — curated by the editors of the Journal.
               </p>
             </div>
 
-            <div className="space-y-14 sm:space-y-16 lg:space-y-24">
+            <div className="grid grid-cols-1 gap-x-10 gap-y-14 md:grid-cols-2 lg:gap-x-16 lg:gap-y-20">
               {departments.map((dept) => (
                 <DepartmentBlock key={dept.category} department={dept} />
               ))}
@@ -299,39 +300,50 @@ export default async function BlogPage() {
         </section>
       ) : null}
 
-      {/* ----------- ARCHIVE + SIDEBAR ----------- */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/*  THE ARCHIVE — search + sidebar                            */}
+      {/* ═════════════════════════════════════════════════════════ */}
       <section
         id="archive"
         className="scroll-mt-24 border-t border-border/60"
         aria-labelledby="archive-heading"
       >
-        <Container className="py-12 sm:py-20 lg:py-28">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-x-16">
+        <Container className="py-14 sm:py-20 lg:py-28">
+          <div className="grid grid-cols-1 gap-14 lg:grid-cols-12 lg:gap-x-16">
             <div className="min-w-0 lg:col-span-8">
-              <header className="mb-8 sm:mb-12">
-                <div className="eyebrow">The Archive</div>
+              <header className="mb-10 sm:mb-12">
+                <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+                  The Archive
+                </div>
                 <h2
                   id="archive-heading"
-                  className="display-title mt-3 text-[1.75rem] tracking-[-0.025em] sm:text-4xl lg:text-5xl"
+                  className="mt-3 break-words font-serif text-[2rem] leading-[1.05] tracking-[-0.03em] text-foreground sm:text-5xl lg:text-6xl"
                 >
-                  Every story, every issue.
+                  Every story, <span className="italic">every issue</span>.
                 </h2>
-                <p className="body-copy mt-3 max-w-2xl sm:mt-4">
-                  Filter by section or search by hotel, neighbourhood, or season. Every guide is written by the
-                  team that runs our properties — no AI padding, no SEO filler.
+                <p className="body-copy mt-5 max-w-2xl">
+                  Search by hotel, neighbourhood, or season. Every guide is written by the team that runs our
+                  properties — no AI padding, no SEO filler.
                 </p>
               </header>
               <BlogSearch
                 items={searchItems}
                 categories={categoryGroups.map((g) => ({ category: g.category, count: g.count }))}
               />
+              {archivePosts.length > 0 ? (
+                <p className="mt-8 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Showing {searchItems.length} stories — filter above to narrow down.
+                </p>
+              ) : null}
             </div>
 
-            <aside className="space-y-6 sm:space-y-8 lg:col-span-4">
-              <div className="quiet-card p-6 sm:p-7">
-                <div className="eyebrow">From the Editors</div>
-                <h3 className="mt-3 font-serif text-lg leading-snug tracking-[-0.02em] text-foreground sm:mt-4 sm:text-xl">
-                  Considered notes from Rajpur Road
+            <aside className="space-y-8 lg:col-span-4">
+              <div className="rounded-[1.5rem] border border-border/60 bg-card/70 p-7 backdrop-blur">
+                <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+                  From the Editors
+                </div>
+                <h3 className="mt-4 font-serif text-xl leading-snug tracking-[-0.02em] text-foreground">
+                  Considered notes from <span className="italic">Rajpur Road</span>
                 </h3>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">
                   The Zenvana Journal is written by the people who run our hotels, restaurants, and walking
@@ -339,25 +351,18 @@ export default async function BlogPage() {
                 </p>
                 <Link
                   href="/about"
-                  className="mt-4 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-foreground transition hover:opacity-70 sm:mt-5"
+                  className="mt-5 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-foreground transition hover:opacity-70"
                 >
                   Meet the team
-                  <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden="true">
-                    <path
-                      d="M2 8h11M9 4l4 4-4 4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <Arrow />
                 </Link>
               </div>
 
-              <div className="quiet-card p-6 sm:p-7">
-                <div className="eyebrow">Sections</div>
-                <ul className="mt-4 divide-y divide-border/40">
+              <div className="rounded-[1.5rem] border border-border/60 bg-card/70 p-7 backdrop-blur">
+                <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+                  Sections
+                </div>
+                <ul className="mt-5 divide-y divide-border/40">
                   {categoryGroups.map((group) => (
                     <li
                       key={group.category}
@@ -374,16 +379,18 @@ export default async function BlogPage() {
                 </ul>
               </div>
 
-              <div className="quiet-card p-6 sm:p-7">
-                <div className="eyebrow">Most Recent</div>
-                <ol className="mt-4 space-y-5 sm:mt-5">
+              <div className="rounded-[1.5rem] border border-border/60 bg-card/70 p-7 backdrop-blur">
+                <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+                  Most Recent
+                </div>
+                <ol className="mt-5 space-y-5">
                   {blogPosts.slice(0, 5).map((post, idx) => (
                     <li key={post.id} className="group">
                       <Link
                         href={getBlogPostHref(post)}
-                        className="grid grid-cols-[auto_1fr] items-start gap-3 sm:gap-4"
+                        className="grid grid-cols-[auto_1fr] items-start gap-4"
                       >
-                        <span className="font-serif text-lg leading-none text-muted-foreground/40 sm:text-xl">
+                        <span className="font-serif text-xl leading-none text-muted-foreground/40">
                           {String(idx + 1).padStart(2, '0')}
                         </span>
                         <div className="min-w-0 border-b border-border/40 pb-4 group-last:border-0 group-last:pb-0">
@@ -410,7 +417,9 @@ export default async function BlogPage() {
         </Container>
       </section>
 
-      {/* ----------- CLOSING CTA ----------- */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/*  CLOSING — plan-your-stay band                             */}
+      {/* ═════════════════════════════════════════════════════════ */}
       <section
         className="brand-gradient relative overflow-hidden border-t border-border/40"
         aria-labelledby="visit-cta"
@@ -423,21 +432,21 @@ export default async function BlogPage() {
           }}
           aria-hidden="true"
         />
-        <Container className="relative py-14 text-center sm:py-20 lg:py-28">
-          <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-white/70 sm:text-[11px] sm:tracking-[0.32em]">
+        <Container className="relative py-16 text-center sm:py-20 lg:py-28">
+          <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-white/70">
             Plan your stay
           </div>
           <h2
             id="visit-cta"
-            className="mt-4 break-words font-serif text-[1.75rem] leading-[1.08] tracking-[-0.025em] text-white sm:mt-5 sm:text-4xl lg:text-5xl"
+            className="mt-5 break-words font-serif text-3xl leading-[1.05] tracking-[-0.03em] text-white sm:text-5xl lg:text-6xl"
           >
             Come stay <span className="italic">with us</span> on Rajpur Road.
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-white/85 sm:mt-5 sm:text-base">
+          <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-white/85 sm:text-base">
             Four boutique hotels, one restaurant, and a team that knows Dehradun by heart.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:mt-9">
-            <Link href="/hotels" className="site-button-light bg-white/95 text-foreground hover:bg-white">
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/hotels" className="site-button-light bg-white/95 text-foreground hover:bg-white dark:text-black">
               Explore our hotels
             </Link>
             <Link
@@ -468,7 +477,9 @@ function Masthead({
     <section className="border-b border-border/60 bg-background">
       <Container className="py-5 sm:py-8 lg:py-10">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[9px] font-medium uppercase tracking-[0.22em] text-muted-foreground sm:text-[10px] sm:tracking-[0.32em]">
-          <span className="truncate">Vol. IV · Issue No. {String(issue.issueNumber).padStart(2, '0')}</span>
+          <span className="truncate">
+            Vol. IV · Issue No. {String(issue.issueNumber).padStart(2, '0')}
+          </span>
           <span className="hidden sm:inline">{issue.label}</span>
           <span className="truncate">
             {count} {count === 1 ? 'Story' : 'Stories'} · Updated Weekly
@@ -499,28 +510,25 @@ function Masthead({
   )
 }
 
-function IssueCard({ post, number }: { post: BlogPost; number: number }) {
+/**
+ * Top-stories card. Uses THUMBNAIL spec (3:2) so cards stay editorial and
+ * consistent even when uploaders submit mixed-aspect photos.
+ */
+function StoryCard({ post, number }: { post: BlogPost; number: number }) {
   const href = getBlogPostHref(post)
-  const image = post.heroImageUrl || FALLBACK_HERO
   const category = deriveBlogCategory(post)
   const date = post.publishedAt ? formatPublishedDate(post.publishedAt) : null
   const readTime = estimateReadingTimeMinutes(post.contentHtml)
 
   return (
     <article className="group flex min-w-0 flex-col">
-      <Link href={href} aria-label={post.title} className="block">
-        <div className="relative aspect-[4/5] w-full overflow-hidden">
-          <Image
-            src={image}
-            alt={post.title}
-            fill
-            sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 100vw"
-            className="object-cover transition duration-700 ease-out group-hover:scale-[1.04]"
-            unoptimized={image.startsWith('http')}
-          />
-        </div>
-      </Link>
-      <div className="mt-4 flex flex-col gap-3 sm:mt-5">
+      <BlogStoryThumbnail
+        post={post}
+        href={href}
+        aspect="3/2"
+        sizes="(min-width: 1024px) 30vw, (min-width: 768px) 32vw, 100vw"
+      />
+      <div className="mt-5 flex flex-col gap-3 sm:mt-6">
         <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
           <span className="font-serif text-base leading-none tracking-normal text-foreground/40">
             No. {String(number).padStart(2, '0')}
@@ -528,11 +536,11 @@ function IssueCard({ post, number }: { post: BlogPost; number: number }) {
           <span className="truncate">{category}</span>
         </div>
         <Link href={href}>
-          <h3 className="break-words font-serif text-lg leading-snug tracking-[-0.018em] text-foreground transition group-hover:opacity-80 sm:text-xl lg:text-2xl">
+          <h3 className="break-words font-serif text-xl leading-[1.15] tracking-[-0.018em] text-foreground transition group-hover:opacity-80 sm:text-2xl lg:text-[1.75rem]">
             {post.title}
           </h3>
         </Link>
-        <p className="line-clamp-3 text-[13px] leading-6 text-muted-foreground sm:text-sm sm:leading-7">
+        <p className="line-clamp-3 text-[14px] leading-7 text-muted-foreground sm:text-[15px]">
           {post.excerpt}
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -547,68 +555,179 @@ function IssueCard({ post, number }: { post: BlogPost; number: number }) {
   )
 }
 
+/**
+ * Full-bleed photo-essay break. Uses HERO_DESKTOP (16:9) for the wide cinematic
+ * impression CN Traveler is known for. On mobile we use the same 16:9 desktop
+ * crop (rather than the portrait mobile variant) because portrait orientation
+ * doesn't read as "photo essay" — it reads as "another hero".
+ */
+function LongReadBreak({ post }: { post: BlogPost }) {
+  const href = getBlogPostHref(post)
+  const category = deriveBlogCategory(post)
+  const readTime = estimateReadingTimeMinutes(post.contentHtml)
+  const hero = resolveBlogHeroImages(post, post.title)
+  const wideUrl = hero.desktop?.url ?? hero.primary?.url
+  const wideAlt = hero.desktop?.alt ?? hero.primary?.alt ?? post.title
+
+  if (!wideUrl) return null
+
+  return (
+    <section className="border-t border-border/60" aria-labelledby="long-read">
+      <Link href={href} aria-label={post.title} className="group block">
+        {/* Full-bleed 16:9 — no Container so the image spans edge-to-edge */}
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={wideUrl}
+            alt={wideAlt}
+            className="absolute inset-0 h-full w-full object-cover transition duration-1000 ease-out group-hover:scale-[1.02]"
+            loading="lazy"
+            decoding="async"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+        </div>
+      </Link>
+
+      <Container className="py-12 sm:py-16 lg:py-20">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+            <span>The Long Read</span>
+            <span aria-hidden="true">·</span>
+            <span>{category}</span>
+            <span aria-hidden="true">·</span>
+            <span>{readTime} min</span>
+          </div>
+          <Link href={href}>
+            <h2
+              id="long-read"
+              className="mt-5 break-words font-serif text-3xl leading-[1.08] tracking-[-0.028em] text-foreground transition hover:opacity-80 sm:text-5xl lg:text-[3.5rem]"
+            >
+              {post.title}
+            </h2>
+          </Link>
+          <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-8 text-muted-foreground sm:text-lg sm:leading-9">
+            {post.excerpt}
+          </p>
+          <Link
+            href={href}
+            className="group/cta mt-7 inline-flex items-center gap-2 border-b border-foreground/40 pb-1 text-sm font-medium tracking-wide text-foreground transition hover:border-foreground"
+          >
+            Read the essay
+            <Arrow />
+          </Link>
+        </div>
+      </Container>
+    </section>
+  )
+}
+
+/**
+ * Department block — magazine ToC style. One large lead story on top with a
+ * 3:2 thumbnail + a textual list of secondary stories beneath. Reads more like
+ * a Vogue/CN Traveler section opener than a card grid.
+ */
 function DepartmentBlock({
   department,
 }: {
   department: { category: string; count: number; posts: BlogPost[] }
 }) {
-  const posts = department.posts.slice(0, 4)
+  const [lead, ...rest] = department.posts
+  if (!lead) return null
+  const restCapped = rest.slice(0, 3)
+  const leadHref = getBlogPostHref(lead)
+  const leadReadTime = estimateReadingTimeMinutes(lead.contentHtml)
+  const leadDate = lead.publishedAt ? formatPublishedDate(lead.publishedAt) : null
+
   return (
     <div>
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3 sm:mb-9">
+      <header className="mb-6 flex items-baseline justify-between gap-3 border-b border-border/60 pb-4">
         <div className="min-w-0">
-          <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground sm:tracking-[0.36em]">
+          <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
             Department
           </div>
-          <h3 className="mt-2 break-words font-serif text-xl tracking-[-0.02em] text-foreground sm:text-3xl lg:text-4xl">
+          <h3 className="mt-1.5 break-words font-serif text-xl tracking-[-0.02em] text-foreground sm:text-2xl">
             {department.category}
           </h3>
         </div>
         <Link
           href="#archive"
-          className="shrink-0 text-[10px] font-medium uppercase tracking-[0.22em] text-foreground/70 transition hover:text-foreground sm:text-[11px] sm:tracking-[0.24em]"
+          className="shrink-0 text-[10px] font-medium uppercase tracking-[0.22em] text-foreground/70 transition hover:text-foreground"
         >
-          All {String(department.count).padStart(2, '0')} →
+          {String(department.count).padStart(2, '0')} stories →
         </Link>
       </header>
 
-      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4">
-        {posts.map((post) => {
-          const href = getBlogPostHref(post)
-          const image = post.heroImageUrl || FALLBACK_HERO
-          const readTime = estimateReadingTimeMinutes(post.contentHtml)
-          const date = post.publishedAt ? formatPublishedDate(post.publishedAt) : null
-          return (
-            <article key={post.id} className="group flex min-w-0 flex-col">
-              <Link href={href} className="block" aria-label={post.title}>
-                <div className="relative aspect-[4/5] w-full overflow-hidden">
-                  <Image
-                    src={image}
-                    alt={post.title}
-                    fill
-                    sizes="(min-width: 1024px) 22vw, (min-width: 640px) 45vw, 100vw"
-                    className="object-cover transition duration-700 ease-out group-hover:scale-[1.04]"
-                    unoptimized={image.startsWith('http')}
-                  />
-                </div>
-                <div className="mt-3 sm:mt-4">
-                  <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground sm:tracking-[0.28em]">
-                    {date ? <span>{date}</span> : null}
-                    {date ? <span aria-hidden="true"> · </span> : null}
-                    <span>{readTime} min</span>
-                  </div>
-                  <h4 className="mt-2 break-words font-serif text-base leading-snug tracking-[-0.015em] text-foreground transition group-hover:opacity-80 sm:text-lg">
-                    {post.title}
-                  </h4>
-                  <p className="mt-2 line-clamp-2 text-[13px] leading-6 text-muted-foreground sm:text-sm">
-                    {post.excerpt}
-                  </p>
-                </div>
-              </Link>
-            </article>
-          )
-        })}
+      <BlogStoryThumbnail
+        post={lead}
+        href={leadHref}
+        aspect="3/2"
+        sizes="(min-width: 1024px) 44vw, (min-width: 768px) 50vw, 100vw"
+      />
+      <div className="mt-4 sm:mt-5">
+        <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+          {leadDate ? <span>{leadDate}</span> : null}
+          {leadDate ? <span aria-hidden="true"> · </span> : null}
+          <span>{leadReadTime} min</span>
+        </div>
+        <Link href={leadHref}>
+          <h4 className="mt-2 break-words font-serif text-lg leading-snug tracking-[-0.018em] text-foreground transition hover:opacity-80 sm:text-xl">
+            {lead.title}
+          </h4>
+        </Link>
+        <p className="mt-2 line-clamp-2 text-[13px] leading-6 text-muted-foreground sm:text-sm sm:leading-7">
+          {lead.excerpt}
+        </p>
       </div>
+
+      {restCapped.length > 0 ? (
+        <ul className="mt-6 divide-y divide-border/40 border-t border-border/40">
+          {restCapped.map((post) => {
+            const href = getBlogPostHref(post)
+            const date = post.publishedAt ? formatPublishedDate(post.publishedAt) : null
+            const minutes = estimateReadingTimeMinutes(post.contentHtml)
+            return (
+              <li key={post.id} className="group py-4">
+                <Link href={href} className="grid grid-cols-[64px_1fr] items-start gap-4 sm:grid-cols-[88px_1fr]">
+                  <div className="overflow-hidden">
+                    <BlogStoryThumbnail
+                      post={post}
+                      href={href}
+                      aspect="1/1"
+                      sizes="88px"
+                      className="!aspect-square"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                      {date ? <span>{date}</span> : null}
+                      {date ? <span aria-hidden="true"> · </span> : null}
+                      <span>{minutes} min</span>
+                    </div>
+                    <div className="mt-1.5 break-words text-sm font-medium leading-snug text-foreground transition group-hover:text-foreground/70 sm:text-[15px]">
+                      {post.title}
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
     </div>
+  )
+}
+
+function Arrow() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 transition group-hover/cta:translate-x-0.5" aria-hidden="true">
+      <path
+        d="M2 8h11M9 4l4 4-4 4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }

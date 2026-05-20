@@ -1,6 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+
+import {
+  getNewsletterStatus,
+  subscribeNewsletter,
+  unsubscribeNewsletter,
+  type NewsletterStatus,
+} from '@/lib/blogGuestApi'
+import { useGuestSession } from '@/lib/useGuestSession'
 
 type Props = {
   variant?: 'card' | 'inline'
@@ -10,55 +20,81 @@ type Props = {
 }
 
 /**
- * Lightweight subscribe form. Posts to a single endpoint if present
- * (`NEXT_PUBLIC_BLOG_SUBSCRIBE_URL`), otherwise falls back to a mailto:.
- * The aim: zero-config wiring, but instant upgrade when an integration
- * (Mailchimp/Beehiiv/etc) is provided via env.
+ * Newsletter subscribe — only available to signed-in ZenvanaGuests so the
+ * email always belongs to a verified profile. Backend dispatches a welcome
+ * email through the existing SMTP pipeline.
+ *
+ * UX flow:
+ *   1. Not signed in → "Sign in to subscribe" CTA (returns to current page after auth).
+ *   2. Signed in, not subscribed → confirm form with the guest's email pre-filled.
+ *   3. Already subscribed → quiet confirmation with an unsubscribe option.
  */
 export function BlogNewsletter({
   variant = 'card',
   eyebrow = 'The Zenvana Journal',
-  heading = 'Slow stories from Dehradun, straight to your inbox',
-  copy = 'A monthly note with new guides, seasonal restaurant openings, and quiet places worth your time. No spam — unsubscribe anytime.',
+  heading = 'Slow stories from Dehradun, in your inbox',
+  copy = 'A monthly note with new guides, seasonal openings, and quiet places worth your time. No spam — unsubscribe anytime.',
 }: Props) {
+  const pathname = usePathname()
+  const { guest, signedIn, loading: sessionLoading } = useGuestSession()
+  const [status, setStatus] = useState<NewsletterStatus | null>(null)
   const [email, setEmail] = useState('')
-  const [state, setState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [working, setWorking] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  // Hydrate subscription state once the session is known.
+  useEffect(() => {
+    if (!signedIn) {
+      setStatus(null)
+      return
+    }
+    let cancelled = false
+    void getNewsletterStatus().then((result) => {
+      if (cancelled) return
+      if (result.ok) {
+        setStatus(result.data)
+        setEmail((current) => current || result.data.email || guest?.email || '')
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [signedIn, guest?.email])
+
+  async function handleSubscribe(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setError(null)
     setMessage(null)
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setState('error')
-      setMessage('Please enter a valid email address.')
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Please enter a valid email address.')
       return
     }
 
-    const endpoint = process.env.NEXT_PUBLIC_BLOG_SUBSCRIBE_URL
-    if (!endpoint) {
-      window.location.href = `mailto:hello@zenvanahotels.com?subject=Subscribe%20to%20Journal&body=${encodeURIComponent(
-        `Please add ${email} to the Zenvana Journal mailing list.`,
-      )}`
-      setState('ok')
-      setMessage('Opening your mail app to confirm.')
+    setWorking(true)
+    const result = await subscribeNewsletter(email || undefined)
+    setWorking(false)
+
+    if (!result.ok) {
+      setError(result.error)
       return
     }
+    setStatus(result.data)
+    setMessage('You’re on the list. We’ve sent a quiet welcome to your inbox.')
+  }
 
-    try {
-      setState('loading')
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, source: 'blog' }),
-      })
-      if (!response.ok) throw new Error('Subscribe failed')
-      setState('ok')
-      setMessage('You’re on the list. Check your inbox to confirm.')
-      setEmail('')
-    } catch {
-      setState('error')
-      setMessage('Something went wrong. Please try again in a moment.')
+  async function handleUnsubscribe() {
+    setWorking(true)
+    setError(null)
+    const result = await unsubscribeNewsletter()
+    setWorking(false)
+    if (!result.ok) {
+      setError(result.error)
+      return
     }
+    setStatus(result.data)
+    setMessage('Unsubscribed. You won’t hear from us again unless you opt back in.')
   }
 
   const containerClass =
@@ -66,6 +102,84 @@ export function BlogNewsletter({
       ? 'rounded-[1.75rem] border border-border/60 bg-card/80 p-6 shadow-[0_10px_30px_rgba(0,31,63,0.06)] backdrop-blur sm:p-8'
       : 'border-y border-border/60 py-10 sm:py-14'
 
+  // -------- Loading state --------
+  if (sessionLoading) {
+    return (
+      <section className={containerClass} aria-labelledby="blog-newsletter-heading">
+        <div className="mx-auto max-w-xl space-y-4 text-center">
+          <div className="mx-auto h-3 w-32 animate-pulse rounded-full bg-muted/60" />
+          <div className="mx-auto h-8 w-3/4 animate-pulse rounded bg-muted/60" />
+          <div className="mx-auto h-3 w-full max-w-md animate-pulse rounded bg-muted/60" />
+        </div>
+      </section>
+    )
+  }
+
+  // -------- Logged out --------
+  if (!signedIn) {
+    const redirect = encodeURIComponent(pathname || '/blog')
+    return (
+      <section className={containerClass} aria-labelledby="blog-newsletter-heading">
+        <div className="mx-auto max-w-xl text-center">
+          <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-foreground/60">{eyebrow}</div>
+          <h2
+            id="blog-newsletter-heading"
+            className="mt-3 font-serif text-2xl tracking-[-0.025em] text-foreground sm:text-3xl"
+          >
+            {heading}
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">{copy}</p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Link href={`/login?redirect=${redirect}`} className="site-button-dark">
+              Sign in to subscribe
+            </Link>
+            <Link href={`/register?redirect=${redirect}`} className="site-button-light">
+              Create an account
+            </Link>
+          </div>
+          <p className="mt-3 text-[11px] text-muted-foreground/80">
+            We only email subscribers we can identify, so the conversation stays calm and honest.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  // -------- Already subscribed --------
+  if (status?.subscribed) {
+    return (
+      <section className={containerClass} aria-labelledby="blog-newsletter-heading">
+        <div className="mx-auto max-w-xl text-center">
+          <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-foreground/60">{eyebrow}</div>
+          <h2
+            id="blog-newsletter-heading"
+            className="mt-3 font-serif text-2xl tracking-[-0.025em] text-foreground sm:text-3xl"
+          >
+            You’re on the list.
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">
+            We’ll send the next issue to{' '}
+            <span className="font-medium text-foreground">{status.email}</span>. Reply to any note any time —
+            we read them all.
+          </p>
+          {error ? <p className="mt-3 text-xs text-red-600">{error}</p> : null}
+          {message ? <p className="mt-3 text-xs text-emerald-700">{message}</p> : null}
+          <div className="mt-5">
+            <button
+              type="button"
+              onClick={() => void handleUnsubscribe()}
+              disabled={working}
+              className="text-xs font-medium text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline"
+            >
+              {working ? 'Working…' : 'Unsubscribe'}
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  // -------- Logged in, not subscribed --------
   return (
     <section className={containerClass} aria-labelledby="blog-newsletter-heading">
       <div className="mx-auto max-w-xl text-center">
@@ -79,7 +193,7 @@ export function BlogNewsletter({
         <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">{copy}</p>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={handleSubscribe}
           className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-stretch"
           aria-describedby="blog-newsletter-status"
         >
@@ -90,7 +204,7 @@ export function BlogNewsletter({
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
+              placeholder={guest?.email || 'you@example.com'}
               className="h-12 w-full rounded-full border border-border/60 bg-background/80 px-5 text-sm text-foreground outline-none transition focus:border-foreground/40"
               autoComplete="email"
               inputMode="email"
@@ -98,21 +212,21 @@ export function BlogNewsletter({
           </label>
           <button
             type="submit"
-            disabled={state === 'loading'}
-            className="site-button-dark h-12 justify-center sm:px-6"
+            disabled={working}
+            className="site-button-dark h-12 justify-center sm:px-6 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {state === 'loading' ? 'Subscribing…' : 'Subscribe'}
+            {working ? 'Subscribing…' : 'Subscribe'}
           </button>
         </form>
 
         <p
           id="blog-newsletter-status"
           className={`mt-3 min-h-[1.25rem] text-xs ${
-            state === 'error' ? 'text-red-600' : 'text-muted-foreground'
+            error ? 'text-red-600' : message ? 'text-emerald-700' : 'text-muted-foreground'
           }`}
           aria-live="polite"
         >
-          {message ?? 'We’ll only email when we have something worth your morning coffee.'}
+          {error || message || 'We’ll send a confirmation to your inbox before adding you to the list.'}
         </p>
       </div>
     </section>

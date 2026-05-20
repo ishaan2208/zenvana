@@ -19,7 +19,11 @@ import {
   Underline as UnderlineIcon,
   Undo2,
 } from 'lucide-react'
-import { useEffect } from 'react'
+import { forwardRef, useEffect, useImperativeHandle } from 'react'
+
+export type BlogRichTextEditorHandle = {
+  getHtml: () => string
+}
 
 type BlogRichTextEditorProps = {
   value: string
@@ -50,7 +54,8 @@ function ToolbarButton({ label, onClick, active, children }: ToolbarButtonProps)
   )
 }
 
-export function BlogRichTextEditor({ value, onChange, editorKey }: BlogRichTextEditorProps) {
+export const BlogRichTextEditor = forwardRef<BlogRichTextEditorHandle, BlogRichTextEditorProps>(
+  function BlogRichTextEditor({ value, onChange, editorKey }, ref) {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -85,6 +90,14 @@ export function BlogRichTextEditor({ value, onChange, editorKey }: BlogRichTextE
       editor.commands.setContent(value || '<p></p>', { emitUpdate: false })
     }
   }, [editor, value, editorKey])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      getHtml: () => editor?.getHTML() ?? value,
+    }),
+    [editor, value],
+  )
 
   if (!editor) {
     return (
@@ -199,4 +212,5 @@ export function BlogRichTextEditor({ value, onChange, editorKey }: BlogRichTextE
       <EditorContent editor={editor} />
     </div>
   )
-}
+},
+)

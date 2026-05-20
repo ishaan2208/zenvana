@@ -13,7 +13,8 @@ export async function recordBlogSlugRedirect(fromSlug: string, toSlug: string): 
 
   await prisma.$transaction([
     prisma.blogSlugRedirect.updateMany({
-      where: { toSlug: fromSlug },
+      // Do not rewrite a row whose fromSlug equals the new target — that creates X→X self-loops.
+      where: { toSlug: fromSlug, fromSlug: { not: toSlug } },
       data: { toSlug },
     }),
     prisma.blogSlugRedirect.upsert({

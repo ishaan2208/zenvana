@@ -3,8 +3,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound, permanentRedirect } from 'next/navigation'
 
-import { BlogHeroPicture } from '@/components/blog/BlogHeroPicture'
+import { BlogComments } from '@/components/blog/BlogComments'
+import { BlogCoverPicture } from '@/components/blog/BlogCoverPicture'
 import { BlogShare } from '@/components/blog/BlogShare'
+import { BlogStoryThumbnail } from '@/components/blog/BlogStoryThumbnail'
 import { BlogTableOfContents } from '@/components/blog/BlogTableOfContents'
 import { ReadingProgress } from '@/components/blog/ReadingProgress'
 import { BlogNewsletter } from '@/components/blog/BlogNewsletter'
@@ -13,9 +15,9 @@ import { JsonLd } from '@/components/JsonLd'
 import {
   getAllPublishedBlogSlugs,
   getBlogPostHref,
-  getPublishedBlogPostBySlug,
   getPublishedBlogPosts,
   resolveBlogCanonicalPath,
+  resolveBlogPostRoute,
 } from '@/lib/blog'
 import {
   decorateBlogHtmlWithToc,
@@ -28,9 +30,8 @@ import {
   resolveBlogOgImage,
   resolveBlogThumbnail,
 } from '@/lib/blogImageResolver'
-import { getBlogSlugRedirectTarget } from '@/lib/blogRedirects'
 import { estimateReadingTimeMinutes, formatPublishedDate } from '@/lib/blogReadingTime'
-import { articleJsonLd, breadcrumbJsonLd } from '@/lib/structured-data'
+import { articleJsonLd, breadcrumbJsonLd, type ArticleJsonLdInput } from '@/lib/structured-data'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
@@ -49,15 +50,9 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
-  const redirectSlug = await getBlogSlugRedirectTarget(params.slug)
-  const resolvedSlug = redirectSlug ?? params.slug
-  const post = await getPublishedBlogPostBySlug(resolvedSlug)
+  const route = await resolveBlogPostRoute(params.slug)
 
-  if (redirectSlug && !post) {
-    return { title: 'Blog | Zenvana', robots: { index: false, follow: false } }
-  }
-
-  if (!post) {
+  if (route.kind === 'missing') {
     return {
       title: 'Blog | Zenvana',
       description: 'Read stories and stay guides from Zenvana.',
@@ -65,13 +60,15 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     }
   }
 
-  if (redirectSlug) {
+  if (route.kind === 'redirect') {
     return {
-      title: `${post.seoTitle || post.title} | Zenvana Blog`,
-      alternates: { canonical: `/blog/${resolvedSlug}` },
+      title: 'Blog | Zenvana',
+      alternates: { canonical: route.destination },
       robots: { index: false, follow: true },
     }
   }
+
+  const post = route.post
 
   const title = post.seoTitle || post.title
   const description = post.seoDescription || post.excerpt
@@ -126,13 +123,17 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const redirectSlug = await getBlogSlugRedirectTarget(params.slug)
-  if (redirectSlug) {
-    permanentRedirect(`/blog/${redirectSlug}`)
+  const route = await resolveBlogPostRoute(params.slug)
+
+  if (route.kind === 'redirect') {
+    permanentRedirect(route.destination)
   }
 
-  const post = await getPublishedBlogPostBySlug(params.slug)
-  if (!post) notFound()
+  if (route.kind === 'missing') {
+    notFound()
+  }
+
+  const post = route.post
 
   const [allPosts] = await Promise.all([getPublishedBlogPosts()])
   const readingTimeMinutes = estimateReadingTimeMinutes(post.contentHtml)
@@ -147,7 +148,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     { name: 'Journal', url: `${SITE_URL}/blog` },
     { name: post.title, url },
   ]
-  const article = articleJsonLd({
+  const articleInput: ArticleJsonLdInput = {
     title: post.title,
     description: post.excerpt,
     url,
@@ -156,7 +157,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     datePublished: post.publishedAt?.toISOString(),
     dateModified: post.updatedAt.toISOString(),
     authorName: post.authorName,
-  })
+    ...(post.seoKeywords.length > 0 ? { keywords: post.seoKeywords } : {}),
+  }
+  const article = articleJsonLd(articleInput)
 
   const hero = resolveBlogHeroImages(post, post.title)
   const galleryImages = resolveBlogGallery(post)
@@ -169,64 +172,47 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <ReadingProgress />
       <JsonLd data={[breadcrumbJsonLd(breadcrumbs), article]} />
 
-      {/* HERO */}
-      <header className="relative isolate overflow-hidden">
-        {hero.primary ? (
-          <>
-            <div className="absolute inset-0 -z-10">
-              <BlogHeroPicture hero={hero} className="absolute inset-0 h-full w-full" priority />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/45 to-black/85" />
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/*  HEADLINE BLOCK — Condé Nast Traveler-style: text first,   */}
+      {/*  generous, centred, then a full-bleed hero photograph.     */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      <header className="relative">
+        <Container className="pb-8 pt-10 sm:pb-12 sm:pt-16 lg:pb-16 lg:pt-20">
+          <Breadcrumbs current={post.title} />
+          <div className="mx-auto mt-8 max-w-3xl text-center sm:mt-12">
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+              <span className="text-gold-600 dark:text-gold-300">{category}</span>
+              <span aria-hidden="true">·</span>
+              <span>{readingTimeMinutes} min read</span>
+              {publishedLabel ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <time dateTime={post.publishedAt!.toISOString()}>{publishedLabel}</time>
+                </>
+              ) : null}
             </div>
-            <Container className="relative pb-12 pt-24 sm:pb-16 sm:pt-28 lg:pb-24 lg:pt-36">
-              <Breadcrumbs current={post.title} onDark />
-              <div className="mt-6 max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="blog-chip border-white/30 bg-white/15 text-white">{category}</span>
-                </div>
-                <h1 className="mt-4 font-serif text-3xl leading-[1.05] tracking-[-0.025em] text-white sm:text-4xl lg:text-[3.25rem]">
-                  {post.title}
-                </h1>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-white/90 sm:text-lg sm:leading-8">
-                  {post.excerpt}
-                </p>
-                <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/85">
-                  <ByLineAvatar name={post.authorName} onDark />
-                  {publishedLabel ? (
-                    <>
-                      <span aria-hidden="true" className="opacity-50">·</span>
-                      <time dateTime={post.publishedAt!.toISOString()}>{publishedLabel}</time>
-                    </>
-                  ) : null}
-                  <span aria-hidden="true" className="opacity-50">·</span>
-                  <span>{readingTimeMinutes} min read</span>
-                </div>
-              </div>
-            </Container>
-          </>
-        ) : (
-          <div className="brand-gradient">
-            <Container className="pb-14 pt-20 sm:pb-16 sm:pt-24 lg:pb-20 lg:pt-32">
-              <Breadcrumbs current={post.title} onDark />
-              <div className="mt-6 max-w-3xl">
-                <span className="blog-chip border-white/30 bg-white/15 text-white">{category}</span>
-                <h1 className="mt-4 font-serif text-3xl leading-[1.05] tracking-[-0.025em] text-white sm:text-4xl lg:text-[3.25rem]">
-                  {post.title}
-                </h1>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-white/90 sm:text-lg">{post.excerpt}</p>
-                <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/85">
-                  <ByLineAvatar name={post.authorName} onDark />
-                  {publishedLabel ? (
-                    <>
-                      <span aria-hidden="true" className="opacity-50">·</span>
-                      <time dateTime={post.publishedAt!.toISOString()}>{publishedLabel}</time>
-                    </>
-                  ) : null}
-                  <span aria-hidden="true" className="opacity-50">·</span>
-                  <span>{readingTimeMinutes} min read</span>
-                </div>
-              </div>
-            </Container>
+
+            <h1 className="mt-6 break-words font-serif text-[2rem] leading-[1.02] tracking-[-0.03em] text-foreground sm:mt-8 sm:text-5xl lg:text-6xl xl:text-[4.25rem]">
+              {post.title}
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-2xl text-balance text-[15px] leading-8 text-muted-foreground sm:mt-8 sm:text-lg sm:leading-9">
+              {post.excerpt}
+            </p>
+
+            <div className="mt-7 flex items-center justify-center gap-3 sm:mt-9">
+              <ByLineAvatar name={post.authorName} size="sm" />
+            </div>
           </div>
+        </Container>
+
+        {/* Full-bleed hero photograph — 16:9 desktop, 4:5 mobile (matches our upload spec). */}
+        {hero.primary ? (
+          <div className="border-y border-border/40">
+            <BlogCoverPicture hero={hero} priority className="block w-full" />
+          </div>
+        ) : (
+          <div className="brand-gradient h-2" aria-hidden="true" />
         )}
       </header>
 
@@ -285,8 +271,34 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 </div>
               ) : null}
 
+              {/* Tag strip — links into the archive's fuzzy search */}
+              {post.seoKeywords.length > 0 ? (
+                <div className="mx-auto mt-12 max-w-[68ch]">
+                  <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+                    Filed under
+                  </div>
+                  <ul className="mt-3 flex flex-wrap gap-1.5">
+                    {post.seoKeywords.map((tag) => {
+                      const display = tag.trim()
+                      if (!display) return null
+                      const href = `/blog?q=${encodeURIComponent(display)}#all-stories`
+                      return (
+                        <li key={display}>
+                          <Link
+                            href={href}
+                            className="inline-flex items-center rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[12px] font-medium text-foreground/80 transition hover:border-foreground/40 hover:bg-card hover:text-foreground"
+                          >
+                            #{display}
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+
               {/* Inline share + meta */}
-              <div className="mx-auto mt-12 flex max-w-[68ch] flex-wrap items-center justify-between gap-4 border-y border-border/60 py-5">
+              <div className="mx-auto mt-10 flex max-w-[68ch] flex-wrap items-center justify-between gap-4 border-y border-border/60 py-5">
                 <div className="text-xs text-muted-foreground">
                   Last updated{' '}
                   <time dateTime={post.updatedAt.toISOString()} className="text-foreground">
@@ -318,6 +330,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   copy="A monthly note with new guides, seasonal openings, and quiet places worth your time."
                 />
               </div>
+
+              <BlogComments postSlug={post.slug} postTitle={post.title} />
             </div>
 
             <div className="order-3 lg:order-3">
@@ -341,43 +355,39 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               </Link>
             </div>
 
-            <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-              {related.map((item) => {
+            <div className="mt-12 grid gap-10 md:grid-cols-3 md:gap-x-6 md:gap-y-12 lg:gap-x-10">
+              {related.map((item, idx) => {
                 const href = getBlogPostHref(item)
-                const thumbnail = resolveBlogThumbnail(item, item.title)
                 const itemCategory = deriveBlogCategory(item)
+                const itemDate = item.publishedAt ? formatPublishedDate(item.publishedAt) : null
+                const itemMinutes = estimateReadingTimeMinutes(item.contentHtml)
                 return (
-                  <article key={item.id} className="group blog-card">
-                    <Link href={href} className="blog-card-media" aria-label={item.title}>
-                      {thumbnail ? (
-                        <Image
-                          src={thumbnail.url}
-                          alt={thumbnail.alt}
-                          fill
-                          sizes="(min-width: 1024px) 360px, (min-width: 768px) 45vw, 100vw"
-                          className="object-cover"
-                          loading="lazy"
-                          unoptimized={thumbnail.url.startsWith('http')}
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-muted to-card" />
-                      )}
-                      <div className="absolute left-3 top-3">
-                        <span className="blog-chip blog-chip-accent">{itemCategory}</span>
-                      </div>
-                    </Link>
-                    <div className="flex flex-1 flex-col gap-3 p-5">
-                      <h3 className="font-serif text-lg leading-snug tracking-[-0.015em] text-foreground">
-                        <Link href={href}>{item.title}</Link>
-                      </h3>
-                      <p className="line-clamp-2 text-sm leading-7 text-muted-foreground">{item.excerpt}</p>
-                      <div className="mt-auto pt-1 blog-meta">
-                        {item.publishedAt ? (
-                          <span>{formatPublishedDate(item.publishedAt)}</span>
-                        ) : null}
-                        <span className="blog-meta-dot">
-                          {estimateReadingTimeMinutes(item.contentHtml)} min read
+                  <article key={item.id} className="group flex min-w-0 flex-col">
+                    <BlogStoryThumbnail
+                      post={item}
+                      href={href}
+                      aspect="3/2"
+                      sizes="(min-width: 1024px) 30vw, (min-width: 768px) 32vw, 100vw"
+                    />
+                    <div className="mt-5 flex flex-col gap-3">
+                      <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                        <span className="font-serif text-base leading-none tracking-normal text-foreground/40">
+                          {String(idx + 1).padStart(2, '0')}
                         </span>
+                        <span className="truncate">{itemCategory}</span>
+                      </div>
+                      <Link href={href}>
+                        <h3 className="break-words font-serif text-lg leading-[1.18] tracking-[-0.018em] text-foreground transition group-hover:opacity-80 sm:text-xl lg:text-2xl">
+                          {item.title}
+                        </h3>
+                      </Link>
+                      <p className="line-clamp-2 text-[13px] leading-6 text-muted-foreground sm:text-sm sm:leading-7">
+                        {item.excerpt}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        {itemDate ? <time dateTime={item.publishedAt!.toISOString()}>{itemDate}</time> : null}
+                        {itemDate ? <span aria-hidden="true">·</span> : null}
+                        <span>{itemMinutes} min</span>
                       </div>
                     </div>
                   </article>
@@ -400,8 +410,11 @@ function Breadcrumbs({ current, onDark = false }: { current: string; onDark?: bo
   const currentClass = onDark ? 'text-white/95' : 'text-foreground/80'
 
   return (
-    <nav aria-label="Breadcrumb" className="text-[11px] font-medium uppercase tracking-[0.22em]">
-      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
+    <nav
+      aria-label="Breadcrumb"
+      className="text-[10px] font-medium uppercase tracking-[0.32em]"
+    >
+      <ol className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
         <li>
           <Link href="/" className={`transition ${linkClass}`}>
             Home
@@ -445,7 +458,11 @@ function ByLineAvatar({
       : 'h-8 w-8 text-xs'
 
   return (
-    <span className="inline-flex items-center gap-2">
+    <span
+      className={`inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] ${
+        onDark ? 'text-white/85' : 'text-foreground/80'
+      }`}
+    >
       <span
         className={`inline-flex shrink-0 items-center justify-center rounded-full font-semibold ${sizeClass} ${
           onDark ? 'bg-white/15 text-white ring-1 ring-white/30' : 'bg-foreground/10 text-foreground ring-1 ring-border/70'
