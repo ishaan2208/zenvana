@@ -367,6 +367,186 @@
     @apply mx-auto h-px w-12 origin-center;
     background: linear-gradient(to right, transparent, hsl(var(--gold)), transparent);
   }
+
+  /* ── Editorial blog prose (mobile-first, longform reading) ─ */
+  .blog-prose {
+    @apply text-foreground/90;
+    font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+    font-size: 1.0625rem;       /* 17px — comfortable on mobile */
+    line-height: 1.75;
+    letter-spacing: -0.005em;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "onum" 1;
+  }
+  @screen sm {
+    .blog-prose {
+      font-size: 1.125rem;      /* 18px */
+    }
+  }
+  @screen lg {
+    .blog-prose {
+      font-size: 1.1875rem;     /* 19px */
+      line-height: 1.8;
+    }
+  }
+  .blog-prose > * + * { @apply mt-6; }
+  .blog-prose p { @apply text-foreground/85; text-wrap: pretty; }
+  .blog-prose strong { @apply font-semibold text-foreground; }
+  .blog-prose em { @apply italic; }
+  .blog-prose a {
+    @apply font-medium text-foreground underline decoration-foreground/30 underline-offset-[5px] transition;
+    text-decoration-thickness: 1px;
+  }
+  .blog-prose a:hover { @apply decoration-foreground; }
+  .blog-prose h2 {
+    @apply font-serif text-foreground tracking-[-0.025em];
+    font-size: 1.75rem;          /* 28px mobile */
+    line-height: 1.2;
+    margin-top: 2.25rem;
+    margin-bottom: 0.5rem;
+    scroll-margin-top: 6rem;
+    text-wrap: balance;
+  }
+  @screen sm {
+    .blog-prose h2 { font-size: 2rem; }
+  }
+  @screen lg {
+    .blog-prose h2 { font-size: 2.25rem; margin-top: 3rem; }
+  }
+  .blog-prose h3 {
+    @apply font-serif text-foreground tracking-[-0.02em];
+    font-size: 1.375rem;
+    line-height: 1.3;
+    margin-top: 1.75rem;
+    margin-bottom: 0.25rem;
+    scroll-margin-top: 6rem;
+    text-wrap: balance;
+  }
+  @screen lg {
+    .blog-prose h3 { font-size: 1.5rem; margin-top: 2rem; }
+  }
+  .blog-prose ul,
+  .blog-prose ol { @apply pl-6; }
+  .blog-prose ul { list-style: disc; }
+  .blog-prose ol { list-style: decimal; }
+  .blog-prose li { @apply pl-1; margin-top: 0.5rem; }
+  .blog-prose li::marker { color: hsl(var(--gold)); }
+  .blog-prose blockquote {
+    @apply relative font-serif italic text-foreground/90;
+    border-left: 3px solid hsl(var(--gold));
+    padding: 0.25rem 0 0.25rem 1.25rem;
+    font-size: 1.125rem;
+    line-height: 1.6;
+    margin: 1.75rem 0;
+  }
+  @screen lg {
+    .blog-prose blockquote { font-size: 1.25rem; padding-left: 1.5rem; }
+  }
+  .blog-prose blockquote p { @apply text-foreground/90; }
+  .blog-prose hr {
+    @apply mx-auto my-10 h-px w-16 border-0;
+    background: linear-gradient(to right, transparent, hsl(var(--gold)), transparent);
+  }
+  .blog-prose code {
+    @apply rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-[0.9em] text-foreground;
+  }
+  .blog-prose pre {
+    @apply overflow-x-auto rounded-2xl bg-foreground/95 p-5 text-sm text-background;
+  }
+  .blog-prose pre code {
+    @apply bg-transparent p-0 text-background;
+  }
+  .blog-prose img {
+    @apply mx-auto my-8 w-full rounded-2xl shadow-[0_10px_30px_rgba(0,31,63,0.10)];
+  }
+  .blog-prose figure { @apply my-8; }
+  .blog-prose figcaption {
+    @apply mt-3 text-center text-xs uppercase tracking-[0.18em] text-muted-foreground;
+  }
+  .blog-prose table {
+    @apply my-6 w-full border-collapse text-sm;
+  }
+  .blog-prose th,
+  .blog-prose td {
+    @apply border-b border-border/60 px-3 py-2 text-left align-top;
+  }
+  .blog-prose th { @apply font-semibold text-foreground; }
+
+  /* Lead paragraph — first <p> after the hero block */
+  .blog-prose .lead,
+  .blog-prose > p:first-of-type {
+    font-size: 1.1875rem;
+    line-height: 1.7;
+    color: hsl(var(--foreground) / 0.92);
+  }
+  @screen lg {
+    .blog-prose .lead,
+    .blog-prose > p:first-of-type {
+      font-size: 1.3125rem;
+      line-height: 1.7;
+    }
+  }
+  .blog-prose > p:first-of-type::first-letter {
+    @apply font-serif font-semibold text-foreground;
+    float: left;
+    font-size: 3.75rem;
+    line-height: 0.9;
+    padding: 0.35rem 0.5rem 0 0;
+  }
+
+  /* ── Drop-cap-free variant for short intros ─ */
+  .blog-prose-plain > p:first-of-type::first-letter {
+    float: none;
+    font-size: inherit;
+    line-height: inherit;
+    padding: 0;
+  }
+
+  /* ── Blog UI helpers ───────────────────────────────────── */
+  .blog-card {
+    @apply relative flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-border/60 bg-card/90 shadow-[0_8px_30px_rgba(0,31,63,0.06)] backdrop-blur transition duration-300;
+  }
+  .blog-card:hover {
+    @apply -translate-y-0.5 border-border shadow-[0_20px_50px_rgba(0,31,63,0.12)];
+  }
+  .blog-card-media {
+    @apply relative aspect-[16/10] w-full overflow-hidden bg-muted;
+  }
+  .blog-card-media img {
+    @apply h-full w-full object-cover transition duration-700 ease-out;
+  }
+  .blog-card:hover .blog-card-media img { @apply scale-[1.04]; }
+  .blog-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-foreground/70 transition;
+  }
+  .blog-chip-accent {
+    border-color: hsl(var(--gold) / 0.5);
+    background-color: hsl(var(--gold) / 0.1);
+    color: hsl(var(--gold));
+  }
+  .blog-meta {
+    @apply flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:text-sm;
+  }
+  .blog-meta-dot::before {
+    content: "·";
+    @apply mr-2 text-muted-foreground;
+  }
+
+  /* Reading progress bar */
+  .reading-progress {
+    @apply pointer-events-none fixed left-0 right-0 top-0 z-50 h-[3px] origin-left scale-x-0;
+    background: linear-gradient(90deg, hsl(var(--gold)) 0%, hsl(var(--accent)) 100%);
+    transition: transform 0.1s linear;
+  }
+
+  /* Mobile share dock */
+  .blog-share-dock {
+    @apply fixed inset-x-0 bottom-0 z-30 flex items-center justify-around gap-1 border-t border-border/60 bg-background/95 px-3 py-2 backdrop-blur-xl;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    box-shadow: 0 -10px 30px -12px rgba(8, 17, 31, 0.25);
+  }
+  @screen lg {
+    .blog-share-dock { @apply hidden; }
+  }
 }
 
 @keyframes typing-dot {

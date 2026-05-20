@@ -1,7 +1,9 @@
 'use server'
 
-import { BlogMediaType, BlogPostStatus } from '@prisma/client'
+import { BlogMediaRole, BlogMediaType, BlogPostStatus } from '@prisma/client'
 import { cookies } from 'next/headers'
+
+import { isBlogImageRole } from '@/lib/blogImageSpecs'
 
 import {
   addBlogMediaAdmin,
@@ -9,6 +11,7 @@ import {
   deleteBlogMediaAdmin,
   deleteBlogPostAdmin,
   setBlogHeroFromMediaAdmin,
+  updateBlogMediaAltAdmin,
   updateBlogPostAdmin,
 } from '@/lib/blogAdmin'
 import {
@@ -120,23 +123,32 @@ export async function deleteBlogPostAction(id: string): Promise<{ ok: boolean; e
 export async function registerUploadedMediaAction(input: {
   blogPostId: string
   type: 'IMAGE' | 'VIDEO'
+  role?: string
   url: string
   publicId?: string
   width?: number
   height?: number
   duration?: number
+  bytes?: number
+  format?: string
   altText?: string
 }): Promise<{ ok: boolean; mediaId?: string; error?: string }> {
   try {
     await requireAdmin()
+    const role: BlogMediaRole = isBlogImageRole(input.role ?? '')
+      ? (input.role as BlogMediaRole)
+      : BlogMediaRole.GALLERY
     const media = await addBlogMediaAdmin({
       blogPostId: input.blogPostId,
       type: input.type === 'VIDEO' ? BlogMediaType.VIDEO : BlogMediaType.IMAGE,
+      role,
       url: input.url,
       publicId: input.publicId,
       width: input.width,
       height: input.height,
       duration: input.duration,
+      bytes: input.bytes,
+      format: input.format,
       altText: input.altText,
     })
     return { ok: true, mediaId: media.id }
@@ -152,6 +164,19 @@ export async function removeBlogMediaAction(mediaId: string): Promise<{ ok: bool
     return { ok: true }
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : 'Failed to remove media' }
+  }
+}
+
+export async function updateMediaAltTextAction(
+  mediaId: string,
+  altText: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await requireAdmin()
+    await updateBlogMediaAltAdmin(mediaId, altText)
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Failed to save alt text' }
   }
 }
 

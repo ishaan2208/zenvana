@@ -147,7 +147,7 @@ export function Header() {
                   <span className="truncate text-[0.7rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                     Zenvana Hotels
                   </span>
-                  <span className="hidden rounded-full border border-border/60 bg-card/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground min-[430px]:inline-flex">
+                  <span className="hidden rounded-full border border-border/60 bg-card/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-flex">
                     Boutique stays
                   </span>
                 </div>

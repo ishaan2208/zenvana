@@ -1,4 +1,10 @@
-import { BlogMediaType, BlogPostStatus, type BlogMedia, type BlogPost } from '@prisma/client'
+import {
+  BlogMediaRole,
+  BlogMediaType,
+  BlogPostStatus,
+  type BlogMedia,
+  type BlogPost,
+} from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
 import { getBlogPostHref } from '@/lib/blog'
@@ -160,27 +166,65 @@ export async function deleteBlogPostAdmin(id: string): Promise<void> {
 export async function addBlogMediaAdmin(input: {
   blogPostId: string
   type: BlogMediaType
+  role?: BlogMediaRole
   url: string
   publicId?: string | null
   width?: number | null
   height?: number | null
   duration?: number | null
+  bytes?: number | null
+  format?: string | null
   altText?: string | null
   sortOrder?: number
 }): Promise<BlogMedia> {
+  const role = input.role ?? BlogMediaRole.GALLERY
+
+  // Enforce singletons for HERO_DESKTOP / HERO_MOBILE / THUMBNAIL / OG:
+  // only one of each role per post. Drop the previous one if the writer
+  // is replacing it (matches the editor's mental model of "one slot, one image").
+  const SINGLETON_ROLES: BlogMediaRole[] = [
+    BlogMediaRole.HERO_DESKTOP,
+    BlogMediaRole.HERO_MOBILE,
+    BlogMediaRole.THUMBNAIL,
+    BlogMediaRole.OG,
+  ]
+  if (SINGLETON_ROLES.includes(role)) {
+    await prisma.blogMedia.deleteMany({
+      where: { blogPostId: input.blogPostId, role },
+    })
+  }
+
   const media = await prisma.blogMedia.create({
     data: {
       blogPostId: input.blogPostId,
       type: input.type,
+      role,
       url: input.url,
       publicId: input.publicId ?? null,
       width: input.width ?? null,
       height: input.height ?? null,
       duration: input.duration ?? null,
+      bytes: input.bytes ?? null,
+      format: input.format ?? null,
       altText: input.altText ?? null,
       sortOrder: input.sortOrder ?? 0,
     },
   })
+
+  // Mirror role-tagged uploads onto the BlogPost convenience columns so the
+  // existing rendering (heroImageUrl / ogImageUrl) keeps working everywhere.
+  if (role === BlogMediaRole.HERO_DESKTOP) {
+    await prisma.blogPost.update({
+      where: { id: input.blogPostId },
+      data: { heroImageUrl: input.url },
+    })
+  }
+  if (role === BlogMediaRole.OG) {
+    await prisma.blogPost.update({
+      where: { id: input.blogPostId },
+      data: { ogImageUrl: input.url },
+    })
+  }
 
   const post = await prisma.blogPost.findUnique({ where: { id: input.blogPostId } })
   if (post) revalidateBlogPaths(post)
@@ -195,7 +239,36 @@ export async function deleteBlogMediaAdmin(id: string): Promise<void> {
   if (!media) return
 
   await prisma.blogMedia.delete({ where: { id } })
+
+  // If the deleted media was wired into BlogPost.heroImageUrl or ogImageUrl,
+  // clear that mirror so the public site doesn't render a dead URL.
+  if (media.role === BlogMediaRole.HERO_DESKTOP && media.blogPost.heroImageUrl === media.url) {
+    await prisma.blogPost.update({
+      where: { id: media.blogPostId },
+      data: { heroImageUrl: null },
+    })
+  }
+  if (media.role === BlogMediaRole.OG && media.blogPost.ogImageUrl === media.url) {
+    await prisma.blogPost.update({
+      where: { id: media.blogPostId },
+      data: { ogImageUrl: null },
+    })
+  }
+
   revalidateBlogPaths(media.blogPost)
+}
+
+export async function updateBlogMediaAltAdmin(
+  mediaId: string,
+  altText: string,
+): Promise<BlogMedia> {
+  const media = await prisma.blogMedia.update({
+    where: { id: mediaId },
+    data: { altText: altText.trim() || null },
+  })
+  const post = await prisma.blogPost.findUnique({ where: { id: media.blogPostId } })
+  if (post) revalidateBlogPaths(post)
+  return media
 }
 
 export async function setBlogHeroFromMediaAdmin(

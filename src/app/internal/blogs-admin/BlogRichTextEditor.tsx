@@ -70,7 +70,7 @@ export function BlogRichTextEditor({ value, onChange, editorKey }: BlogRichTextE
     editorProps: {
       attributes: {
         class:
-          'prose prose-neutral max-w-none min-h-[280px] px-4 py-3 focus:outline-none dark:prose-invert',
+          'blog-prose blog-prose-plain max-w-none min-h-[min(520px,calc(100dvh-20rem))] px-5 py-4 focus:outline-none',
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
@@ -88,7 +88,7 @@ export function BlogRichTextEditor({ value, onChange, editorKey }: BlogRichTextE
 
   if (!editor) {
     return (
-      <div className="min-h-[320px] animate-pulse rounded-lg border border-border bg-muted/30" />
+      <div className="min-h-[min(520px,calc(100dvh-20rem))] animate-pulse rounded-lg border border-border bg-muted/30" />
     )
   }
 
@@ -105,8 +105,8 @@ export function BlogRichTextEditor({ value, onChange, editorKey }: BlogRichTextE
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-background">
-      <div className="flex flex-wrap gap-1 border-b border-border bg-card/80 p-2">
+    <div className="overflow-hidden rounded-xl border border-border bg-background">
+      <div className="sticky top-0 z-10 flex flex-wrap gap-1 border-b border-border bg-card/95 p-2 backdrop-blur">
         <ToolbarButton
           label="Bold"
           active={editor.isActive('bold')}
