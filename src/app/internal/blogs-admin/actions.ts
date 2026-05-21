@@ -16,7 +16,9 @@ import {
 } from '@/lib/blogAdmin'
 import {
   BLOG_ADMIN_COOKIE,
+  BLOG_ADMIN_COOKIE_VALUE,
   BLOG_ADMIN_PASSWORD,
+  getBlogAdminCookieOptions,
   getBlogAdminSession,
 } from '@/lib/blogAdminAuth'
 
@@ -27,19 +29,27 @@ async function requireAdmin() {
   }
 }
 
+export async function getBlogAdminSessionAction(): Promise<boolean> {
+  return getBlogAdminSession()
+}
+
 export async function loginBlogAdmin(password: string): Promise<{ ok: boolean; error?: string }> {
   if (password !== BLOG_ADMIN_PASSWORD) {
     return { ok: false, error: 'Incorrect password' }
   }
 
   const cookieStore = await cookies()
-  cookieStore.set(BLOG_ADMIN_COOKIE, 'authorized', {
-    httpOnly: true,
-    sameSite: 'strict',
-    path: '/',
-    maxAge: 60 * 60 * 8,
-    secure: process.env.NODE_ENV === 'production',
-  })
+  cookieStore.set(BLOG_ADMIN_COOKIE, BLOG_ADMIN_COOKIE_VALUE, getBlogAdminCookieOptions())
+
+  const sessionOk = await getBlogAdminSession()
+  if (!sessionOk) {
+    return {
+      ok: false,
+      error:
+        'Login cookie could not be set. Use the same host for every visit (e.g. always localhost:3009, not 127.0.0.1), and use HTTPS in production.',
+    }
+  }
+
   return { ok: true }
 }
 

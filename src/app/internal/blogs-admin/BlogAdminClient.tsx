@@ -17,6 +17,7 @@ import { BlogTagInput, normalizeTags } from '@/app/internal/blogs-admin/BlogTagI
 import { BlogTocPreview } from '@/app/internal/blogs-admin/BlogTocPreview'
 import {
   deleteBlogPostAction,
+  getBlogAdminSessionAction,
   loginBlogAdmin,
   logoutBlogAdmin,
   registerUploadedMediaAction,
@@ -105,6 +106,10 @@ function statusBadgeClass(status: BlogPostStatus) {
 export function BlogAdminClient({ authorized: initialAuthorized, posts: initialPosts }: BlogAdminClientProps) {
   const router = useRouter()
   const [authorized, setAuthorized] = useState(initialAuthorized)
+
+  useEffect(() => {
+    setAuthorized(initialAuthorized)
+  }, [initialAuthorized])
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -297,6 +302,13 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
       setLoginError(result.error ?? 'Login failed')
       return
     }
+    const sessionOk = await getBlogAdminSessionAction()
+    if (!sessionOk) {
+      setLoginError(
+        'Session was not established. Stay on the same URL you used to open this page (e.g. http://localhost:3009, not 127.0.0.1), then try again.',
+      )
+      return
+    }
     setAuthorized(true)
     setLoginError(null)
     router.refresh()
@@ -333,6 +345,11 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
     startTransition(async () => {
       const result = await saveBlogPostAction(formData)
       if (!result.ok) {
+        if (result.error === 'Unauthorized') {
+          setAuthorized(false)
+          setError('Session expired or missing. Unlock Blog Admin again with your password.')
+          return
+        }
         setError(result.error ?? 'Failed to save')
         return
       }
