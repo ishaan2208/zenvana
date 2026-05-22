@@ -32,6 +32,7 @@ import { LiveBookingsCounter } from '@/components/LiveBookingsCounter'
 import { GuestVoicesSection } from '@/components/GuestVoicesSection'
 import { DeferredLocationMap } from '../../components/DeferredLocationMap'
 import { faqPageJsonLd, hotelGroupJsonLd } from '@/lib/structured-data'
+import { GoogleAdsHomeConversion } from '@/components/GoogleAdsTag'
 
 function GuestVoicesSectionFallback() {
   return (
@@ -217,7 +218,9 @@ export default async function HomePage() {
   }))
 
   return (
-    <div className="mobile-cta-pad">
+    <>
+      <GoogleAdsHomeConversion />
+      <div className="mobile-cta-pad">
       <JsonLd
         data={[
           hotelGroupJsonLd(groupProperties),
@@ -247,6 +250,7 @@ export default async function HomePage() {
 
       <MobileBookingCta />
     </div>
+    </>
   )
 }
 

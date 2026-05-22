@@ -11,6 +11,7 @@ import { NavigationLoadingProvider } from '@/components/navigation-loading-provi
 import { ThemeProvider } from '@/components/theme-provider'
 import { Analytics } from '@vercel/analytics/next'
 import { JsonLd } from '@/components/JsonLd'
+import { GoogleAdsTag } from '@/components/GoogleAdsTag'
 import { SiteAnalytics, GtmNoscript } from '@/components/SiteAnalytics'
 import { InitialSplash } from '@/components/InitialSplash'
 
@@ -161,6 +162,7 @@ export default function RootLayout({
       <head>
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://connect.facebook.net" />
+        <GoogleAdsTag />
       </head>
       <body
         className={clsx(
