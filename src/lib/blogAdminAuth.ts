@@ -22,7 +22,7 @@ export function shouldUseSecureBlogAdminCookie(): boolean {
 export function getBlogAdminCookieOptions() {
   return {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     path: '/',
     maxAge: BLOG_ADMIN_MAX_AGE_SECONDS,
     secure: shouldUseSecureBlogAdminCookie(),
