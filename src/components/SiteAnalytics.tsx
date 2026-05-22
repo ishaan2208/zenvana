@@ -3,6 +3,8 @@ import Script from 'next/script'
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID
+const GOOGLE_ADS_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ?? 'AW-16548808937'
 
 export function SiteAnalytics() {
   return (
@@ -32,6 +34,25 @@ gtag('config', '${GA_ID}', {
   anonymize_ip: true,
   cookie_flags: 'SameSite=None;Secure'
 });`}
+          </Script>
+        </>
+      )}
+
+      {GOOGLE_ADS_ID && (
+        <>
+          {!GA_ID && (
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`}
+              strategy="afterInteractive"
+            />
+          )}
+          <Script id="google-ads-init" strategy="afterInteractive">
+            {GA_ID
+              ? `gtag('config', '${GOOGLE_ADS_ID}');`
+              : `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${GOOGLE_ADS_ID}');`}
           </Script>
         </>
       )}
