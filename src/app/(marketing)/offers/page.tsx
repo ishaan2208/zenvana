@@ -50,6 +50,8 @@ export default async function OffersPage() {
       offer.minBookingAmount
         ? `Min booking: ₹${Math.round(offer.minBookingAmount)}`
         : 'No minimum booking amount',
+      offer.minRoomNights ? `Min stay: ${offer.minRoomNights} night(s)` : 'No minimum stay length',
+      offer.loginRequired ? 'Login required at checkout' : 'Guest checkout allowed',
     ],
   }))
 

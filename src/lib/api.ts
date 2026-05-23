@@ -190,6 +190,8 @@ export type PublicOffer = {
   discountValue: number
   maxDiscount?: number | null
   minBookingAmount?: number | null
+  minRoomNights?: number | null
+  loginRequired?: boolean
   scopeType: 'GLOBAL' | 'PROPERTY' | string
   validUntil?: string | null
   properties?: Array<{ name: string; slug: string }>

@@ -31,6 +31,7 @@ import {
   verifyRazorpayAndCreateBooking,
   type PublicBookingPayload,
 } from '@/lib/api'
+import { couponErrorMessage } from '@/lib/coupon-errors'
 import {
   checkGuestAccountExists,
   formatZenvanaGuestSalutationName,
@@ -311,12 +312,16 @@ export default function MultiRoomCheckoutForm({
         pointsToRedeem: 0,
       })
       if (!result.valid) {
-        if (result.reason === 'COUPON_LOGIN_REQUIRED') {
+        const needsAuth =
+          result.reason === 'COUPON_LOGIN_REQUIRED' ||
+          result.reason === 'COUPON_IDENTITY_REQUIRED' ||
+          result.reason === 'COUPON_PHONE_MISMATCH'
+        if (needsAuth) {
           setAppliedCoupon({ code: result.code ?? code, discountAmount: result.discountAmount ?? 0 })
           setCouponCodeInput(result.code ?? code)
           bumpCouponAppliedKey()
           await new Promise((resolve) => setTimeout(resolve, 1400))
-          toast.info('This discount is only for logged-in customers. Redirecting to login/signup...')
+          toast.info('Sign in or verify your phone to use this coupon. Redirecting...')
           const redirect = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : `/book/${slug}/checkout`
           const existing = await checkGuestAccountExists(guestPhone)
           const nextAuthPath = existing === false ? '/guest/signup' : '/login'
@@ -325,7 +330,7 @@ export default function MultiRoomCheckoutForm({
           }, 900)
           return
         }
-        setCouponError(result.message ?? 'Coupon could not be applied')
+        setCouponError(couponErrorMessage(result.reason, result.message))
         setAppliedCoupon(null)
         return
       }
