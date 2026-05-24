@@ -6,6 +6,9 @@
     "dev": "next dev -p 3009",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run --root . --config ./vitest.config.ts",
+    "test:watch": "vitest --root . --config ./vitest.config.ts",
+    "test:typecheck": "tsc -p tsconfig.vitest.json --noEmit",
     "lint": "next lint",
     "postinstall": "dotenv -e .env.local -- prisma generate",
     "db:generate": "prisma generate",
@@ -80,6 +83,7 @@
     "prettier-plugin-tailwindcss": "^0.5.11",
     "prisma": "^6.19.3",
     "sharp": "0.33.1",
-    "tsx": "^4.22.3"
+    "tsx": "^4.22.3",
+    "vitest": "^4.1.7"
   }
 }
