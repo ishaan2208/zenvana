@@ -204,6 +204,12 @@ function deriveBookingReference(name: string, properties?: Properties): string |
   return trimmed.slice(0, 128)
 }
 
+function hasUnknownArgError(err: unknown, arg: 'eventId' | 'bookingReference'): boolean {
+  if (!(err instanceof Error)) return false
+  const message = err.message ?? ''
+  return message.includes(`Unknown argument \`${arg}\``)
+}
+
 /**
  * Records an analytics event. NEVER throws — analytics must not break the booking flow.
  */
@@ -228,20 +234,36 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
       })
       if (exists) return
     }
-    await prisma.analyticsEvent.create({
-      data: {
+    const dataWithOptionalFields = {
+      sessionId,
+      name: input.name,
+      eventId: input.eventId ?? null,
+      occurredAt: input.occurredAt ?? new Date(),
+      bookingReference,
+      propertySlug: input.propertySlug ?? null,
+      source: input.source,
+      properties: json as never,
+      propertiesSize: size,
+      utmSource: bootstrap.utmSource ?? null,
+    }
+    try {
+      await prisma.analyticsEvent.create({ data: dataWithOptionalFields })
+    } catch (err) {
+      if (!hasUnknownArgError(err, 'eventId') && !hasUnknownArgError(err, 'bookingReference')) {
+        throw err
+      }
+      const fallbackData = {
         sessionId,
         name: input.name,
-        eventId: input.eventId ?? null,
         occurredAt: input.occurredAt ?? new Date(),
-        bookingReference,
         propertySlug: input.propertySlug ?? null,
         source: input.source,
         properties: json as never,
         propertiesSize: size,
         utmSource: bootstrap.utmSource ?? null,
-      },
-    })
+      }
+      await prisma.analyticsEvent.create({ data: fallbackData })
+    }
   } catch (err) {
     console.error('[analytics] recordEvent failed:', err)
   }
@@ -305,7 +327,24 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
     })
 
     if (!rows.length) return
-    await prisma.analyticsEvent.createMany({ data: rows, skipDuplicates: true })
+    try {
+      await prisma.analyticsEvent.createMany({ data: rows, skipDuplicates: true })
+    } catch (err) {
+      if (!hasUnknownArgError(err, 'eventId') && !hasUnknownArgError(err, 'bookingReference')) {
+        throw err
+      }
+      const fallbackRows = rows.map((row) => ({
+        sessionId: row.sessionId,
+        name: row.name,
+        occurredAt: row.occurredAt,
+        propertySlug: row.propertySlug,
+        source: row.source,
+        properties: row.properties,
+        propertiesSize: row.propertiesSize,
+        utmSource: row.utmSource,
+      }))
+      await prisma.analyticsEvent.createMany({ data: fallbackRows as never, skipDuplicates: true })
+    }
   } catch (err) {
     console.error('[analytics] recordEventsBatch failed:', err)
   }
