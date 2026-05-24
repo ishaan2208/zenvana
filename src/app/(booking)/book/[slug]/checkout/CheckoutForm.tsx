@@ -38,6 +38,8 @@ import {
   getZenvanaGuestMe,
 } from '@/lib/zenvanaGuestApi'
 import { toast } from 'sonner'
+import { track } from '@/lib/analytics/client'
+import { trackEventAction } from '@/app/actions/analytics'
 
 const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
 
@@ -173,6 +175,23 @@ export default function CheckoutForm({
   const [paymentMode, setPaymentMode] = useState<'pay_at_property' | 'pay_now'>(
     'pay_now'
   )
+  const checkoutViewedFiredRef = useRef(false)
+
+  useEffect(() => {
+    if (checkoutViewedFiredRef.current) return
+    checkoutViewedFiredRef.current = true
+    track(
+      'checkout_viewed',
+      {
+        roomTypeId,
+        roomTypeName,
+        totalAmount: Number(totalAmount),
+        nights: Number(nights),
+        couponPrefilled: Boolean(initialCouponCode),
+      },
+      slug,
+    )
+  }, [initialCouponCode, nights, roomTypeId, roomTypeName, slug, totalAmount])
 
   useEffect(() => {
     if (resendCooldown <= 0) return
@@ -393,6 +412,7 @@ export default function CheckoutForm({
           })
           setCouponCodeInput(result.code ?? code)
           bumpCouponAppliedKey()
+        track('coupon_failed', { code, reason: result.reason ?? 'AUTH_REQUIRED' }, slug)
           await new Promise((resolve) => setTimeout(resolve, 1400))
           toast.info('Sign in or verify your phone to use this coupon. Redirecting...')
           const redirect = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : `/book/${slug}/checkout`
@@ -405,6 +425,7 @@ export default function CheckoutForm({
         }
         setCouponError(couponErrorMessage(result.reason, result.message))
         setAppliedCoupon(null)
+        track('coupon_failed', { code, reason: result.reason ?? 'INVALID' }, slug)
         return
       }
       setAppliedCoupon({
@@ -413,9 +434,15 @@ export default function CheckoutForm({
       })
       setCouponCodeInput(result.code ?? code)
       bumpCouponAppliedKey()
+      track(
+        'coupon_applied',
+        { code: result.code ?? code, discountAmount: result.discountAmount ?? 0 },
+        slug,
+      )
     } catch (err) {
       setCouponError(err instanceof Error ? err.message : 'Coupon validation failed')
       setAppliedCoupon(null)
+      track('coupon_failed', { code, reason: 'EXCEPTION' }, slug)
     } finally {
       setCouponBusy(false)
     }
@@ -445,6 +472,18 @@ export default function CheckoutForm({
         ? { paid: true, transactionId }
         : { paid: false },
     })
+    trackEventAction(
+      'booking_completed',
+      {
+        bookingReference: data.bookingReference,
+        paymentMode: transactionId ? 'pay_now' : 'pay_at_property',
+        amount: effectiveTotalAmount,
+        couponCode: appliedCoupon?.code ?? null,
+        transactionId: transactionId ?? null,
+        roomTypeName,
+      },
+      slug,
+    ).catch(() => {})
 
     router.push(
       `/booking/confirmation?` +
@@ -588,9 +627,25 @@ export default function CheckoutForm({
       rzp.on('payment.failed', () => {
         setError('Payment failed or was cancelled.')
         setSubmitting(false)
+        track(
+          'payment_failed',
+          { amount: effectiveTotalAmount, amountPaise, orderId, couponCode: appliedCoupon?.code ?? null },
+          slug,
+        )
       })
 
       rzp.open()
+      track(
+        'payment_initiated',
+        {
+          amount: effectiveTotalAmount,
+          amountPaise,
+          orderId,
+          paymentMode: 'pay_now',
+          couponCode: appliedCoupon?.code ?? null,
+        },
+        slug,
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed')
       setSubmitting(false)

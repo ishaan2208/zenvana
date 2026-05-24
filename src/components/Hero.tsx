@@ -6,7 +6,7 @@ import { Container } from '@/components/Container'
 import logoLaravel from '@/images/logos/svg4.svg'
 import logoMirage from '@/images/logos/svg1.svg'
 import logoStatamic from '@/images/logos/svg3.svg'
-import { track } from '@vercel/analytics'
+import { track } from '@/lib/analytics/client'
 
 // Call this function when a user clicks a button or performs an action you want to track
 
@@ -16,8 +16,9 @@ import { track } from '@vercel/analytics'
 
 export function Hero() {
   const handleSignUpClick = () => {
-    track('clicked sign up', {
-      location: 'header',
+    track('cta_clicked', {
+      placement: 'hero_header',
+      label: 'sign_up_15_days_free',
     })
     window.location.href = '/hotels' // Book your stay
   }
@@ -56,7 +57,10 @@ export function Hero() {
       <div className=" mx-auto flex w-fit flex-col items-center space-y-4 p-5">
         <Button
           onClick={() => {
-            track('clicked_call_button')
+            track('cta_clicked', {
+              placement: 'hero_phone_button',
+              label: 'call_now',
+            })
           }}
           color="primary"
           className=""

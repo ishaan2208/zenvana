@@ -4,7 +4,7 @@ import clsx from 'clsx'
 
 import { Button } from '@/components/Button'
 import { Container } from '@/components/Container'
-import { track } from '@vercel/analytics'
+import { track } from '@/lib/analytics/client'
 
 function SwirlyDoodle(props: React.ComponentPropsWithoutRef<'svg'>) {
   return (
@@ -104,7 +104,10 @@ function Plan({
 
       <Button
         onClick={() => {
-          track('clicked_get_started_button_pricing')
+          track('cta_clicked', {
+            placement: 'pricing_card',
+            label: `get_started_${name.toLowerCase()}`,
+          })
         }}
         href={href}
         variant={featured ? 'solid' : 'outline'}

@@ -1,13 +1,41 @@
 import { cookies } from 'next/headers'
+import { createHmac, timingSafeEqual } from 'crypto'
 
-export const ANALYTICS_ADMIN_PASSWORD =
-  process.env.ANALYTICS_ADMIN_PASSWORD?.trim() || 'admin123'
+export const ANALYTICS_ADMIN_PASSWORD = process.env.ANALYTICS_ADMIN_PASSWORD?.trim() ?? ''
 export const ANALYTICS_ADMIN_COOKIE = 'zenvana_analytics_admin'
-export const ANALYTICS_ADMIN_COOKIE_VALUE = 'authorized'
 const ANALYTICS_ADMIN_MAX_AGE_SECONDS = 60 * 60 * 8
+const ANALYTICS_ADMIN_SESSION_SECRET = process.env.ANALYTICS_ADMIN_SESSION_SECRET?.trim() ?? ''
+
+function canUseAdminSessionToken(): boolean {
+  if (ANALYTICS_ADMIN_PASSWORD.length === 0) return false
+  if (ANALYTICS_ADMIN_SESSION_SECRET.length === 0) return false
+  return true
+}
+
+function computeSignature(timestamp: string): string {
+  return createHmac('sha256', ANALYTICS_ADMIN_SESSION_SECRET).update(timestamp).digest('hex')
+}
+
+export function createAnalyticsAdminSessionToken(now = Date.now()): string | null {
+  if (!canUseAdminSessionToken()) return null
+  const timestamp = String(now)
+  const signature = computeSignature(timestamp)
+  return `${timestamp}.${signature}`
+}
 
 export function isAnalyticsAdminAuthorized(cookieValue: string | undefined): boolean {
-  return cookieValue === ANALYTICS_ADMIN_COOKIE_VALUE
+  if (!cookieValue || !canUseAdminSessionToken()) return false
+  const [timestamp, signature] = cookieValue.split('.')
+  if (!timestamp || !signature) return false
+  const tsNumber = Number(timestamp)
+  if (!Number.isFinite(tsNumber)) return false
+  if (Date.now() - tsNumber > ANALYTICS_ADMIN_MAX_AGE_SECONDS * 1000) return false
+  const expected = computeSignature(timestamp)
+  try {
+    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+  } catch {
+    return false
+  }
 }
 
 export function shouldUseSecureAnalyticsAdminCookie(): boolean {

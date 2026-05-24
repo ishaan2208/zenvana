@@ -1,6 +1,7 @@
 'use server'
 
 import { recordEvent } from '@/lib/analytics/recorder'
+import { isAnalyticsEventName } from '@/lib/analytics/events'
 
 /**
  * Server-side event logger for use in trusted server paths (e.g. after Razorpay
@@ -14,6 +15,7 @@ export async function trackEventAction(
   properties?: Record<string, unknown>,
   propertySlug?: string | null,
 ): Promise<void> {
+  if (!isAnalyticsEventName(name)) return
   await recordEvent({
     name,
     properties,

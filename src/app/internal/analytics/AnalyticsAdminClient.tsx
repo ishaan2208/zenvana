@@ -1,3 +1,4 @@
+// src/app/internal/analytics/AnalyticsAdminClient.tsx
 'use client'
 
 import { useState, useTransition } from 'react'
@@ -92,7 +93,7 @@ export function AnalyticsAdminClient({ authorized: initialAuthorized }: Props) {
               </Button>
             </form>
             <p className="mt-4 text-xs text-muted-foreground">
-              For internal use only. Set <code>ANALYTICS_ADMIN_PASSWORD</code> in your environment.
+              For internal use only. Set <code>ANALYTICS_ADMIN_PASSWORD</code> and <code>ANALYTICS_ADMIN_SESSION_SECRET</code> in your environment.
             </p>
           </CardContent>
         </Card>

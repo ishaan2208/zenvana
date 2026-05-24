@@ -1,12 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 import { recordEventsBatch, type RecordEventInput } from '@/lib/analytics/recorder'
+import { isAnalyticsEventName } from '@/lib/analytics/events'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 type ClientEventPayload = {
   name?: unknown
+  eventId?: unknown
   properties?: unknown
   propertySlug?: unknown
   occurredAt?: unknown
@@ -17,7 +19,46 @@ type TrackBody = {
 }
 
 const MAX_BATCH = 50
-const ALLOWED_EVENT_NAME = /^[a-z0-9_]{1,64}$/
+const RATE_LIMIT_WINDOW_MS = 60_000
+const RATE_LIMIT_MAX_EVENTS = 300
+const rateLimitState = new Map<string, { count: number; windowStart: number }>()
+
+function cleanupRateLimitStore(now: number): void {
+  for (const [key, value] of rateLimitState.entries()) {
+    if (now - value.windowStart > RATE_LIMIT_WINDOW_MS * 2) {
+      rateLimitState.delete(key)
+    }
+  }
+}
+
+function identifyClient(request: NextRequest): string | null {
+  const cookieSession = request.cookies.get('zenvana_anon_session')?.value
+  if (cookieSession) return `session:${cookieSession}`
+  const headerSession = request.headers.get('x-analytics-session')
+  if (headerSession) return `header:${headerSession}`
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    null
+  if (ip) return `ip:${ip}`
+  return null
+}
+
+function consumeRateLimit(request: NextRequest, requestedEvents: number): boolean {
+  if (requestedEvents <= 0) return true
+  const key = identifyClient(request)
+  if (!key) return true
+  const now = Date.now()
+  cleanupRateLimitStore(now)
+  const current = rateLimitState.get(key)
+  if (!current || now - current.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitState.set(key, { count: requestedEvents, windowStart: now })
+    return requestedEvents <= RATE_LIMIT_MAX_EVENTS
+  }
+  const nextCount = current.count + requestedEvents
+  rateLimitState.set(key, { count: nextCount, windowStart: current.windowStart })
+  return nextCount <= RATE_LIMIT_MAX_EVENTS
+}
 
 function isAllowedOrigin(request: NextRequest): boolean {
   const allowed = process.env.NEXT_PUBLIC_SITE_URL?.trim()
@@ -57,12 +98,19 @@ export async function POST(request: NextRequest) {
   if (!body || !Array.isArray(body.events) || body.events.length === 0) {
     return new NextResponse(null, { status: 204 })
   }
+  if (!consumeRateLimit(request, Math.min(body.events.length, MAX_BATCH))) {
+    return new NextResponse(null, { status: 429 })
+  }
 
   const events: RecordEventInput[] = []
   for (const raw of body.events.slice(0, MAX_BATCH)) {
     if (!raw || typeof raw !== 'object') continue
     const name = typeof raw.name === 'string' ? raw.name : ''
-    if (!ALLOWED_EVENT_NAME.test(name)) continue
+    if (!isAnalyticsEventName(name)) continue
+    const eventId =
+      typeof raw.eventId === 'string' && /^[a-zA-Z0-9:_-]{8,128}$/.test(raw.eventId)
+        ? raw.eventId
+        : undefined
     const properties =
       raw.properties && typeof raw.properties === 'object'
         ? (raw.properties as Record<string, unknown>)
@@ -73,7 +121,7 @@ export async function POST(request: NextRequest) {
       typeof raw.occurredAt === 'string' && !Number.isNaN(Date.parse(raw.occurredAt))
         ? new Date(raw.occurredAt)
         : undefined
-    events.push({ name, properties, propertySlug, source: 'client', occurredAt })
+    events.push({ name, eventId, properties, propertySlug, source: 'client', occurredAt })
   }
 
   if (events.length > 0) {

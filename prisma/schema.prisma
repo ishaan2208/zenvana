@@ -136,7 +136,9 @@ model AnalyticsEvent {
   sessionId      String
   session        AnalyticsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   name           String
+  eventId        String?
   occurredAt     DateTime @default(now())
+  bookingReference String?
   propertySlug   String?
   source         String
   properties     Json     @db.JsonB
@@ -146,8 +148,27 @@ model AnalyticsEvent {
   @@index([name, occurredAt])
   @@index([occurredAt])
   @@index([sessionId, occurredAt])
+  @@index([bookingReference, occurredAt])
   @@index([propertySlug, name, occurredAt])
   @@index([utmSource, name, occurredAt])
+  @@unique([sessionId, eventId])
   @@map("event")
+  @@schema("analytics")
+}
+
+model AnalyticsDailyMetric {
+  date         DateTime
+  propertySlug String
+  utmSource    String
+  sessions     Int      @default(0)
+  bookings     Int      @default(0)
+  events       Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@id([date, propertySlug, utmSource])
+  @@index([date])
+  @@index([propertySlug, date])
+  @@index([utmSource, date])
+  @@map("daily_metrics")
   @@schema("analytics")
 }

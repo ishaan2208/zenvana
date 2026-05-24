@@ -5,12 +5,13 @@ import Image from 'next/image'
 import { Button } from '@/components/Button'
 import { Container } from '@/components/Container'
 import backgroundImage from '@/images/background-call-to-action.jpg'
-import { track } from '@vercel/analytics'
+import { track } from '@/lib/analytics/client'
 
 export function CallToAction() {
   const handleSignUpClick = () => {
-    track('clicked sign up', {
-      location: 'cta',
+    track('cta_clicked', {
+      placement: 'cta_section',
+      label: 'view_hotels',
     })
     window.location.href = '/hotels'
   }

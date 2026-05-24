@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'crypto'
 import { cookies, headers } from 'next/headers'
 
 import { prisma } from '@/lib/prisma'
+import { isAnalyticsEventName } from '@/lib/analytics/events'
 
 export const ANON_SESSION_COOKIE = 'zenvana_anon_session'
 export const ANON_BOOTSTRAP_COOKIE = 'zenvana_anon_bootstrap'
@@ -75,6 +76,9 @@ function capProperties(properties: Properties | undefined): { json: Properties; 
 function hashWithSalt(input: string | null | undefined): string | null {
   if (!input) return null
   const salt = process.env.ANALYTICS_SALT ?? ''
+  if (!salt && process.env.NODE_ENV === 'production') {
+    return null
+  }
   return createHash('sha256').update(`${salt}:${input}`).digest('hex').slice(0, 32)
 }
 
@@ -184,10 +188,20 @@ async function clearBootstrapCookie() {
 
 export type RecordEventInput = {
   name: string
+  eventId?: string
   properties?: Properties
   propertySlug?: string | null
   source: 'client' | 'server'
   occurredAt?: Date
+}
+
+function deriveBookingReference(name: string, properties?: Properties): string | null {
+  if (name !== 'booking_completed') return null
+  const candidate = properties?.bookingReference
+  if (typeof candidate !== 'string') return null
+  const trimmed = candidate.trim()
+  if (!trimmed) return null
+  return trimmed.slice(0, 128)
 }
 
 /**
@@ -195,6 +209,7 @@ export type RecordEventInput = {
  */
 export async function recordEvent(input: RecordEventInput): Promise<void> {
   try {
+    if (!isAnalyticsEventName(input.name)) return
     const { sessionId: existing, userAgent, ip, bootstrap } = await readRequestContext()
     if (isBot(userAgent)) return
 
@@ -205,11 +220,21 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
     await clearBootstrapCookie()
 
     const { json, size } = capProperties(input.properties)
+    const bookingReference = deriveBookingReference(input.name, input.properties)
+    if (bookingReference) {
+      const exists = await prisma.analyticsEvent.findFirst({
+        where: { name: 'booking_completed', bookingReference },
+        select: { id: true },
+      })
+      if (exists) return
+    }
     await prisma.analyticsEvent.create({
       data: {
         sessionId,
         name: input.name,
+        eventId: input.eventId ?? null,
         occurredAt: input.occurredAt ?? new Date(),
+        bookingReference,
         propertySlug: input.propertySlug ?? null,
         source: input.source,
         properties: json as never,
@@ -225,6 +250,8 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
 export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<void> {
   try {
     if (!inputs.length) return
+    const validInputs = inputs.filter((input) => isAnalyticsEventName(input.name))
+    if (!validInputs.length) return
     const { sessionId: existing, userAgent, ip, bootstrap } = await readRequestContext()
     if (isBot(userAgent)) return
 
@@ -234,12 +261,41 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
     await ensureSessionRow(sessionId, userAgent, ip, bootstrap)
     await clearBootstrapCookie()
 
-    const rows = inputs.map((input) => {
+    const bookingRefs = validInputs
+      .map((input) => deriveBookingReference(input.name, input.properties))
+      .filter((value): value is string => Boolean(value))
+    const existingBookingRefs =
+      bookingRefs.length > 0
+        ? new Set(
+            (
+              await prisma.analyticsEvent.findMany({
+                where: {
+                  name: 'booking_completed',
+                  bookingReference: { in: [...new Set(bookingRefs)] },
+                },
+                select: { bookingReference: true },
+              })
+            )
+              .map((row) => row.bookingReference)
+              .filter((value): value is string => Boolean(value)),
+          )
+        : new Set<string>()
+    const seenBookingRefs = new Set<string>()
+    const rows = validInputs.flatMap((input) => {
       const { json, size } = capProperties(input.properties)
+      const bookingReference = deriveBookingReference(input.name, input.properties)
+      if (bookingReference) {
+        if (existingBookingRefs.has(bookingReference) || seenBookingRefs.has(bookingReference)) {
+          return []
+        }
+        seenBookingRefs.add(bookingReference)
+      }
       return {
         sessionId,
         name: input.name,
+        eventId: input.eventId ?? null,
         occurredAt: input.occurredAt ?? new Date(),
+        bookingReference,
         propertySlug: input.propertySlug ?? null,
         source: input.source,
         properties: json as never,
@@ -248,7 +304,8 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
       }
     })
 
-    await prisma.analyticsEvent.createMany({ data: rows })
+    if (!rows.length) return
+    await prisma.analyticsEvent.createMany({ data: rows, skipDuplicates: true })
   } catch (err) {
     console.error('[analytics] recordEventsBatch failed:', err)
   }

@@ -1,11 +1,13 @@
+// src/app/internal/analytics/actions.ts
 'use server'
 
+import { timingSafeEqual } from 'crypto'
 import { cookies } from 'next/headers'
 
 import {
   ANALYTICS_ADMIN_COOKIE,
-  ANALYTICS_ADMIN_COOKIE_VALUE,
   ANALYTICS_ADMIN_PASSWORD,
+  createAnalyticsAdminSessionToken,
   getAnalyticsAdminCookieOptions,
   getAnalyticsAdminSession,
 } from '@/lib/analyticsAdminAuth'
@@ -16,6 +18,7 @@ import {
   getTopProperties,
   getUtmTable,
   listRecentEvents,
+  type DashboardFilters,
   type DashboardRange,
 } from '@/lib/analytics/queries'
 
@@ -31,14 +34,34 @@ export async function getAnalyticsAdminSessionAction(): Promise<boolean> {
 export async function loginAnalyticsAdmin(
   password: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  if (password !== ANALYTICS_ADMIN_PASSWORD) {
+  if (ANALYTICS_ADMIN_PASSWORD.length === 0) {
+    return {
+      ok: false,
+      error:
+        'ANALYTICS_ADMIN_PASSWORD is not configured. Set ANALYTICS_ADMIN_PASSWORD and ANALYTICS_ADMIN_SESSION_SECRET.',
+    }
+  }
+
+  const encoder = new TextEncoder()
+  const input = encoder.encode(password)
+  const expected = encoder.encode(ANALYTICS_ADMIN_PASSWORD)
+  const valid = input.length === expected.length && timingSafeEqual(input, expected)
+  if (!valid) {
     return { ok: false, error: 'Incorrect password' }
+  }
+  const token = createAnalyticsAdminSessionToken()
+  if (!token) {
+    return {
+      ok: false,
+      error:
+        'ANALYTICS_ADMIN_SESSION_SECRET is missing. Set it to enable secure admin sessions.',
+    }
   }
 
   const cookieStore = await cookies()
   cookieStore.set(
     ANALYTICS_ADMIN_COOKIE,
-    ANALYTICS_ADMIN_COOKIE_VALUE,
+    token,
     getAnalyticsAdminCookieOptions(),
   )
 
@@ -59,32 +82,36 @@ export async function logoutAnalyticsAdmin(): Promise<void> {
   cookieStore.delete(ANALYTICS_ADMIN_COOKIE)
 }
 
-export async function fetchDashboardSummaryAction(range: DashboardRange) {
+export async function fetchDashboardSummaryAction(range: DashboardRange, filters?: DashboardFilters) {
   await requireAdmin()
-  return getDashboardSummary(range)
+  return getDashboardSummary(range, filters)
 }
 
-export async function fetchFunnelAction(range: DashboardRange) {
+export async function fetchFunnelAction(range: DashboardRange, filters?: DashboardFilters) {
   await requireAdmin()
-  return getFunnel(range)
+  return getFunnel(range, filters)
 }
 
-export async function fetchTimeSeriesAction(range: DashboardRange) {
+export async function fetchTimeSeriesAction(range: DashboardRange, filters?: DashboardFilters) {
   await requireAdmin()
-  return getTimeSeries(range)
+  return getTimeSeries(range, filters)
 }
 
-export async function fetchTopPropertiesAction(range: DashboardRange) {
+export async function fetchTopPropertiesAction(range: DashboardRange, filters?: DashboardFilters) {
   await requireAdmin()
-  return getTopProperties(range)
+  return getTopProperties(range, filters)
 }
 
-export async function fetchUtmTableAction(range: DashboardRange) {
+export async function fetchUtmTableAction(range: DashboardRange, filters?: DashboardFilters) {
   await requireAdmin()
-  return getUtmTable(range)
+  return getUtmTable(range, filters)
 }
 
-export async function fetchRecentEventsAction(limit = 100) {
+export async function fetchRecentEventsAction(
+  range: DashboardRange,
+  filters?: DashboardFilters,
+  limit = 100,
+) {
   await requireAdmin()
-  return listRecentEvents(limit)
+  return listRecentEvents(limit, range, filters)
 }

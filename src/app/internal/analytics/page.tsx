@@ -1,3 +1,4 @@
+// src/app/internal/analytics/page.tsx
 import type { Metadata } from 'next'
 
 import { Container } from '@/components/Container'
