@@ -23,6 +23,7 @@ import { addDaysYmd, kolkataYmd } from '@/lib/kolkata-calendar'
 import { pickHeroAndGallery } from '@/lib/media'
 import { JsonLd } from '@/components/JsonLd'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/structured-data'
+import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
@@ -67,12 +68,12 @@ const highlights = [
 ]
 
 type Props = {
-  searchParams: Promise<{ couponCode?: string }>
+  searchParams: Promise<{ couponCode?: string; promoCode?: string }>
 }
 
 export default async function HotelsPage({ searchParams }: Props) {
   const q = await searchParams
-  const couponCode = q.couponCode?.trim().toUpperCase() ?? ''
+  const couponCode = promoOrCouponFromSearchParams(q)
   const checkInYmd = kolkataYmd()
   const checkOutYmd = addDaysYmd(checkInYmd, 1)
 

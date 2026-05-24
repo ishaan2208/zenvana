@@ -15,12 +15,13 @@ import { getPublicPropertyBySlug } from '@/lib/api'
 import { Container } from '@/components/Container'
 import { EmblaImageGallery } from '@/components/EmblaImageGallery'
 import { pickHeroAndGallery } from '@/lib/media'
+import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 import { BookSearchForm } from './BookSearchForm'
 import { Badge } from '@/components/ui/badge'
 
 type Props = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ couponCode?: string }>
+  searchParams: Promise<{ couponCode?: string; promoCode?: string }>
 }
 
 export const metadata = {
@@ -30,7 +31,7 @@ export const metadata = {
 export default async function BookPropertyPage({ params, searchParams }: Props) {
   const { slug } = await params
   const q = await searchParams
-  const couponCode = q.couponCode?.trim().toUpperCase() ?? ''
+  const couponCode = promoOrCouponFromSearchParams(q)
   const property = await getPublicPropertyBySlug(slug)
   if (!property) notFound()
 

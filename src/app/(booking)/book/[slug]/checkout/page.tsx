@@ -16,6 +16,7 @@ import { Container } from '@/components/Container'
 import CheckoutForm from './CheckoutForm'
 import MultiRoomCheckoutForm from './MultiRoomCheckoutForm'
 import { BackToRoomsLink } from './BackToRoomsLink'
+import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 import {
   CheckoutCouponProvider,
   LiveBookingTotal,
@@ -37,6 +38,7 @@ type Props = {
     ratePlanLabel?: string
     occupancy?: string
     couponCode?: string
+    promoCode?: string
   }>
 }
 
@@ -47,6 +49,7 @@ export const metadata = {
 export default async function CheckoutPage({ params, searchParams }: Props) {
   const { slug } = await params
   const q = await searchParams
+  const couponCode = promoOrCouponFromSearchParams(q)
   const isMultiRoom = q.multiRoom === '1'
 
   const property = await getPublicPropertyBySlug(slug)
@@ -128,7 +131,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                 slug={slug}
                 propertyName={property.publicName}
                 primaryPhone={property.primaryPhone}
-                initialCouponCode={q.couponCode}
+                initialCouponCode={couponCode || undefined}
               />
             </div>
 
@@ -282,7 +285,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                       rooms: String(numRooms),
                     })
                     if (occupancy != null) params.set('occupancy', String(occupancy))
-                    if (q.couponCode) params.set('couponCode', q.couponCode)
+                    if (couponCode) params.set('couponCode', couponCode)
                     return `/book/${slug}/rooms?${params.toString()}`
                   })()}
                   className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
@@ -374,7 +377,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
                       rooms: String(numRooms),
                     })
                     if (occupancy != null) params.set('occupancy', String(occupancy))
-                    if (q.couponCode) params.set('couponCode', q.couponCode)
+                    if (couponCode) params.set('couponCode', couponCode)
                     return `/book/${slug}/rooms?${params.toString()}`
                   })()}
                   className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"

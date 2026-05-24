@@ -922,7 +922,7 @@ export default function CheckoutForm({
               {!appliedCoupon &&
                 initialCouponCode &&
                 couponCodeInput.trim().toUpperCase() ===
-                  initialCouponCode.trim().toUpperCase() && (
+                initialCouponCode.trim().toUpperCase() && (
                   <p className="mt-1 text-xs font-medium text-primary">
                     Code ready — click Apply to unlock your discount.
                   </p>
@@ -950,11 +950,10 @@ export default function CheckoutForm({
                       ? { scale: 0.96 }
                       : undefined
                   }
-                  className={`relative inline-flex h-12 min-w-[120px] items-center justify-center overflow-hidden rounded-[1rem] px-5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                    appliedCoupon
+                  className={`relative inline-flex h-12 min-w-[120px] items-center justify-center overflow-hidden rounded-[1rem] px-5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${appliedCoupon
                       ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-8px_rgba(16,185,129,0.55)] dark:bg-emerald-400 dark:text-emerald-950'
                       : 'bg-primary text-primary-foreground'
-                  }`}
+                    }`}
                 >
                   {couponBusy && (
                     <motion.span

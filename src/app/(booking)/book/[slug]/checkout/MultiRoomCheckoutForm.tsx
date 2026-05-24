@@ -483,97 +483,373 @@ export default function MultiRoomCheckoutForm({
         strategy="afterInteractive"
       />
 
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl dark:bg-background/30">
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="p-5 sm:p-6 lg:p-7">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
-              Multi-room booking summary
-            </div>
+      <div className="space-y-6">
+        <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl dark:bg-background/30">
+          <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="p-5 sm:p-6 lg:p-7">
+              <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+                Multi-room booking summary
+              </div>
 
-            <h2 className="mt-3 font-serif text-3xl tracking-[-0.04em] text-foreground">
-              {roomTypeName}
-            </h2>
+              <h2 className="mt-3 font-serif text-3xl tracking-[-0.04em] text-foreground">
+                {roomTypeName}
+              </h2>
 
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-              This flow keeps the room split, guest details, and final total clear before confirmation.
-            </p>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+                This flow keeps the room split, guest details, and final total clear before confirmation.
+              </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <SummaryCard
-                icon={<CalendarRange className="h-4.5 w-4.5" />}
-                label="Stay"
-                value={`${checkIn} → ${checkOut}`}
-              />
-              <SummaryCard
-                icon={<ShieldCheck className="h-4.5 w-4.5" />}
-                label="Total"
-                value={
-                  <BookingTotalDisplay
-                    totalAmount={totalAmount}
-                    marketAmount={marketTotal}
-                    couponDiscount={appliedCoupon?.discountAmount ?? 0}
-                    couponCode={appliedCoupon?.code ?? null}
-                    appliedKey={couponAppliedKey}
-                  />
-                }
-              />
-              <SummaryCard
-                icon={<BedDouble className="h-4.5 w-4.5" />}
-                label="Rooms"
-                value={`${totalRooms} room${totalRooms !== 1 ? 's' : ''}`}
-              />
-              <SummaryCard
-                icon={<Users className="h-4.5 w-4.5" />}
-                label="Guests"
-                value={`${totalGuests} guest${totalGuests !== 1 ? 's' : ''}`}
-              />
-            </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <SummaryCard
+                  icon={<CalendarRange className="h-4.5 w-4.5" />}
+                  label="Stay"
+                  value={`${checkIn} → ${checkOut}`}
+                />
+                <SummaryCard
+                  icon={<ShieldCheck className="h-4.5 w-4.5" />}
+                  label="Total"
+                  value={
+                    <BookingTotalDisplay
+                      totalAmount={totalAmount}
+                      marketAmount={marketTotal}
+                      couponDiscount={appliedCoupon?.discountAmount ?? 0}
+                      couponCode={appliedCoupon?.code ?? null}
+                      appliedKey={couponAppliedKey}
+                    />
+                  }
+                />
+                <SummaryCard
+                  icon={<BedDouble className="h-4.5 w-4.5" />}
+                  label="Rooms"
+                  value={`${totalRooms} room${totalRooms !== 1 ? 's' : ''}`}
+                />
+                <SummaryCard
+                  icon={<Users className="h-4.5 w-4.5" />}
+                  label="Guests"
+                  value={`${totalGuests} guest${totalGuests !== 1 ? 's' : ''}`}
+                />
+              </div>
 
-            <div className="mt-5 rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
-              <div className="space-y-3">
-                {Object.entries(byOcc).map(([occ, { count }]) => (
-                  <div key={occ} className="flex items-start justify-between gap-4">
-                    <span className="text-sm text-muted-foreground">
-                      {occLabels[Number(occ)] ?? `${occ}-share`} share
-                    </span>
-                    <span className="text-sm font-medium text-foreground">
-                      {count} room{count > 1 ? 's' : ''}
-                    </span>
+              <div className="mt-5 rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
+                <div className="space-y-3">
+                  {Object.entries(byOcc).map(([occ, { count }]) => (
+                    <div key={occ} className="flex items-start justify-between gap-4">
+                      <span className="text-sm text-muted-foreground">
+                        {occLabels[Number(occ)] ?? `${occ}-share`} share
+                      </span>
+                      <span className="text-sm font-medium text-foreground">
+                        {count} room{count > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  ))}
+
+                  <div className="border-t border-border/60 pt-3" />
+
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="text-sm text-muted-foreground">Nights</span>
+                    <span className="text-sm font-medium text-foreground">{nights}</span>
                   </div>
-                ))}
-
-                <div className="border-t border-border/60 pt-3" />
-
-                <div className="flex items-start justify-between gap-4">
-                  <span className="text-sm text-muted-foreground">Nights</span>
-                  <span className="text-sm font-medium text-foreground">{nights}</span>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="border-t border-border/60 p-5 sm:p-6 lg:border-l lg:border-t-0 lg:p-7">
-            <div className="rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
-              <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                Payment
+            <div className="border-t border-border/60 p-5 sm:p-6 lg:border-l lg:border-t-0 lg:p-7">
+              <div className="rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
+                <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                  Payment
+                </div>
+                <div className="mt-3 text-sm font-medium text-foreground">
+                  Pay now or pay at property
+                </div>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  Online payment uses Razorpay for the cash portion; signed-in guests can redeem points the same way as single-room checkout.
+                </p>
               </div>
-              <div className="mt-3 text-sm font-medium text-foreground">
-                Pay now or pay at property
+
+              {primaryPhone && (
+                <div className="mt-4 rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                    Need help?
+                  </div>
+                  <a
+                    href={`tel:${primaryPhone}`}
+                    className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-foreground transition hover:underline"
+                  >
+                    <PhoneCall className="h-4 w-4" />
+                    {primaryPhone}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <form
+          onSubmit={paymentMode === 'pay_now' ? handlePayNow : handlePayLater}
+          className="space-y-6"
+        >
+          <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_18px_45px_rgba(8,17,31,0.05)] backdrop-blur-2xl dark:bg-background/30">
+            <div className="border-b border-border/60 px-5 py-5 sm:px-6">
+              <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+                Guest details
               </div>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                Online payment uses Razorpay for the cash portion; signed-in guests can redeem points the same way as single-room checkout.
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+                Enter the primary guest details for this booking.
               </p>
             </div>
 
-            {primaryPhone && (
-              <div className="mt-4 rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
-                <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                  Need help?
+            <div className="px-5 py-5 sm:px-6 sm:py-6">
+              <div className="grid gap-5">
+                <InputField
+                  id="guestName"
+                  label="Full name"
+                  type="text"
+                  value={guestName}
+                  onChange={handleGuestNameChange}
+                  autoComplete="name"
+                  icon={<User2 className="h-4 w-4" />}
+                  error={fieldErrors.guestName}
+                />
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <InputField
+                    id="guestPhone"
+                    label="Phone"
+                    type="tel"
+                    value={guestPhone}
+                    onChange={handleGuestPhoneChange}
+                    autoComplete="tel"
+                    icon={<PhoneCall className="h-4 w-4" />}
+                    error={fieldErrors.guestPhone}
+                  />
+
+                  <InputField
+                    id="guestEmail"
+                    label="Email"
+                    type="email"
+                    value={guestEmail}
+                    onChange={setGuestEmail}
+                    autoComplete="email"
+                    icon={<Mail className="h-4 w-4" />}
+                  />
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_18px_45px_rgba(8,17,31,0.05)] backdrop-blur-2xl dark:bg-background/30">
+            <div className="border-b border-border/60 px-5 py-5 sm:px-6">
+              <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+                Payment
+              </div>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+                Choose how to confirm this multi-room booking.
+              </p>
+            </div>
+
+            <div className="px-5 py-5 sm:px-6 sm:py-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <PaymentOptionCard
+                  checked={paymentMode === 'pay_now'}
+                  onSelect={() => setPaymentMode('pay_now')}
+                  title="Pay now"
+                  description={
+                    <>
+                      Complete payment online for{' '}
+                      <PriceWithMarketRate
+                        amount={effectiveTotalAmount}
+                        marketAmount={marketTotal}
+                        size="sm"
+                        showTaxBreakup={false}
+                      />
+                      .
+                    </>
+                  }
+                  icon={<CreditCard className="h-5 w-5" />}
+                  tone="primary"
+                  badge="Recommended"
+                />
+
+                <PaymentOptionCard
+                  checked={paymentMode === 'pay_later'}
+                  onSelect={() => setPaymentMode('pay_later')}
+                  title="Pay at property"
+                  description="Confirm the booking now and settle the amount during your stay."
+                  icon={<Wallet className="h-5 w-5" />}
+                  tone="neutral"
+                />
+              </div>
+
+              {pointsBalance != null && pointsBalance >= 10 && paymentMode === 'pay_now' && (
+                <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
+                  <label className="block text-sm font-medium text-foreground" htmlFor="mrPointsRedeem">
+                    Redeem points (balance {pointsBalance}; 10 pts = ₹1)
+                  </label>
+                  <input
+                    id="mrPointsRedeem"
+                    type="number"
+                    min={0}
+                    max={pointsBalance}
+                    step={10}
+                    value={pointsToRedeem}
+                    disabled={Boolean(appliedCoupon)}
+                    onChange={(e) => {
+                      const raw = parseInt(e.target.value, 10)
+                      if (Number.isNaN(raw)) {
+                        setPointsToRedeem(0)
+                        return
+                      }
+                      const v = Math.min(Math.max(0, Math.floor(raw / 10) * 10), pointsBalance)
+                      setPointsToRedeem(v)
+                    }}
+                    className="mt-2 w-full max-w-xs rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                  {appliedCoupon && (
+                    <p className="mt-2 text-xs text-muted-foreground">Remove coupon to redeem points.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
+                <label className="block text-sm font-medium text-foreground" htmlFor="mrCouponCode">
+                  Offer code
+                </label>
+                {!appliedCoupon &&
+                  initialCouponCode &&
+                  couponCodeInput.trim().toUpperCase() ===
+                  initialCouponCode.trim().toUpperCase() && (
+                    <p className="mt-1 text-xs font-medium text-primary">
+                      Code ready — click Apply to unlock your discount.
+                    </p>
+                  )}
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    id="mrCouponCode"
+                    type="text"
+                    value={couponCodeInput}
+                    onChange={(e) => {
+                      setCouponCodeInput(e.target.value.toUpperCase())
+                      setCouponError(null)
+                    }}
+                    disabled={pointsToRedeem > 0 || couponBusy}
+                    className="h-12 w-full rounded-[1rem] border border-border/70 bg-background/70 px-4 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/50"
+                    placeholder="Enter coupon"
+                  />
+                  <motion.button
+                    ref={applyButtonRef}
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim() || Boolean(appliedCoupon)}
+                    whileTap={
+                      !appliedCoupon && !couponBusy && couponCodeInput.trim() && pointsToRedeem === 0
+                        ? { scale: 0.96 }
+                        : undefined
+                    }
+                    className={`relative inline-flex h-12 min-w-[120px] items-center justify-center overflow-hidden rounded-[1rem] px-5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${appliedCoupon
+                        ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-8px_rgba(16,185,129,0.55)] dark:bg-emerald-400 dark:text-emerald-950'
+                        : 'bg-primary text-primary-foreground'
+                      }`}
+                  >
+                    {couponBusy && (
+                      <motion.span
+                        aria-hidden
+                        initial={{ x: '-130%' }}
+                        animate={{ x: '160%' }}
+                        transition={{ duration: 1.1, ease: 'linear', repeat: Infinity }}
+                        className="pointer-events-none absolute inset-0 -skew-x-12 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.42),transparent)]"
+                      />
+                    )}
+                    <AnimatePresence mode="wait" initial={false}>
+                      {couponBusy ? (
+                        <motion.span
+                          key="busy"
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.18 }}
+                          className="relative inline-flex items-center gap-2"
+                        >
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Applying…
+                        </motion.span>
+                      ) : appliedCoupon ? (
+                        <motion.span
+                          key="applied"
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.2 }}
+                          className="relative inline-flex items-center gap-2"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Applied
+                        </motion.span>
+                      ) : (
+                        <motion.span
+                          key="apply"
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.18 }}
+                          className="relative"
+                        >
+                          Apply
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                </div>
+                <CouponCelebration
+                  applied={appliedCoupon}
+                  appliedKey={couponAppliedKey}
+                  originalAmount={totalAmount}
+                  originRef={applyButtonRef}
+                  onRemove={() => {
+                    setAppliedCoupon(null)
+                    setCouponError(null)
+                  }}
+                />
+                {couponError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{couponError}</p>}
+                {pointsToRedeem > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Set points to 0 before applying a coupon.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {error && (
+            <div
+              className="rounded-[1.35rem] border border-red-300/60 bg-red-50/80 px-4 py-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/20 dark:text-red-300"
+              role="alert"
+            >
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <Button
+              type="submit"
+              color="blue"
+              className="h-14 w-full rounded-[1.1rem] text-sm font-medium shadow-[0_14px_34px_rgba(37,99,235,0.22)]"
+              disabled={submitting}
+            >
+              {submitting
+                ? 'Processing…'
+                : paymentMode === 'pay_now'
+                  ? 'Pay & confirm booking'
+                  : 'Confirm booking'}
+            </Button>
+
+            {primaryPhone && (
+              <div className="rounded-[1.35rem] border border-border/60 bg-background/55 px-4 py-4 text-center backdrop-blur-xl dark:bg-background/30">
+                <p className="text-sm leading-7 text-muted-foreground">
+                  Need help with this booking?
+                </p>
                 <a
                   href={`tel:${primaryPhone}`}
-                  className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-foreground transition hover:underline"
+                  className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-foreground transition hover:underline"
                 >
                   <PhoneCall className="h-4 w-4" />
                   {primaryPhone}
@@ -581,285 +857,8 @@ export default function MultiRoomCheckoutForm({
               </div>
             )}
           </div>
-        </div>
-      </section>
-
-      <form
-        onSubmit={paymentMode === 'pay_now' ? handlePayNow : handlePayLater}
-        className="space-y-6"
-      >
-        <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_18px_45px_rgba(8,17,31,0.05)] backdrop-blur-2xl dark:bg-background/30">
-          <div className="border-b border-border/60 px-5 py-5 sm:px-6">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
-              Guest details
-            </div>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-              Enter the primary guest details for this booking.
-            </p>
-          </div>
-
-          <div className="px-5 py-5 sm:px-6 sm:py-6">
-            <div className="grid gap-5">
-              <InputField
-                id="guestName"
-                label="Full name"
-                type="text"
-                value={guestName}
-                onChange={handleGuestNameChange}
-                autoComplete="name"
-                icon={<User2 className="h-4 w-4" />}
-                error={fieldErrors.guestName}
-              />
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <InputField
-                  id="guestPhone"
-                  label="Phone"
-                  type="tel"
-                  value={guestPhone}
-                  onChange={handleGuestPhoneChange}
-                  autoComplete="tel"
-                  icon={<PhoneCall className="h-4 w-4" />}
-                  error={fieldErrors.guestPhone}
-                />
-
-                <InputField
-                  id="guestEmail"
-                  label="Email"
-                  type="email"
-                  value={guestEmail}
-                  onChange={setGuestEmail}
-                  autoComplete="email"
-                  icon={<Mail className="h-4 w-4" />}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_18px_45px_rgba(8,17,31,0.05)] backdrop-blur-2xl dark:bg-background/30">
-          <div className="border-b border-border/60 px-5 py-5 sm:px-6">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
-              Payment
-            </div>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-              Choose how to confirm this multi-room booking.
-            </p>
-          </div>
-
-          <div className="px-5 py-5 sm:px-6 sm:py-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <PaymentOptionCard
-                checked={paymentMode === 'pay_now'}
-                onSelect={() => setPaymentMode('pay_now')}
-                title="Pay now"
-                description={
-                  <>
-                    Complete payment online for{' '}
-                    <PriceWithMarketRate
-                      amount={effectiveTotalAmount}
-                      marketAmount={marketTotal}
-                      size="sm"
-                      showTaxBreakup={false}
-                    />
-                    .
-                  </>
-                }
-                icon={<CreditCard className="h-5 w-5" />}
-                tone="primary"
-                badge="Recommended"
-              />
-
-              <PaymentOptionCard
-                checked={paymentMode === 'pay_later'}
-                onSelect={() => setPaymentMode('pay_later')}
-                title="Pay at property"
-                description="Confirm the booking now and settle the amount during your stay."
-                icon={<Wallet className="h-5 w-5" />}
-                tone="neutral"
-              />
-            </div>
-
-            {pointsBalance != null && pointsBalance >= 10 && paymentMode === 'pay_now' && (
-              <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
-                <label className="block text-sm font-medium text-foreground" htmlFor="mrPointsRedeem">
-                  Redeem points (balance {pointsBalance}; 10 pts = ₹1)
-                </label>
-                <input
-                  id="mrPointsRedeem"
-                  type="number"
-                  min={0}
-                  max={pointsBalance}
-                  step={10}
-                  value={pointsToRedeem}
-                  disabled={Boolean(appliedCoupon)}
-                  onChange={(e) => {
-                    const raw = parseInt(e.target.value, 10)
-                    if (Number.isNaN(raw)) {
-                      setPointsToRedeem(0)
-                      return
-                    }
-                    const v = Math.min(Math.max(0, Math.floor(raw / 10) * 10), pointsBalance)
-                    setPointsToRedeem(v)
-                  }}
-                  className="mt-2 w-full max-w-xs rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                />
-                {appliedCoupon && (
-                  <p className="mt-2 text-xs text-muted-foreground">Remove coupon to redeem points.</p>
-                )}
-              </div>
-            )}
-
-            <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
-              <label className="block text-sm font-medium text-foreground" htmlFor="mrCouponCode">
-                Offer code
-              </label>
-              {!appliedCoupon &&
-                initialCouponCode &&
-                couponCodeInput.trim().toUpperCase() ===
-                  initialCouponCode.trim().toUpperCase() && (
-                  <p className="mt-1 text-xs font-medium text-primary">
-                    Code ready — click Apply to unlock your discount.
-                  </p>
-                )}
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                <input
-                  id="mrCouponCode"
-                  type="text"
-                  value={couponCodeInput}
-                  onChange={(e) => {
-                    setCouponCodeInput(e.target.value.toUpperCase())
-                    setCouponError(null)
-                  }}
-                  disabled={pointsToRedeem > 0 || couponBusy}
-                  className="h-12 w-full rounded-[1rem] border border-border/70 bg-background/70 px-4 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/50"
-                  placeholder="Enter coupon"
-                />
-                <motion.button
-                  ref={applyButtonRef}
-                  type="button"
-                  onClick={handleApplyCoupon}
-                  disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim() || Boolean(appliedCoupon)}
-                  whileTap={
-                    !appliedCoupon && !couponBusy && couponCodeInput.trim() && pointsToRedeem === 0
-                      ? { scale: 0.96 }
-                      : undefined
-                  }
-                  className={`relative inline-flex h-12 min-w-[120px] items-center justify-center overflow-hidden rounded-[1rem] px-5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                    appliedCoupon
-                      ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-8px_rgba(16,185,129,0.55)] dark:bg-emerald-400 dark:text-emerald-950'
-                      : 'bg-primary text-primary-foreground'
-                  }`}
-                >
-                  {couponBusy && (
-                    <motion.span
-                      aria-hidden
-                      initial={{ x: '-130%' }}
-                      animate={{ x: '160%' }}
-                      transition={{ duration: 1.1, ease: 'linear', repeat: Infinity }}
-                      className="pointer-events-none absolute inset-0 -skew-x-12 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.42),transparent)]"
-                    />
-                  )}
-                  <AnimatePresence mode="wait" initial={false}>
-                    {couponBusy ? (
-                      <motion.span
-                        key="busy"
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.18 }}
-                        className="relative inline-flex items-center gap-2"
-                      >
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Applying…
-                      </motion.span>
-                    ) : appliedCoupon ? (
-                      <motion.span
-                        key="applied"
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.2 }}
-                        className="relative inline-flex items-center gap-2"
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Applied
-                      </motion.span>
-                    ) : (
-                      <motion.span
-                        key="apply"
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.18 }}
-                        className="relative"
-                      >
-                        Apply
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </motion.button>
-              </div>
-              <CouponCelebration
-                applied={appliedCoupon}
-                appliedKey={couponAppliedKey}
-                originalAmount={totalAmount}
-                originRef={applyButtonRef}
-                onRemove={() => {
-                  setAppliedCoupon(null)
-                  setCouponError(null)
-                }}
-              />
-              {couponError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{couponError}</p>}
-              {pointsToRedeem > 0 && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Set points to 0 before applying a coupon.
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {error && (
-          <div
-            className="rounded-[1.35rem] border border-red-300/60 bg-red-50/80 px-4 py-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/20 dark:text-red-300"
-            role="alert"
-          >
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <Button
-            type="submit"
-            color="blue"
-            className="h-14 w-full rounded-[1.1rem] text-sm font-medium shadow-[0_14px_34px_rgba(37,99,235,0.22)]"
-            disabled={submitting}
-          >
-            {submitting
-              ? 'Processing…'
-              : paymentMode === 'pay_now'
-                ? 'Pay & confirm booking'
-                : 'Confirm booking'}
-          </Button>
-
-          {primaryPhone && (
-            <div className="rounded-[1.35rem] border border-border/60 bg-background/55 px-4 py-4 text-center backdrop-blur-xl dark:bg-background/30">
-              <p className="text-sm leading-7 text-muted-foreground">
-                Need help with this booking?
-              </p>
-              <a
-                href={`tel:${primaryPhone}`}
-                className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-foreground transition hover:underline"
-              >
-                <PhoneCall className="h-4 w-4" />
-                {primaryPhone}
-              </a>
-            </div>
-          )}
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
     </>
   )
 }

@@ -20,6 +20,7 @@ import { Button } from '@/components/Button'
 import { EmblaImageGallery } from '@/components/EmblaImageGallery'
 import { PropertyMapSection } from '@/components/PropertyMapSection'
 import { normalizeGalleryImages, pickHeroAndGallery } from '@/lib/media'
+import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 import {
   lodgingBusinessJsonLd,
   breadcrumbJsonLd,
@@ -32,7 +33,7 @@ export const dynamicParams = false
 
 type Props = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ couponCode?: string }>
+  searchParams: Promise<{ couponCode?: string; promoCode?: string }>
 }
 type Property = NonNullable<Awaited<ReturnType<typeof getPublicPropertyBySlug>>>
 
@@ -97,7 +98,7 @@ export async function generateMetadata({ params }: Props) {
 export default async function PropertyPage({ params, searchParams }: Props) {
   const { slug } = await params
   const q = await searchParams
-  const couponCode = q.couponCode?.trim().toUpperCase() ?? ''
+  const couponCode = promoOrCouponFromSearchParams(q)
   const [property, allProperties] = await Promise.all([
     getPublicPropertyBySlug(slug),
     getPublicProperties().catch(() => []),

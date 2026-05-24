@@ -19,6 +19,7 @@ import { Container } from '@/components/Container'
 import { SoldOutTag } from '@/components/SoldOutTag'
 import { RoomCard } from './RoomCard'
 import { isRoomTypePurchasable } from './roomAvailability'
+import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 import {
   filterPreferDoubleSharing,
   filterPreferNoTriple,
@@ -35,6 +36,7 @@ type Props = {
     guests?: string
     guestsPerRoom?: string
     couponCode?: string
+    promoCode?: string
   }>
 }
 
@@ -52,9 +54,8 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     rooms: roomsParam,
     guests: guestsParam,
     guestsPerRoom: guestsPerRoomParam,
-    couponCode: couponCodeParam,
   } = q
-  const couponCode = couponCodeParam?.trim().toUpperCase() ?? ''
+  const couponCode = promoOrCouponFromSearchParams(q)
 
   if (!checkIn || !checkOut) {
     redirect(`/book/${slug}`)
