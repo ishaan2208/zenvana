@@ -19,6 +19,7 @@ import {
 
 import { Button } from '@/components/Button'
 import { Calendar } from '@/components/ui/calendar'
+import { track } from '@/lib/analytics/client'
 import {
   Popover,
   PopoverContent,
@@ -186,7 +187,19 @@ export function BookSearchForm({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!roomsUrl) return
+    if (!roomsUrl || !checkIn || !checkOut) return
+    track(
+      'dates_selected',
+      {
+        checkIn: toDateString(checkIn),
+        checkOut: toDateString(checkOut),
+        nights: differenceInCalendarDays(checkOut, checkIn),
+        rooms,
+        totalGuests,
+        guestsPerRoom: useGuestsPerRoomMode ? guests : null,
+      },
+      slug,
+    )
     prefetchRooms()
     router.push(roomsUrl)
   }

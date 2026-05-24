@@ -20,6 +20,7 @@ import { SoldOutTag } from '@/components/SoldOutTag'
 import { RoomCard } from './RoomCard'
 import { isRoomTypePurchasable } from './roomAvailability'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
+import { TrackOnMount } from '@/components/analytics/TrackOnMount'
 import {
   filterPreferDoubleSharing,
   filterPreferNoTriple,
@@ -71,6 +72,16 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     getPublicAvailability(slug, checkIn, checkOut),
     getPublicRatesBulk(slug, checkIn, checkOut, occupancy),
   ])
+
+  const availabilityProperties = {
+    checkIn,
+    checkOut,
+    rooms,
+    occupancy: occupancy ?? null,
+    nights: availability?.nights ?? null,
+    roomTypeCount: availability?.roomTypes?.length ?? 0,
+    anyAvailable: (availability?.roomTypes ?? []).some((rt) => rt.availableRooms > 0),
+  }
 
   if (!property) notFound()
 
@@ -284,6 +295,12 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <TrackOnMount
+        name="availability_checked"
+        propertySlug={slug}
+        properties={availabilityProperties}
+        dedupeKey={`availability_checked:${slug}:${checkIn}:${checkOut}:${rooms}:${occupancy ?? 0}`}
+      />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,198,0.10),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.08),transparent_28%)]" />
 
       <Container className="relative py-5 sm:py-6 lg:py-10">

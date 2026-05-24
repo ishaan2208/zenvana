@@ -38,6 +38,8 @@ import {
   getZenvanaGuestMe,
 } from '@/lib/zenvanaGuestApi'
 import { toast } from 'sonner'
+import { track } from '@/lib/analytics/client'
+import { trackEventAction } from '@/app/actions/analytics'
 
 const MULTI_ROOM_STORAGE_KEY = 'zenvana_multi_room_booking'
 const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
@@ -157,6 +159,25 @@ export default function MultiRoomCheckoutForm({
       setPayload(null)
     }
   }, [slug])
+
+  const checkoutViewedFiredRef = useRef(false)
+  useEffect(() => {
+    if (checkoutViewedFiredRef.current) return
+    if (!payload) return
+    checkoutViewedFiredRef.current = true
+    track(
+      'checkout_viewed',
+      {
+        roomTypeId: payload.roomTypeId,
+        roomTypeName: payload.roomTypeName,
+        totalAmount: payload.totalAmount,
+        roomLineCount: payload.roomLines.length,
+        nights: payload.nights,
+        couponPrefilled: Boolean(initialCouponCode),
+      },
+      slug,
+    )
+  }, [payload, slug, initialCouponCode])
 
   useEffect(() => {
     let cancelled = false
@@ -320,6 +341,7 @@ export default function MultiRoomCheckoutForm({
           setAppliedCoupon({ code: result.code ?? code, discountAmount: result.discountAmount ?? 0 })
           setCouponCodeInput(result.code ?? code)
           bumpCouponAppliedKey()
+          track('coupon_failed', { code, reason: result.reason ?? 'AUTH_REQUIRED' }, slug)
           await new Promise((resolve) => setTimeout(resolve, 1400))
           toast.info('Sign in or verify your phone to use this coupon. Redirecting...')
           const redirect = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : `/book/${slug}/checkout`
@@ -332,14 +354,21 @@ export default function MultiRoomCheckoutForm({
         }
         setCouponError(couponErrorMessage(result.reason, result.message))
         setAppliedCoupon(null)
+        track('coupon_failed', { code, reason: result.reason ?? 'INVALID' }, slug)
         return
       }
       setAppliedCoupon({ code: result.code ?? code, discountAmount: result.discountAmount ?? 0 })
       setCouponCodeInput(result.code ?? code)
       bumpCouponAppliedKey()
+      track(
+        'coupon_applied',
+        { code: result.code ?? code, discountAmount: result.discountAmount ?? 0 },
+        slug,
+      )
     } catch (err) {
       setCouponError(err instanceof Error ? err.message : 'Coupon validation failed')
       setAppliedCoupon(null)
+      track('coupon_failed', { code, reason: 'EXCEPTION' }, slug)
     } finally {
       setCouponBusy(false)
     }
@@ -393,6 +422,18 @@ export default function MultiRoomCheckoutForm({
         couponCode: appliedCoupon?.code,
         pointsToRedeem: appliedCoupon ? 0 : Math.floor(pointsToRedeem / 10) * 10,
       })
+
+      trackEventAction(
+        'booking_completed',
+        {
+          bookingReference: data.bookingReference,
+          paymentMode: 'pay_later',
+          amount: effectiveTotalAmount,
+          couponCode: appliedCoupon?.code ?? null,
+          roomTypeName,
+        },
+        slug,
+      ).catch(() => {})
 
       pushConfirmation(data.bookingReference)
     } catch (err) {
@@ -453,6 +494,19 @@ export default function MultiRoomCheckoutForm({
               response.razorpay_signature,
               bookingPayload
             )
+            trackEventAction(
+              'booking_completed',
+              {
+                bookingReference: data.bookingReference,
+                paymentMode: 'pay_now',
+                amount: effectiveTotalAmount,
+                amountPaise,
+                couponCode: appliedCoupon?.code ?? null,
+                razorpayPaymentId: response.razorpay_payment_id,
+                roomTypeName,
+              },
+              slug,
+            ).catch(() => {})
             setSubmitting(false)
             pushConfirmation(data.bookingReference)
           } catch (err) {
@@ -467,9 +521,25 @@ export default function MultiRoomCheckoutForm({
       rzp.on('payment.failed', () => {
         setError('Payment failed or was cancelled.')
         setSubmitting(false)
+        track(
+          'payment_failed',
+          { amount: effectiveTotalAmount, orderId, couponCode: appliedCoupon?.code ?? null },
+          slug,
+        )
       })
 
       rzp.open()
+      track(
+        'payment_initiated',
+        {
+          amount: effectiveTotalAmount,
+          amountPaise,
+          orderId,
+          paymentMode: 'pay_now',
+          couponCode: appliedCoupon?.code ?? null,
+        },
+        slug,
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed')
       setSubmitting(false)
