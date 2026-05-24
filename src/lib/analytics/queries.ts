@@ -22,12 +22,39 @@ export type DashboardFilters = {
   utmSource?: string | null
 }
 
+export type ActiveUsersSnapshot = {
+  active1m: number
+  active5m: number
+  active15m: number
+  measuredAt: string
+}
+
 function rangeStart(range: DashboardRange): Date {
   const days = RANGE_DAYS[range]
   const d = new Date()
   d.setDate(d.getDate() - days)
   d.setHours(0, 0, 0, 0)
   return d
+}
+
+function minutesAgo(minutes: number): Date {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() - minutes)
+  return d
+}
+
+export async function getActiveUsersSnapshot(): Promise<ActiveUsersSnapshot> {
+  const [active1m, active5m, active15m] = await Promise.all([
+    prisma.analyticsSession.count({ where: { lastSeenAt: { gte: minutesAgo(1) } } }),
+    prisma.analyticsSession.count({ where: { lastSeenAt: { gte: minutesAgo(5) } } }),
+    prisma.analyticsSession.count({ where: { lastSeenAt: { gte: minutesAgo(15) } } }),
+  ])
+  return {
+    active1m,
+    active5m,
+    active15m,
+    measuredAt: new Date().toISOString(),
+  }
 }
 
 function normalizeFilter(value: string | null | undefined): string | null {

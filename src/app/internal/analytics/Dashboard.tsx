@@ -76,6 +76,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import type {
+  ActiveUsersSnapshot,
   DashboardFilters,
   DashboardRange,
   DashboardSummary,
@@ -91,6 +92,7 @@ import type {
 /* -------------------------------------------------------------------------- */
 
 type Loaders = {
+  activeUsers: () => Promise<ActiveUsersSnapshot>
   summary: (range: DashboardRange, filters?: DashboardFilters) => Promise<DashboardSummary>
   funnel: (range: DashboardRange, filters?: DashboardFilters) => Promise<FunnelStep[]>
   timeSeries: (range: DashboardRange, filters?: DashboardFilters) => Promise<TimeSeriesPoint[]>
@@ -334,6 +336,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
   const [utmFilter, setUtmFilter] = useState<string>('all')
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [activeUsers, setActiveUsers] = useState<ActiveUsersSnapshot | null>(null)
   const [funnel, setFunnel] = useState<FunnelStep[]>([])
   const [series, setSeries] = useState<TimeSeriesPoint[]>([])
   const [topProperties, setTopProperties] = useState<TopProperty[]>([])
@@ -368,7 +371,8 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
       try {
         setError(null)
         const L = loadersRef.current
-        const [s, f, t, p, u, r] = await Promise.all([
+        const [a, s, f, t, p, u, r] = await Promise.all([
+          L.activeUsers(),
           L.summary(range, filters),
           L.funnel(range, filters),
           L.timeSeries(range, filters),
@@ -376,6 +380,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
           L.utm(range, filters),
           L.recent(range, filters, 100),
         ])
+        setActiveUsers(a)
         setSummary(s)
         setFunnel(f)
         setSeries(t)
@@ -388,6 +393,27 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
       }
     })
   }, [range, refreshKey, filters])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadActiveUsers = async () => {
+      try {
+        const snapshot = await loadersRef.current.activeUsers()
+        if (!cancelled) {
+          setActiveUsers(snapshot)
+        }
+      } catch {
+        /* keep existing value */
+      }
+    }
+    const intervalId = setInterval(() => {
+      void loadActiveUsers()
+    }, 30_000)
+    return () => {
+      cancelled = true
+      clearInterval(intervalId)
+    }
+  }, [])
 
   const exportCsv = useCallback(() => {
     const blob = new Blob([toCsv(recent)], { type: 'text/csv;charset=utf-8;' })
@@ -494,6 +520,28 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
         <DashboardSkeleton />
       ) : (
         <>
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Active users now
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold tabular-nums">
+                    {activeUsers ? formatNumber(activeUsers.active5m) : '–'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Seen in last 5 minutes</p>
+                </div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">1m</span>
+                  <span className="text-right font-medium tabular-nums">{activeUsers ? formatNumber(activeUsers.active1m) : '–'}</span>
+                  <span className="text-muted-foreground">15m</span>
+                  <span className="text-right font-medium tabular-nums">{activeUsers ? formatNumber(activeUsers.active15m) : '–'}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* KPI strip */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <KpiCard

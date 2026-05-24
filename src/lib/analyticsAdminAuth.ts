@@ -32,7 +32,13 @@ export function isAnalyticsAdminAuthorized(cookieValue: string | undefined): boo
   if (Date.now() - tsNumber > ANALYTICS_ADMIN_MAX_AGE_SECONDS * 1000) return false
   const expected = computeSignature(timestamp)
   try {
-    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+    const encoder = new TextEncoder()
+    const actualBytes = encoder.encode(signature)
+    const expectedBytes = encoder.encode(expected)
+    return (
+      actualBytes.length === expectedBytes.length &&
+      timingSafeEqual(actualBytes, expectedBytes)
+    )
   } catch {
     return false
   }

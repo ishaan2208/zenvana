@@ -12,6 +12,7 @@ import {
   getAnalyticsAdminSession,
 } from '@/lib/analyticsAdminAuth'
 import {
+  getActiveUsersSnapshot,
   getDashboardSummary,
   getFunnel,
   getTimeSeries,
@@ -86,6 +87,11 @@ export async function logoutAnalyticsAdmin(): Promise<void> {
 export async function fetchDashboardSummaryAction(range: DashboardRange, filters?: DashboardFilters) {
   await requireAdmin()
   return getDashboardSummary(range, filters)
+}
+
+export async function fetchActiveUsersSnapshotAction() {
+  await requireAdmin()
+  return getActiveUsersSnapshot()
 }
 
 export async function fetchFunnelAction(range: DashboardRange, filters?: DashboardFilters) {

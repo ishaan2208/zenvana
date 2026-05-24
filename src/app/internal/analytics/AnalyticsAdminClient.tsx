@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import {
+  fetchActiveUsersSnapshotAction,
   rebuildAnalyticsRollupsAction,
   fetchDashboardSummaryAction,
   fetchFunnelAction,
@@ -155,6 +156,7 @@ export function AnalyticsAdminClient({ authorized: initialAuthorized }: Props) {
 
       <Dashboard
         loaders={{
+          activeUsers: fetchActiveUsersSnapshotAction,
           summary: fetchDashboardSummaryAction,
           funnel: fetchFunnelAction,
           timeSeries: fetchTimeSeriesAction,
