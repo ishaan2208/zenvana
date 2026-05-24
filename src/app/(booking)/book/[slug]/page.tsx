@@ -18,6 +18,7 @@ import { pickHeroAndGallery } from '@/lib/media'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 import { BookSearchForm } from './BookSearchForm'
 import { Badge } from '@/components/ui/badge'
+import { TrackOnMount } from '@/components/analytics/TrackOnMount'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -51,6 +52,12 @@ export default async function BookPropertyPage({ params, searchParams }: Props) 
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
+      <TrackOnMount
+        name="property_viewed"
+        propertySlug={slug}
+        properties={{ slug, publicName: property.publicName }}
+        dedupeKey={`property_viewed:${slug}`}
+      />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,198,0.10),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.08),transparent_28%)]" />
 
       <Container className="relative py-4 sm:py-6 lg:py-10">

@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/Button'
+import { track } from '@/lib/analytics/client'
 import { PriceWithMarketRate } from '@/components/PriceWithMarketRate'
 import { SoldOutTag } from '@/components/SoldOutTag'
 import { OnlyOneRoomLeftBadge } from '@/components/OnlyOneRoomLeftBadge'
@@ -605,6 +606,20 @@ export function RoomCard({
                                     )
                                   }
 
+                                  track(
+                                    'room_selected',
+                                    {
+                                      mode: 'multi_room',
+                                      roomTypeId,
+                                      roomTypeName: name,
+                                      checkIn,
+                                      checkOut,
+                                      totalAmount: card.totalAmount,
+                                      roomLineCount: roomLines.length,
+                                    },
+                                    slug,
+                                  )
+
                                   const params = new URLSearchParams({ multiRoom: '1' })
                                   if (couponCode) params.set('couponCode', couponCode)
                                   router.push(`/book/${slug}/checkout?${params.toString()}`)
@@ -768,6 +783,21 @@ export function RoomCard({
                         <Link
                           href={`/book/${slug}/checkout?${checkoutParams(plan, numRoomsSelected)}`}
                           className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+                          onClick={() =>
+                            track(
+                              'room_selected',
+                              {
+                                mode: 'single_room',
+                                roomTypeId,
+                                roomTypeName: name,
+                                ratePlan: plan.plan,
+                                nights: nightsForPlans,
+                                rooms: numRoomsSelected,
+                                totalAmount: totalForSelection,
+                              },
+                              slug,
+                            )
+                          }
                         >
                           Continue to checkout
                           <ArrowRight className="h-4 w-4" />
