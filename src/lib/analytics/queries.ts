@@ -57,6 +57,30 @@ function eventWhere(since: Date, filters?: DashboardFilters): Prisma.AnalyticsEv
   }
 }
 
+function dailyMetricWhere(
+  since: Date,
+  filters?: DashboardFilters,
+): Prisma.AnalyticsDailyMetricWhereInput {
+  const normalized = normalizeFilters(filters)
+  return {
+    date: { gte: since },
+    ...(normalized.propertySlug ? { propertySlug: normalized.propertySlug } : {}),
+    ...(normalized.utmSource ? { utmSource: normalized.utmSource } : {}),
+  }
+}
+
+type DailyMetricDelegate = {
+  count: (args: unknown) => Promise<number>
+  aggregate: (args: unknown) => Promise<{ _sum: { bookings: number | null; events: number | null } }>
+  groupBy: (args: unknown) => Promise<Array<{ propertySlug: string; _sum: { bookings: number | null } }>>
+}
+
+function getDailyMetricDelegate(): DailyMetricDelegate | null {
+  const delegate = (prisma as unknown as { analyticsDailyMetric?: DailyMetricDelegate })
+    .analyticsDailyMetric
+  return delegate?.count ? delegate : null
+}
+
 export type DashboardSummary = {
   sessions: number
   bookings: number
@@ -70,8 +94,10 @@ export async function getDashboardSummary(
 ): Promise<DashboardSummary> {
   const since = rangeStart(range)
   const where = eventWhere(since, filters)
+  const dailyWhere = dailyMetricWhere(since, filters)
+  const dailyMetrics = getDailyMetricDelegate()
 
-  const [distinctSessions, bookings, eventCount] = await Promise.all([
+  const [distinctSessions, rawBookings, rawEvents] = await Promise.all([
     prisma.analyticsEvent.findMany({
       where,
       select: { sessionId: true },
@@ -83,6 +109,25 @@ export async function getDashboardSummary(
     prisma.analyticsEvent.count({ where }),
   ])
   const sessions = distinctSessions.length
+  let bookings = rawBookings
+  let eventCount = rawEvents
+  if (dailyMetrics) {
+    try {
+      const [rollupCount, rollupSums] = await Promise.all([
+        dailyMetrics.count({ where: dailyWhere }),
+        dailyMetrics.aggregate({
+          where: dailyWhere,
+          _sum: { bookings: true, events: true },
+        }),
+      ])
+      if (rollupCount > 0) {
+        bookings = rollupSums._sum.bookings ?? rawBookings
+        eventCount = rollupSums._sum.events ?? rawEvents
+      }
+    } catch {
+      // Rollup model/table not ready: keep raw values.
+    }
+  }
 
   const conversionRate = sessions === 0 ? 0 : bookings / sessions
   const avgEventsPerSession = sessions === 0 ? 0 : eventCount / sessions
@@ -180,6 +225,7 @@ export type TimeSeriesPoint = {
 }
 
 type TimeSeriesRow = { day: Date; bookings: bigint; sessions: bigint }
+type RollupDailyRow = { day: Date; bookings: bigint }
 
 export async function getTimeSeries(
   range: DashboardRange,
@@ -235,11 +281,38 @@ export async function getTimeSeries(
     LEFT JOIN sessions_by_day ON days.day = sessions_by_day.day
     ORDER BY days.day ASC
   `
+  let rollupByDate = new Map<string, number>()
+  try {
+    const rollupRows = await prisma.$queryRaw<RollupDailyRow[]>`
+      SELECT m.date AS day, SUM(m.bookings)::bigint AS bookings
+      FROM "analytics"."daily_metrics" m
+      WHERE m.date >= ${since}
+        ${
+          normalized.propertySlug
+            ? Prisma.sql`AND m."propertySlug" = ${normalized.propertySlug}`
+            : Prisma.sql``
+        }
+        ${
+          normalized.utmSource
+            ? Prisma.sql`AND m."utmSource" = ${normalized.utmSource}`
+            : Prisma.sql``
+        }
+      GROUP BY m.date
+      ORDER BY m.date ASC
+    `
+    rollupByDate = new Map(
+      rollupRows.map((row) => [row.day.toISOString().slice(0, 10), Number(row.bookings)]),
+    )
+  } catch {
+    // daily_metrics table may not exist yet in local/dev.
+  }
 
   return rows.map((row) => ({
     date: row.day.toISOString().slice(0, 10),
     sessions: Number(row.sessions),
-    bookings: Number(row.bookings),
+    bookings: rollupByDate.has(row.day.toISOString().slice(0, 10))
+      ? (rollupByDate.get(row.day.toISOString().slice(0, 10)) ?? 0)
+      : Number(row.bookings),
   }))
 }
 
@@ -250,12 +323,37 @@ export async function getTopProperties(
   filters?: DashboardFilters,
 ): Promise<TopProperty[]> {
   const since = rangeStart(range)
-  const where = eventWhere(since, filters)
+  const dailyWhere = dailyMetricWhere(since, filters)
+  const dailyMetrics = getDailyMetricDelegate()
+
+  if (dailyMetrics) {
+    try {
+      const rollupCount = await dailyMetrics.count({ where: dailyWhere })
+      if (rollupCount > 0) {
+        const groupedRollup = await dailyMetrics.groupBy({
+          by: ['propertySlug'],
+          where: {
+            ...dailyWhere,
+            propertySlug: { not: 'unknown' },
+          },
+          _sum: { bookings: true },
+          orderBy: { _sum: { bookings: 'desc' } },
+          take: 10,
+        })
+        return groupedRollup.map((row) => ({
+          propertySlug: row.propertySlug,
+          bookings: row._sum.bookings ?? 0,
+        }))
+      }
+    } catch {
+      // Rollup model/table not ready: fall back to raw events.
+    }
+  }
 
   const grouped = await prisma.analyticsEvent.groupBy({
     by: ['propertySlug'],
     where: {
-      ...where,
+      ...eventWhere(since, filters),
       name: 'booking_completed',
       propertySlug: { not: null },
     },
@@ -278,6 +376,7 @@ export type UtmRow = {
 }
 
 type UtmRawRow = { utm_source: string | null; sessions: bigint; bookings: bigint }
+type UtmRollupRow = { utm_source: string; bookings: bigint }
 
 export async function getUtmTable(range: DashboardRange, filters?: DashboardFilters): Promise<UtmRow[]> {
   const since = rangeStart(range)
@@ -303,12 +402,39 @@ export async function getUtmTable(range: DashboardRange, filters?: DashboardFilt
     ORDER BY sessions DESC
     LIMIT 25
   `
+  let rollupByUtm = new Map<string, number>()
+  try {
+    const rollupRows = await prisma.$queryRaw<UtmRollupRow[]>`
+      SELECT m."utmSource" AS utm_source, SUM(m.bookings)::bigint AS bookings
+      FROM "analytics"."daily_metrics" m
+      WHERE m.date >= ${since}
+        ${
+          normalized.propertySlug
+            ? Prisma.sql`AND m."propertySlug" = ${normalized.propertySlug}`
+            : Prisma.sql``
+        }
+        ${
+          normalized.utmSource
+            ? Prisma.sql`AND m."utmSource" = ${normalized.utmSource}`
+            : Prisma.sql``
+        }
+      GROUP BY m."utmSource"
+    `
+    rollupByUtm = new Map(
+      rollupRows.map((row) => [row.utm_source, Number(row.bookings)]),
+    )
+  } catch {
+    // daily_metrics table may not exist yet in local/dev.
+  }
 
   return rows.map((row) => {
     const sessions = Number(row.sessions)
-    const bookings = Number(row.bookings)
+    const normalizedUtm = row.utm_source ?? 'direct'
+    const bookings = rollupByUtm.has(normalizedUtm)
+      ? (rollupByUtm.get(normalizedUtm) ?? 0)
+      : Number(row.bookings)
     return {
-      utmSource: row.utm_source ?? 'direct',
+      utmSource: normalizedUtm,
       sessions,
       bookings,
       conversionRate: sessions === 0 ? 0 : bookings / sessions,

@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import {
+  rebuildAnalyticsRollupsAction,
   fetchDashboardSummaryAction,
   fetchFunnelAction,
   fetchRecentEventsAction,
@@ -32,7 +33,9 @@ export function AnalyticsAdminClient({ authorized: initialAuthorized }: Props) {
   const [authorized, setAuthorized] = useState(initialAuthorized)
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
+  const [rollupMessage, setRollupMessage] = useState<string | null>(null)
   const [submitting, startTransition] = useTransition()
+  const [rollupPending, startRollupTransition] = useTransition()
 
   function handleLogin(event: React.FormEvent) {
     event.preventDefault()
@@ -58,6 +61,19 @@ export function AnalyticsAdminClient({ authorized: initialAuthorized }: Props) {
     await logoutAnalyticsAdmin()
     setAuthorized(false)
     router.refresh()
+  }
+
+  function handleRebuildRollups() {
+    setRollupMessage(null)
+    startRollupTransition(async () => {
+      const result = await rebuildAnalyticsRollupsAction()
+      if (!result.ok) {
+        setRollupMessage(result.error ?? 'Failed to rebuild rollups')
+        return
+      }
+      setRollupMessage('Rollups rebuilt successfully.')
+      router.refresh()
+    })
   }
 
   if (!authorized) {
@@ -111,6 +127,14 @@ export function AnalyticsAdminClient({ authorized: initialAuthorized }: Props) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            onClick={handleRebuildRollups}
+            variant="outline"
+            size="sm"
+            disabled={rollupPending}
+          >
+            {rollupPending ? 'Rebuilding…' : 'Rebuild rollups'}
+          </Button>
           <Link
             href="/internal/analytics"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -125,6 +149,9 @@ export function AnalyticsAdminClient({ authorized: initialAuthorized }: Props) {
           </Button>
         </div>
       </div>
+      {rollupMessage ? (
+        <p className="text-sm text-muted-foreground">{rollupMessage}</p>
+      ) : null}
 
       <Dashboard
         loaders={{

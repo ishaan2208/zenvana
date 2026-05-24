@@ -21,6 +21,7 @@ import {
   type DashboardFilters,
   type DashboardRange,
 } from '@/lib/analytics/queries'
+import { rebuildDailyMetricsRollup } from '@/lib/analytics/rollup'
 
 async function requireAdmin() {
   const authorized = await getAnalyticsAdminSession()
@@ -114,4 +115,19 @@ export async function fetchRecentEventsAction(
 ) {
   await requireAdmin()
   return listRecentEvents(limit, range, filters)
+}
+
+export async function rebuildAnalyticsRollupsAction(
+  daysBack = 120,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin()
+  try {
+    await rebuildDailyMetricsRollup(daysBack)
+    return { ok: true }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Failed to rebuild rollups',
+    }
+  }
 }

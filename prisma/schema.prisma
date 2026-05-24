@@ -163,7 +163,7 @@ model AnalyticsDailyMetric {
   sessions     Int      @default(0)
   bookings     Int      @default(0)
   events       Int      @default(0)
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime @default(now()) @updatedAt
 
   @@id([date, propertySlug, utmSource])
   @@index([date])
