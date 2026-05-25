@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'crypto'
 import { cookies, headers } from 'next/headers'
 
 import { prisma } from '@/lib/prisma'
+import { AUDIT_REASON, AUDIT_STATUS, writeAnalyticsAudit } from '@/lib/analytics/audit'
 import { isAnalyticsEventName } from '@/lib/analytics/events'
 
 export const ANON_SESSION_COOKIE = 'zenvana_anon_session'
@@ -60,16 +61,23 @@ function safeJsonStringify(value: unknown): string {
   }
 }
 
-function capProperties(properties: Properties | undefined): { json: Properties; size: number } {
+function capProperties(properties: Properties | undefined): {
+  json: Properties
+  size: number
+  truncated: boolean
+  originalSize: number
+} {
   const input = properties ?? {}
   const raw = safeJsonStringify(input)
   const size = Buffer.byteLength(raw, 'utf8')
   if (size <= MAX_PROPERTIES_BYTES) {
-    return { json: input, size }
+    return { json: input, size, truncated: false, originalSize: size }
   }
   return {
     json: { __truncated: true, originalSize: size },
     size: Buffer.byteLength(safeJsonStringify({ __truncated: true, originalSize: size }), 'utf8'),
+    truncated: true,
+    originalSize: size,
   }
 }
 
@@ -210,35 +218,133 @@ function hasUnknownArgError(err: unknown, arg: 'eventId' | 'bookingReference'): 
   return message.includes(`Unknown argument \`${arg}\``)
 }
 
+type RecorderAuditInput = {
+  eventName: string
+  source: RecordEventInput['source']
+  status: (typeof AUDIT_STATUS)[keyof typeof AUDIT_STATUS]
+  reasonCode: (typeof AUDIT_REASON)[keyof typeof AUDIT_REASON]
+  sessionId?: string | null
+  eventId?: string | null
+  bookingReference?: string | null
+  propertySlug?: string | null
+  occurredAt?: Date | null
+  meta?: Record<string, unknown>
+}
+
+async function writeRecorderAudit(input: RecorderAuditInput): Promise<void> {
+  await writeAnalyticsAudit({
+    eventName: input.eventName,
+    source: input.source,
+    status: input.status,
+    reasonCode: input.reasonCode,
+    sessionId: input.sessionId ?? null,
+    eventId: input.eventId ?? null,
+    bookingReference: input.bookingReference ?? null,
+    propertySlug: input.propertySlug ?? null,
+    occurredAt: input.occurredAt ?? null,
+    meta: input.meta ?? {},
+  })
+}
+
 /**
  * Records an analytics event. NEVER throws — analytics must not break the booking flow.
  */
 export async function recordEvent(input: RecordEventInput): Promise<void> {
+  const occurredAt = input.occurredAt ?? new Date()
+  let sessionIdForAudit: string | null = null
+  const bookingReference = deriveBookingReference(input.name, input.properties)
   try {
-    if (!isAnalyticsEventName(input.name)) return
+    if (!isAnalyticsEventName(input.name)) {
+      await writeRecorderAudit({
+        eventName: input.name,
+        source: input.source,
+        status: AUDIT_STATUS.REJECTED,
+        reasonCode: AUDIT_REASON.INVALID_EVENT_NAME,
+        eventId: input.eventId ?? null,
+        propertySlug: input.propertySlug ?? null,
+        occurredAt,
+      })
+      return
+    }
     const { sessionId: existing, userAgent, ip, bootstrap } = await readRequestContext()
-    if (isBot(userAgent)) return
+    if (isBot(userAgent)) {
+      await writeRecorderAudit({
+        eventName: input.name,
+        source: input.source,
+        status: AUDIT_STATUS.REJECTED,
+        reasonCode: AUDIT_REASON.BOT_FILTERED,
+        sessionId: existing,
+        eventId: input.eventId ?? null,
+        bookingReference,
+        propertySlug: input.propertySlug ?? null,
+        occurredAt,
+      })
+      return
+    }
 
     const sessionId = await ensureSessionCookie(existing)
-    if (!sessionId) return
+    if (!sessionId) {
+      await writeRecorderAudit({
+        eventName: input.name,
+        source: input.source,
+        status: AUDIT_STATUS.REJECTED,
+        reasonCode: AUDIT_REASON.SESSION_UNAVAILABLE,
+        sessionId: existing,
+        eventId: input.eventId ?? null,
+        bookingReference,
+        propertySlug: input.propertySlug ?? null,
+        occurredAt,
+      })
+      return
+    }
+    sessionIdForAudit = sessionId
 
     await ensureSessionRow(sessionId, userAgent, ip, bootstrap)
     await clearBootstrapCookie()
 
-    const { json, size } = capProperties(input.properties)
-    const bookingReference = deriveBookingReference(input.name, input.properties)
+    const { json, size, truncated, originalSize } = capProperties(input.properties)
+    if (truncated) {
+      await writeRecorderAudit({
+        eventName: input.name,
+        source: input.source,
+        status: AUDIT_STATUS.ACCEPTED,
+        reasonCode: AUDIT_REASON.PROPERTIES_TRUNCATED,
+        sessionId,
+        eventId: input.eventId ?? null,
+        bookingReference,
+        propertySlug: input.propertySlug ?? null,
+        occurredAt,
+        meta: {
+          originalSize,
+          truncatedSize: size,
+        },
+      })
+    }
     if (bookingReference) {
       const exists = await prisma.analyticsEvent.findFirst({
         where: { name: 'booking_completed', bookingReference },
         select: { id: true },
       })
-      if (exists) return
+      if (exists) {
+        await writeRecorderAudit({
+          eventName: input.name,
+          source: input.source,
+          status: AUDIT_STATUS.DEDUPED,
+          reasonCode: AUDIT_REASON.DEDUPE_SUPPRESSED,
+          sessionId,
+          eventId: input.eventId ?? null,
+          bookingReference,
+          propertySlug: input.propertySlug ?? null,
+          occurredAt,
+        })
+        return
+      }
     }
     const dataWithOptionalFields = {
       sessionId,
       name: input.name,
       eventId: input.eventId ?? null,
-      occurredAt: input.occurredAt ?? new Date(),
+      occurredAt,
       bookingReference,
       propertySlug: input.propertySlug ?? null,
       source: input.source,
@@ -250,22 +356,85 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
       await prisma.analyticsEvent.create({ data: dataWithOptionalFields })
     } catch (err) {
       if (!hasUnknownArgError(err, 'eventId') && !hasUnknownArgError(err, 'bookingReference')) {
-        throw err
+        await writeRecorderAudit({
+          eventName: input.name,
+          source: input.source,
+          status: AUDIT_STATUS.FAILED,
+          reasonCode: AUDIT_REASON.DB_WRITE_FAILED,
+          sessionId,
+          eventId: input.eventId ?? null,
+          bookingReference,
+          propertySlug: input.propertySlug ?? null,
+          occurredAt,
+          meta: {
+            stage: 'create',
+            error: err instanceof Error ? err.message : 'unknown',
+          },
+        })
+        return
       }
       const fallbackData = {
         sessionId,
         name: input.name,
-        occurredAt: input.occurredAt ?? new Date(),
+        occurredAt,
         propertySlug: input.propertySlug ?? null,
         source: input.source,
         properties: json as never,
         propertiesSize: size,
         utmSource: bootstrap.utmSource ?? null,
       }
-      await prisma.analyticsEvent.create({ data: fallbackData })
+      try {
+        await prisma.analyticsEvent.create({ data: fallbackData })
+      } catch (fallbackErr) {
+        await writeRecorderAudit({
+          eventName: input.name,
+          source: input.source,
+          status: AUDIT_STATUS.FAILED,
+          reasonCode: AUDIT_REASON.DB_WRITE_FAILED,
+          sessionId,
+          eventId: input.eventId ?? null,
+          bookingReference,
+          propertySlug: input.propertySlug ?? null,
+          occurredAt,
+          meta: {
+            stage: 'fallback_create',
+            error: fallbackErr instanceof Error ? fallbackErr.message : 'unknown',
+          },
+        })
+        return
+      }
     }
+    await writeRecorderAudit({
+      eventName: input.name,
+      source: input.source,
+      status: AUDIT_STATUS.ACCEPTED,
+      reasonCode: AUDIT_REASON.RECORDER_EXCEPTION,
+      sessionId,
+      eventId: input.eventId ?? null,
+      bookingReference,
+      propertySlug: input.propertySlug ?? null,
+      occurredAt,
+      meta: {
+        outcome: 'success',
+      },
+    })
   } catch (err) {
     console.error('[analytics] recordEvent failed:', err)
+    await writeRecorderAudit({
+      eventName: input.name,
+      source: input.source,
+      status: AUDIT_STATUS.FAILED,
+      reasonCode: AUDIT_REASON.RECORDER_EXCEPTION,
+      sessionId: sessionIdForAudit,
+      eventId: input.eventId ?? null,
+      bookingReference,
+      propertySlug: input.propertySlug ?? null,
+      occurredAt,
+      meta: {
+        stage: 'record_event',
+        error: err instanceof Error ? err.message : 'unknown',
+      },
+    })
   }
 }
 
