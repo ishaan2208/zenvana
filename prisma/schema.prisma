@@ -156,6 +156,28 @@ model AnalyticsEvent {
   @@schema("analytics")
 }
 
+model AnalyticsEventAudit {
+  id               BigInt   @id @default(autoincrement())
+  eventName        String
+  source           String
+  status           String
+  reasonCode       String
+  sessionId        String?
+  eventId          String?
+  bookingReference String?
+  propertySlug     String?
+  occurredAt       DateTime?
+  recordedAt       DateTime @default(now())
+  meta             Json     @db.JsonB
+
+  @@index([status, recordedAt])
+  @@index([reasonCode, recordedAt])
+  @@index([eventName, recordedAt])
+  @@index([bookingReference, recordedAt])
+  @@map("event_audit")
+  @@schema("analytics")
+}
+
 model AnalyticsDailyMetric {
   date         DateTime
   propertySlug String
