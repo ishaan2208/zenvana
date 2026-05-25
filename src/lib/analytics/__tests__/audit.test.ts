@@ -62,6 +62,38 @@ describe('writeAnalyticsAudit', () => {
     })
   })
 
+  it('forwards explicit meta object exactly on successful writes', async () => {
+    const { AUDIT_REASON, AUDIT_STATUS, writeAnalyticsAudit } = await import('@/lib/analytics/audit')
+    const meta = {
+      flow: 'checkout',
+      attempt: 2,
+      flags: { truncated: false },
+    }
+
+    analyticsEventAuditCreate.mockResolvedValueOnce({ id: BigInt(2) })
+
+    await expect(
+      writeAnalyticsAudit({
+        eventName: 'payment_initiated',
+        source: 'client',
+        status: AUDIT_STATUS.ACCEPTED,
+        reasonCode: AUDIT_REASON.PROPERTIES_TRUNCATED,
+        meta,
+      }),
+    ).resolves.toBeUndefined()
+
+    expect(analyticsEventAuditCreate).toHaveBeenCalledTimes(1)
+    expect(analyticsEventAuditCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          meta,
+        }),
+      }),
+    )
+    const createArg = analyticsEventAuditCreate.mock.calls[0]?.[0]
+    expect(createArg.data.meta).toBe(meta)
+  })
+
   it('never throws and logs AUDIT_WRITE_FAILED when DB write fails', async () => {
     const { AUDIT_REASON, AUDIT_STATUS, writeAnalyticsAudit } = await import('@/lib/analytics/audit')
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})

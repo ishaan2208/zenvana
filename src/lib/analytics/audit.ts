@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 export const AUDIT_STATUS = {
@@ -36,7 +37,7 @@ type WriteAnalyticsAuditInput = {
   bookingReference?: string | null
   propertySlug?: string | null
   occurredAt?: Date | null
-  meta?: Record<string, unknown>
+  meta?: Prisma.InputJsonValue
 }
 
 /**
@@ -44,6 +45,8 @@ type WriteAnalyticsAuditInput = {
  */
 export async function writeAnalyticsAudit(input: WriteAnalyticsAuditInput): Promise<void> {
   try {
+    const meta: Prisma.InputJsonValue = input.meta ?? {}
+
     await prisma.analyticsEventAudit.create({
       data: {
         eventName: input.eventName,
@@ -55,7 +58,7 @@ export async function writeAnalyticsAudit(input: WriteAnalyticsAuditInput): Prom
         bookingReference: input.bookingReference ?? null,
         propertySlug: input.propertySlug ?? null,
         occurredAt: input.occurredAt ?? null,
-        meta: (input.meta ?? {}) as never,
+        meta,
       },
     })
   } catch (error) {
