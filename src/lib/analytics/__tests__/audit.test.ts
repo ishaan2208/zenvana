@@ -20,6 +20,7 @@ describe('analytics audit constants', () => {
     expect(AUDIT_STATUS.REJECTED).toBe('rejected')
     expect(AUDIT_STATUS.DEDUPED).toBe('deduped')
     expect(AUDIT_STATUS.FAILED).toBe('failed')
+    expect(AUDIT_REASON.EVENT_RECORDED).toBe('EVENT_RECORDED')
     expect(AUDIT_REASON.DB_WRITE_FAILED).toBe('DB_WRITE_FAILED')
     expect(AUDIT_REASON.AUDIT_WRITE_FAILED).toBe('AUDIT_WRITE_FAILED')
   })

@@ -220,7 +220,7 @@ function hasUnknownArgError(err: unknown, arg: 'eventId' | 'bookingReference'): 
 
 type RecorderAuditInput = {
   eventName: string
-  source: RecordEventInput['source']
+  source: RecordEventInput['source'] | 'system'
   status: (typeof AUDIT_STATUS)[keyof typeof AUDIT_STATUS]
   reasonCode: (typeof AUDIT_REASON)[keyof typeof AUDIT_REASON]
   sessionId?: string | null
@@ -408,7 +408,7 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
       eventName: input.name,
       source: input.source,
       status: AUDIT_STATUS.ACCEPTED,
-      reasonCode: AUDIT_REASON.RECORDER_EXCEPTION,
+      reasonCode: AUDIT_REASON.EVENT_RECORDED,
       sessionId,
       eventId: input.eventId ?? null,
       bookingReference,
@@ -439,15 +439,62 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
 }
 
 export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<void> {
+  const occurredAt = new Date()
+  let sessionIdForAudit: string | null = null
   try {
     if (!inputs.length) return
     const validInputs = inputs.filter((input) => isAnalyticsEventName(input.name))
-    if (!validInputs.length) return
+    const invalidCount = inputs.length - validInputs.length
+    if (!validInputs.length) {
+      await writeRecorderAudit({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.REJECTED,
+        reasonCode: AUDIT_REASON.INVALID_EVENT_NAME,
+        occurredAt,
+        meta: {
+          totalInputs: inputs.length,
+          invalidCount,
+        },
+      })
+      return
+    }
     const { sessionId: existing, userAgent, ip, bootstrap } = await readRequestContext()
-    if (isBot(userAgent)) return
+    if (isBot(userAgent)) {
+      await writeRecorderAudit({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.REJECTED,
+        reasonCode: AUDIT_REASON.BOT_FILTERED,
+        sessionId: existing,
+        occurredAt,
+        meta: {
+          totalInputs: inputs.length,
+          validCount: validInputs.length,
+          invalidCount,
+        },
+      })
+      return
+    }
 
     const sessionId = await ensureSessionCookie(existing)
-    if (!sessionId) return
+    if (!sessionId) {
+      await writeRecorderAudit({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.REJECTED,
+        reasonCode: AUDIT_REASON.SESSION_UNAVAILABLE,
+        sessionId: existing,
+        occurredAt,
+        meta: {
+          totalInputs: inputs.length,
+          validCount: validInputs.length,
+          invalidCount,
+        },
+      })
+      return
+    }
+    sessionIdForAudit = sessionId
 
     await ensureSessionRow(sessionId, userAgent, ip, bootstrap)
     await clearBootstrapCookie()
@@ -472,11 +519,17 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
           )
         : new Set<string>()
     const seenBookingRefs = new Set<string>()
+    let dedupedCount = 0
+    let truncatedCount = 0
     const rows = validInputs.flatMap((input) => {
-      const { json, size } = capProperties(input.properties)
+      const { json, size, truncated } = capProperties(input.properties)
+      if (truncated) {
+        truncatedCount += 1
+      }
       const bookingReference = deriveBookingReference(input.name, input.properties)
       if (bookingReference) {
         if (existingBookingRefs.has(bookingReference) || seenBookingRefs.has(bookingReference)) {
+          dedupedCount += 1
           return []
         }
         seenBookingRefs.add(bookingReference)
@@ -495,12 +548,46 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
       }
     })
 
-    if (!rows.length) return
+    if (!rows.length) {
+      await writeRecorderAudit({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.DEDUPED,
+        reasonCode: AUDIT_REASON.DEDUPE_SUPPRESSED,
+        sessionId,
+        occurredAt,
+        meta: {
+          totalInputs: inputs.length,
+          validCount: validInputs.length,
+          invalidCount,
+          dedupedCount,
+          acceptedCount: 0,
+        },
+      })
+      return
+    }
     try {
       await prisma.analyticsEvent.createMany({ data: rows, skipDuplicates: true })
     } catch (err) {
       if (!hasUnknownArgError(err, 'eventId') && !hasUnknownArgError(err, 'bookingReference')) {
-        throw err
+        await writeRecorderAudit({
+          eventName: 'batch',
+          source: 'system',
+          status: AUDIT_STATUS.FAILED,
+          reasonCode: AUDIT_REASON.DB_WRITE_FAILED,
+          sessionId,
+          occurredAt,
+          meta: {
+            stage: 'createMany',
+            totalInputs: inputs.length,
+            validCount: validInputs.length,
+            invalidCount,
+            dedupedCount,
+            acceptedCount: rows.length,
+            error: err instanceof Error ? err.message : 'unknown',
+          },
+        })
+        return
       }
       const fallbackRows = rows.map((row) => ({
         sessionId: row.sessionId,
@@ -512,9 +599,87 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
         propertiesSize: row.propertiesSize,
         utmSource: row.utmSource,
       }))
-      await prisma.analyticsEvent.createMany({ data: fallbackRows as never, skipDuplicates: true })
+      try {
+        await prisma.analyticsEvent.createMany({ data: fallbackRows as never, skipDuplicates: true })
+      } catch (fallbackErr) {
+        await writeRecorderAudit({
+          eventName: 'batch',
+          source: 'system',
+          status: AUDIT_STATUS.FAILED,
+          reasonCode: AUDIT_REASON.DB_WRITE_FAILED,
+          sessionId,
+          occurredAt,
+          meta: {
+            stage: 'fallbackCreateMany',
+            totalInputs: inputs.length,
+            validCount: validInputs.length,
+            invalidCount,
+            dedupedCount,
+            acceptedCount: rows.length,
+            error: fallbackErr instanceof Error ? fallbackErr.message : 'unknown',
+          },
+        })
+        return
+      }
     }
+
+    if (dedupedCount > 0) {
+      await writeRecorderAudit({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.DEDUPED,
+        reasonCode: AUDIT_REASON.DEDUPE_SUPPRESSED,
+        sessionId,
+        occurredAt,
+        meta: {
+          dedupedCount,
+          totalInputs: inputs.length,
+        },
+      })
+    }
+
+    if (truncatedCount > 0) {
+      await writeRecorderAudit({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.ACCEPTED,
+        reasonCode: AUDIT_REASON.PROPERTIES_TRUNCATED,
+        sessionId,
+        occurredAt,
+        meta: {
+          truncatedCount,
+          totalInputs: inputs.length,
+        },
+      })
+    }
+    await writeRecorderAudit({
+      eventName: 'batch',
+      source: 'system',
+      status: AUDIT_STATUS.ACCEPTED,
+      reasonCode: AUDIT_REASON.EVENT_RECORDED,
+      sessionId,
+      occurredAt,
+      meta: {
+        totalInputs: inputs.length,
+        validCount: validInputs.length,
+        invalidCount,
+        dedupedCount,
+        acceptedCount: rows.length,
+      },
+    })
   } catch (err) {
     console.error('[analytics] recordEventsBatch failed:', err)
+    await writeRecorderAudit({
+      eventName: 'batch',
+      source: 'system',
+      status: AUDIT_STATUS.FAILED,
+      reasonCode: AUDIT_REASON.RECORDER_EXCEPTION,
+      sessionId: sessionIdForAudit,
+      occurredAt,
+      meta: {
+        stage: 'recordEventsBatch',
+        error: err instanceof Error ? err.message : 'unknown',
+      },
+    })
   }
 }

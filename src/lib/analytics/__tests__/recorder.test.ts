@@ -6,6 +6,8 @@ const {
   analyticsSessionUpsert,
   analyticsEventFindFirst,
   analyticsEventCreate,
+  analyticsEventFindMany,
+  analyticsEventCreateMany,
   writeAnalyticsAudit,
   AUDIT_STATUS,
   AUDIT_REASON,
@@ -15,6 +17,8 @@ const {
   analyticsSessionUpsert: vi.fn(),
   analyticsEventFindFirst: vi.fn(),
   analyticsEventCreate: vi.fn(),
+  analyticsEventFindMany: vi.fn(),
+  analyticsEventCreateMany: vi.fn(),
   writeAnalyticsAudit: vi.fn(),
   AUDIT_STATUS: {
     ACCEPTED: 'accepted',
@@ -29,6 +33,7 @@ const {
     DB_WRITE_FAILED: 'DB_WRITE_FAILED',
     DEDUPE_SUPPRESSED: 'DEDUPE_SUPPRESSED',
     PROPERTIES_TRUNCATED: 'PROPERTIES_TRUNCATED',
+    EVENT_RECORDED: 'EVENT_RECORDED',
     RECORDER_EXCEPTION: 'RECORDER_EXCEPTION',
   } as const,
 }))
@@ -48,6 +53,8 @@ vi.mock('@/lib/prisma', () => ({
     analyticsEvent: {
       findFirst: analyticsEventFindFirst,
       create: analyticsEventCreate,
+      findMany: analyticsEventFindMany,
+      createMany: analyticsEventCreateMany,
     },
   },
 }))
@@ -58,7 +65,7 @@ vi.mock('@/lib/analytics/audit', () => ({
   AUDIT_REASON,
 }))
 
-import { ANON_SESSION_COOKIE, recordEvent } from '@/lib/analytics/recorder'
+import { ANON_SESSION_COOKIE, recordEvent, recordEventsBatch } from '@/lib/analytics/recorder'
 
 function setupRequestContext(options?: { sessionId?: string | null; userAgent?: string | null; allowCookieSet?: boolean }) {
   const sessionId = options && 'sessionId' in options ? options.sessionId : 's_existing'
@@ -101,6 +108,8 @@ describe('recordEvent audit instrumentation', () => {
     analyticsSessionUpsert.mockResolvedValue(undefined)
     analyticsEventFindFirst.mockResolvedValue(null)
     analyticsEventCreate.mockResolvedValue({ id: BigInt(1) })
+    analyticsEventFindMany.mockResolvedValue([])
+    analyticsEventCreateMany.mockResolvedValue({ count: 1 })
     writeAnalyticsAudit.mockResolvedValue(undefined)
   })
 
@@ -189,17 +198,21 @@ describe('recordEvent audit instrumentation', () => {
       },
     })
 
-    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(2)
+    expect(writeAnalyticsAudit).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         eventName: 'booking_completed',
         status: AUDIT_STATUS.ACCEPTED,
         reasonCode: AUDIT_REASON.PROPERTIES_TRUNCATED,
       }),
     )
-    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+    expect(writeAnalyticsAudit).toHaveBeenNthCalledWith(
+      2,
       expect.objectContaining({
         eventName: 'booking_completed',
         status: AUDIT_STATUS.ACCEPTED,
+        reasonCode: AUDIT_REASON.EVENT_RECORDED,
       }),
     )
   })
@@ -240,6 +253,73 @@ describe('recordEvent audit instrumentation', () => {
         eventName: 'booking_completed',
         status: AUDIT_STATUS.FAILED,
         reasonCode: AUDIT_REASON.RECORDER_EXCEPTION,
+      }),
+    )
+  })
+})
+
+describe('recordEventsBatch audit instrumentation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupRequestContext()
+    analyticsSessionUpsert.mockResolvedValue(undefined)
+    analyticsEventFindMany.mockResolvedValue([])
+    analyticsEventCreateMany.mockResolvedValue({ count: 1 })
+    writeAnalyticsAudit.mockResolvedValue(undefined)
+  })
+
+  it('writes rejected audit when all batch events are invalid', async () => {
+    await recordEventsBatch([
+      { name: 'not_real_1', source: 'client' },
+      { name: 'not_real_2', source: 'server' },
+    ])
+
+    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(1)
+    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.REJECTED,
+        reasonCode: AUDIT_REASON.INVALID_EVENT_NAME,
+      }),
+    )
+    expect(analyticsEventCreateMany).not.toHaveBeenCalled()
+  })
+
+  it('writes dedupe summary and accepted summary for mixed batch outcomes', async () => {
+    analyticsEventFindMany.mockResolvedValueOnce([{ bookingReference: 'BK-EXISTING' }])
+
+    await recordEventsBatch([
+      {
+        name: 'booking_completed',
+        source: 'server',
+        properties: { bookingReference: 'BK-EXISTING' },
+      },
+      {
+        name: 'booking_completed',
+        source: 'client',
+        properties: { bookingReference: 'BK-NEW' },
+      },
+    ])
+
+    expect(analyticsEventCreateMany).toHaveBeenCalledTimes(1)
+    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(2)
+    expect(writeAnalyticsAudit).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.DEDUPED,
+        reasonCode: AUDIT_REASON.DEDUPE_SUPPRESSED,
+      }),
+    )
+    expect(writeAnalyticsAudit).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.ACCEPTED,
+        reasonCode: AUDIT_REASON.EVENT_RECORDED,
       }),
     )
   })
