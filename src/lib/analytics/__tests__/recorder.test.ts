@@ -286,21 +286,167 @@ describe('recordEventsBatch audit instrumentation', () => {
     expect(analyticsEventCreateMany).not.toHaveBeenCalled()
   })
 
+  it('writes rejected audit when batch user-agent is filtered as bot', async () => {
+    setupRequestContext({ userAgent: 'Googlebot/2.1' })
+
+    await expect(
+      recordEventsBatch([
+        { name: 'page_viewed', source: 'client' },
+        { name: 'booking_completed', source: 'server', properties: { bookingReference: 'BK-BOT' } },
+      ]),
+    ).resolves.toBeUndefined()
+
+    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(1)
+    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.REJECTED,
+        reasonCode: AUDIT_REASON.BOT_FILTERED,
+      }),
+    )
+    expect(analyticsEventCreateMany).not.toHaveBeenCalled()
+  })
+
+  it('writes rejected audit when batch session cannot be established', async () => {
+    setupRequestContext({ sessionId: null, allowCookieSet: false })
+
+    await expect(
+      recordEventsBatch([
+        { name: 'page_viewed', source: 'client' },
+        { name: 'booking_completed', source: 'server', properties: { bookingReference: 'BK-SESSION' } },
+      ]),
+    ).resolves.toBeUndefined()
+
+    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(1)
+    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.REJECTED,
+        reasonCode: AUDIT_REASON.SESSION_UNAVAILABLE,
+      }),
+    )
+    expect(analyticsEventCreateMany).not.toHaveBeenCalled()
+  })
+
+  it('writes failed audit when batch createMany write fails', async () => {
+    analyticsEventCreateMany.mockRejectedValueOnce(new Error('batch db down'))
+
+    await expect(
+      recordEventsBatch([
+        { name: 'page_viewed', source: 'client' },
+        { name: 'booking_completed', source: 'server', properties: { bookingReference: 'BK-DBFAIL' } },
+      ]),
+    ).resolves.toBeUndefined()
+
+    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(1)
+    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.FAILED,
+        reasonCode: AUDIT_REASON.DB_WRITE_FAILED,
+      }),
+    )
+  })
+
+  it('writes outer exception fallback audit when batch throws unexpectedly', async () => {
+    headersMock.mockRejectedValueOnce(new Error('headers unavailable'))
+
+    await expect(
+      recordEventsBatch([{ name: 'page_viewed', source: 'client' }]),
+    ).resolves.toBeUndefined()
+
+    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(1)
+    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.FAILED,
+        reasonCode: AUDIT_REASON.RECORDER_EXCEPTION,
+      }),
+    )
+  })
+
+  it('writes all-deduped summary and returns early', async () => {
+    analyticsEventFindMany.mockResolvedValueOnce([{ bookingReference: 'BK-DEDUP-1' }])
+
+    await expect(
+      recordEventsBatch([
+        {
+          name: 'booking_completed',
+          source: 'server',
+          properties: { bookingReference: 'BK-DEDUP-1' },
+        },
+      ]),
+    ).resolves.toBeUndefined()
+
+    expect(analyticsEventCreateMany).not.toHaveBeenCalled()
+    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(1)
+    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.DEDUPED,
+        reasonCode: AUDIT_REASON.DEDUPE_SUPPRESSED,
+      }),
+    )
+  })
+
+  it('writes truncation marker then accepted summary for oversized batch payload', async () => {
+    await expect(
+      recordEventsBatch([
+        {
+          name: 'booking_completed',
+          source: 'server',
+          properties: {
+            bookingReference: 'BK-TRUNC',
+            payload: 'x'.repeat(9 * 1024),
+          },
+        },
+      ]),
+    ).resolves.toBeUndefined()
+
+    expect(analyticsEventCreateMany).toHaveBeenCalledTimes(1)
+    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(2)
+    expect(writeAnalyticsAudit).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.ACCEPTED,
+        reasonCode: AUDIT_REASON.PROPERTIES_TRUNCATED,
+      }),
+    )
+    expect(writeAnalyticsAudit).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        eventName: 'batch',
+        source: 'system',
+        status: AUDIT_STATUS.ACCEPTED,
+        reasonCode: AUDIT_REASON.EVENT_RECORDED,
+      }),
+    )
+  })
+
   it('writes dedupe summary and accepted summary for mixed batch outcomes', async () => {
     analyticsEventFindMany.mockResolvedValueOnce([{ bookingReference: 'BK-EXISTING' }])
 
-    await recordEventsBatch([
-      {
-        name: 'booking_completed',
-        source: 'server',
-        properties: { bookingReference: 'BK-EXISTING' },
-      },
-      {
-        name: 'booking_completed',
-        source: 'client',
-        properties: { bookingReference: 'BK-NEW' },
-      },
-    ])
+    await expect(
+      recordEventsBatch([
+        {
+          name: 'booking_completed',
+          source: 'server',
+          properties: { bookingReference: 'BK-EXISTING' },
+        },
+        {
+          name: 'booking_completed',
+          source: 'client',
+          properties: { bookingReference: 'BK-NEW' },
+        },
+      ]),
+    ).resolves.toBeUndefined()
 
     expect(analyticsEventCreateMany).toHaveBeenCalledTimes(1)
     expect(writeAnalyticsAudit).toHaveBeenCalledTimes(2)
