@@ -24,6 +24,12 @@ const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX_EVENTS = 300
 const rateLimitState = new Map<string, { count: number; windowStart: number }>()
 
+type TrackAuditInput = {
+  status: (typeof AUDIT_STATUS)[keyof typeof AUDIT_STATUS]
+  reasonCode: (typeof AUDIT_REASON)[keyof typeof AUDIT_REASON]
+  meta?: Record<string, unknown>
+}
+
 function cleanupRateLimitStore(now: number): void {
   for (const [key, value] of rateLimitState.entries()) {
     if (now - value.windowStart > RATE_LIMIT_WINDOW_MS * 2) {
@@ -84,6 +90,25 @@ function isAllowedOrigin(request: NextRequest): boolean {
   return false
 }
 
+async function writeTrackAuditSafe(input: TrackAuditInput): Promise<void> {
+  try {
+    await writeAnalyticsAudit({
+      eventName: 'track_batch',
+      source: 'client',
+      status: input.status,
+      reasonCode: input.reasonCode,
+      meta: input.meta,
+    })
+  } catch (error) {
+    console.error('[analytics][track] audit write failed', {
+      reasonCode: AUDIT_REASON.AUDIT_WRITE_FAILED,
+      attemptedStatus: input.status,
+      attemptedReasonCode: input.reasonCode,
+      error: error instanceof Error ? error.message : 'unknown',
+    })
+  }
+}
+
 export async function POST(request: NextRequest) {
   const requestedCountFromBody = (() => {
     const contentLength = request.headers.get('content-length')
@@ -100,9 +125,7 @@ export async function POST(request: NextRequest) {
       referer: request.headers.get('referer'),
       host: request.headers.get('host'),
     })
-    await writeAnalyticsAudit({
-      eventName: 'track_batch',
-      source: 'client',
+    await writeTrackAuditSafe({
       status: AUDIT_STATUS.REJECTED,
       reasonCode: AUDIT_REASON.ORIGIN_BLOCKED,
       meta: {
@@ -125,9 +148,7 @@ export async function POST(request: NextRequest) {
       contentType: request.headers.get('content-type'),
       contentLength: requestedCountFromBody,
     })
-    await writeAnalyticsAudit({
-      eventName: 'track_batch',
-      source: 'client',
+    await writeTrackAuditSafe({
       status: AUDIT_STATUS.REJECTED,
       reasonCode: AUDIT_REASON.PAYLOAD_INVALID,
       meta: {
@@ -149,9 +170,7 @@ export async function POST(request: NextRequest) {
       requestedCount: body.events.length,
       limitedCount: Math.min(body.events.length, MAX_BATCH),
     })
-    await writeAnalyticsAudit({
-      eventName: 'track_batch',
-      source: 'client',
+    await writeTrackAuditSafe({
       status: AUDIT_STATUS.REJECTED,
       reasonCode: AUDIT_REASON.RATE_LIMITED,
       meta: {
@@ -188,23 +207,39 @@ export async function POST(request: NextRequest) {
   const acceptedCount = events.length
   const droppedCount = Math.max(requestedCount - acceptedCount, 0)
 
-  console.info('[analytics][track] accepted batch summary', {
-    reasonCode: AUDIT_REASON.EVENT_RECORDED,
-    requestedCount,
-    acceptedCount,
-    droppedCount,
-  })
-  await writeAnalyticsAudit({
-    eventName: 'track_batch',
-    source: 'client',
-    status: AUDIT_STATUS.ACCEPTED,
-    reasonCode: AUDIT_REASON.EVENT_RECORDED,
-    meta: {
+  if (acceptedCount > 0) {
+    console.info('[analytics][track] accepted batch summary', {
+      reasonCode: AUDIT_REASON.EVENT_RECORDED,
       requestedCount,
       acceptedCount,
       droppedCount,
-    },
-  })
+    })
+    await writeTrackAuditSafe({
+      status: AUDIT_STATUS.ACCEPTED,
+      reasonCode: AUDIT_REASON.EVENT_RECORDED,
+      meta: {
+        requestedCount,
+        acceptedCount,
+        droppedCount,
+      },
+    })
+  } else {
+    console.warn('[analytics][track] rejected batch summary', {
+      reasonCode: AUDIT_REASON.INVALID_EVENT_NAME,
+      requestedCount,
+      acceptedCount,
+      droppedCount,
+    })
+    await writeTrackAuditSafe({
+      status: AUDIT_STATUS.REJECTED,
+      reasonCode: AUDIT_REASON.INVALID_EVENT_NAME,
+      meta: {
+        requestedCount,
+        acceptedCount,
+        droppedCount,
+      },
+    })
+  }
 
   if (events.length > 0) {
     // Fire-and-forget; recorder never throws.

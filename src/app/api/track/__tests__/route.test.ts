@@ -24,7 +24,9 @@ vi.mock('@/lib/analytics/audit', () => ({
     RATE_LIMITED: 'RATE_LIMITED',
     ORIGIN_BLOCKED: 'ORIGIN_BLOCKED',
     PAYLOAD_INVALID: 'PAYLOAD_INVALID',
+    INVALID_EVENT_NAME: 'INVALID_EVENT_NAME',
     EVENT_RECORDED: 'EVENT_RECORDED',
+    AUDIT_WRITE_FAILED: 'AUDIT_WRITE_FAILED',
   },
   writeAnalyticsAudit,
 }))
@@ -190,5 +192,87 @@ describe('POST /api/track observability', () => {
         }),
       }),
     )
+  })
+
+  it('keeps 403 when blocked-origin audit write throws', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    writeAnalyticsAudit.mockRejectedValueOnce(new Error('audit offline'))
+    const POST = await loadPostHandler()
+    const request = createTrackRequest(
+      { events: [{ name: 'page_viewed', eventId: 'evt_12345678' }] },
+      { headers: { origin: 'https://evil.example' } },
+    )
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(403)
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[analytics][track] audit write failed',
+      expect.objectContaining({
+        reasonCode: 'AUDIT_WRITE_FAILED',
+        attemptedStatus: 'rejected',
+        attemptedReasonCode: 'ORIGIN_BLOCKED',
+      }),
+    )
+  })
+
+  it('keeps 204 and records events when accepted-path audit write throws', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    writeAnalyticsAudit.mockRejectedValueOnce(new Error('audit offline'))
+    const POST = await loadPostHandler()
+    const response = await POST(
+      createTrackRequest({
+        events: [{ name: 'page_viewed', eventId: 'evt_12345678' }],
+      }),
+    )
+
+    expect(response.status).toBe(204)
+    expect(recordEventsBatch).toHaveBeenCalledWith([expect.objectContaining({ name: 'page_viewed' })])
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[analytics][track] audit write failed',
+      expect.objectContaining({
+        reasonCode: 'AUDIT_WRITE_FAILED',
+        attemptedStatus: 'accepted',
+        attemptedReasonCode: 'EVENT_RECORDED',
+      }),
+    )
+  })
+
+  it('writes rejected summary for all-invalid batch and skips recorder', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const POST = await loadPostHandler()
+
+    const response = await POST(
+      createTrackRequest({
+        events: [
+          { name: 'invalid_event', eventId: 'evt_abcdefgh' },
+          { name: 'also_invalid', eventId: 'evt_87654321' },
+        ],
+      }),
+    )
+
+    expect(response.status).toBe(204)
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[analytics][track] rejected batch summary',
+      expect.objectContaining({
+        reasonCode: 'INVALID_EVENT_NAME',
+        requestedCount: 2,
+        acceptedCount: 0,
+        droppedCount: 2,
+      }),
+    )
+    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'track_batch',
+        status: 'rejected',
+        reasonCode: 'INVALID_EVENT_NAME',
+        meta: expect.objectContaining({
+          requestedCount: 2,
+          acceptedCount: 0,
+          droppedCount: 2,
+        }),
+      }),
+    )
+    expect(recordEventsBatch).not.toHaveBeenCalled()
   })
 })
