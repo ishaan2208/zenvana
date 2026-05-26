@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 import { recordEventsBatch, type RecordEventInput } from '@/lib/analytics/recorder'
 import { isAnalyticsEventName } from '@/lib/analytics/events'
+import { AUDIT_REASON, AUDIT_STATUS, writeAnalyticsAudit } from '@/lib/analytics/audit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -84,7 +85,33 @@ function isAllowedOrigin(request: NextRequest): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  const requestedCountFromBody = (() => {
+    const contentLength = request.headers.get('content-length')
+    if (!contentLength) return null
+    const parsed = Number.parseInt(contentLength, 10)
+    return Number.isNaN(parsed) ? null : parsed
+  })()
+
   if (!isAllowedOrigin(request)) {
+    console.warn('[analytics][track] blocked origin', {
+      reasonCode: AUDIT_REASON.ORIGIN_BLOCKED,
+      statusCode: 403,
+      origin: request.headers.get('origin'),
+      referer: request.headers.get('referer'),
+      host: request.headers.get('host'),
+    })
+    await writeAnalyticsAudit({
+      eventName: 'track_batch',
+      source: 'client',
+      status: AUDIT_STATUS.REJECTED,
+      reasonCode: AUDIT_REASON.ORIGIN_BLOCKED,
+      meta: {
+        statusCode: 403,
+        origin: request.headers.get('origin'),
+        referer: request.headers.get('referer'),
+        host: request.headers.get('host'),
+      },
+    })
     return new NextResponse(null, { status: 403 })
   }
 
@@ -92,6 +119,23 @@ export async function POST(request: NextRequest) {
   try {
     body = (await request.json()) as TrackBody
   } catch {
+    console.warn('[analytics][track] invalid payload', {
+      reasonCode: AUDIT_REASON.PAYLOAD_INVALID,
+      statusCode: 400,
+      contentType: request.headers.get('content-type'),
+      contentLength: requestedCountFromBody,
+    })
+    await writeAnalyticsAudit({
+      eventName: 'track_batch',
+      source: 'client',
+      status: AUDIT_STATUS.REJECTED,
+      reasonCode: AUDIT_REASON.PAYLOAD_INVALID,
+      meta: {
+        statusCode: 400,
+        contentType: request.headers.get('content-type'),
+        contentLength: requestedCountFromBody,
+      },
+    })
     return new NextResponse(null, { status: 400 })
   }
 
@@ -99,6 +143,23 @@ export async function POST(request: NextRequest) {
     return new NextResponse(null, { status: 204 })
   }
   if (!consumeRateLimit(request, Math.min(body.events.length, MAX_BATCH))) {
+    console.warn('[analytics][track] rate limited', {
+      reasonCode: AUDIT_REASON.RATE_LIMITED,
+      statusCode: 429,
+      requestedCount: body.events.length,
+      limitedCount: Math.min(body.events.length, MAX_BATCH),
+    })
+    await writeAnalyticsAudit({
+      eventName: 'track_batch',
+      source: 'client',
+      status: AUDIT_STATUS.REJECTED,
+      reasonCode: AUDIT_REASON.RATE_LIMITED,
+      meta: {
+        statusCode: 429,
+        requestedCount: body.events.length,
+        limitedCount: Math.min(body.events.length, MAX_BATCH),
+      },
+    })
     return new NextResponse(null, { status: 429 })
   }
 
@@ -123,6 +184,27 @@ export async function POST(request: NextRequest) {
         : undefined
     events.push({ name, eventId, properties, propertySlug, source: 'client', occurredAt })
   }
+  const requestedCount = body.events.length
+  const acceptedCount = events.length
+  const droppedCount = Math.max(requestedCount - acceptedCount, 0)
+
+  console.info('[analytics][track] accepted batch summary', {
+    reasonCode: AUDIT_REASON.EVENT_RECORDED,
+    requestedCount,
+    acceptedCount,
+    droppedCount,
+  })
+  await writeAnalyticsAudit({
+    eventName: 'track_batch',
+    source: 'client',
+    status: AUDIT_STATUS.ACCEPTED,
+    reasonCode: AUDIT_REASON.EVENT_RECORDED,
+    meta: {
+      requestedCount,
+      acceptedCount,
+      droppedCount,
+    },
+  })
 
   if (events.length > 0) {
     // Fire-and-forget; recorder never throws.
