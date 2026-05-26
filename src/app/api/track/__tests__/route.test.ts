@@ -116,6 +116,38 @@ describe('POST /api/track observability', () => {
     expect(recordEventsBatch).not.toHaveBeenCalled()
   })
 
+  it('returns 204 for empty events payload and writes rejected observability audit', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const POST = await loadPostHandler()
+
+    const response = await POST(createTrackRequest({ events: [] }))
+
+    expect(response.status).toBe(204)
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[analytics][track] empty events payload',
+      expect.objectContaining({
+        reasonCode: 'PAYLOAD_INVALID',
+        statusCode: 204,
+        hasEventsArray: true,
+        requestedCount: 0,
+      }),
+    )
+    expect(writeAnalyticsAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'track_batch',
+        source: 'client',
+        status: 'rejected',
+        reasonCode: 'PAYLOAD_INVALID',
+        meta: expect.objectContaining({
+          statusCode: 204,
+          hasEventsArray: true,
+          requestedCount: 0,
+        }),
+      }),
+    )
+    expect(recordEventsBatch).not.toHaveBeenCalled()
+  })
+
   it('returns 429 when rate-limited and writes rejected audit', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const POST = await loadPostHandler()

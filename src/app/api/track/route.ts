@@ -161,6 +161,21 @@ export async function POST(request: NextRequest) {
   }
 
   if (!body || !Array.isArray(body.events) || body.events.length === 0) {
+    console.warn('[analytics][track] empty events payload', {
+      reasonCode: AUDIT_REASON.PAYLOAD_INVALID,
+      statusCode: 204,
+      hasEventsArray: Array.isArray(body?.events),
+      requestedCount: Array.isArray(body?.events) ? body.events.length : 0,
+    })
+    await writeTrackAuditSafe({
+      status: AUDIT_STATUS.REJECTED,
+      reasonCode: AUDIT_REASON.PAYLOAD_INVALID,
+      meta: {
+        statusCode: 204,
+        hasEventsArray: Array.isArray(body?.events),
+        requestedCount: Array.isArray(body?.events) ? body.events.length : 0,
+      },
+    })
     return new NextResponse(null, { status: 204 })
   }
   if (!consumeRateLimit(request, Math.min(body.events.length, MAX_BATCH))) {
