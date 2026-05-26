@@ -38,7 +38,7 @@ type WriteAnalyticsAuditInput = {
   bookingReference?: string | null
   propertySlug?: string | null
   occurredAt?: Date | null
-  meta?: Prisma.InputJsonValue
+  meta?: Prisma.InputJsonValue | Record<string, unknown>
 }
 
 /**
@@ -46,7 +46,7 @@ type WriteAnalyticsAuditInput = {
  */
 export async function writeAnalyticsAudit(input: WriteAnalyticsAuditInput): Promise<void> {
   try {
-    const meta: Prisma.InputJsonValue = input.meta ?? {}
+    const meta = (input.meta ?? {}) as Prisma.InputJsonValue
 
     await prisma.analyticsEventAudit.create({
       data: {

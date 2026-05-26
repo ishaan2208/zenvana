@@ -39,7 +39,11 @@ import {
 } from '@/lib/zenvanaGuestApi'
 import { toast } from 'sonner'
 import { track } from '@/lib/analytics/client'
-import { trackEventAction } from '@/app/actions/analytics'
+import {
+  trackBookingCompletedAction,
+  trackPaymentFailedAction,
+  trackPaymentInitiatedAction,
+} from '@/app/actions/analytics'
 
 const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
 
@@ -472,18 +476,17 @@ export default function CheckoutForm({
         ? { paid: true, transactionId }
         : { paid: false },
     })
-    trackEventAction(
-      'booking_completed',
-      {
-        bookingReference: data.bookingReference,
-        paymentMode: transactionId ? 'pay_now' : 'pay_at_property',
-        amount: effectiveTotalAmount,
+    trackBookingCompletedAction({
+      bookingReference: data.bookingReference,
+      propertySlug: slug,
+      paymentMode: transactionId ? 'pay_now' : 'pay_at_property',
+      amount: effectiveTotalAmount,
+      meta: {
         couponCode: appliedCoupon?.code ?? null,
         transactionId: transactionId ?? null,
         roomTypeName,
       },
-      slug,
-    ).catch(() => {})
+    }).catch(() => {})
 
     router.push(
       `/booking/confirmation?` +
@@ -627,6 +630,13 @@ export default function CheckoutForm({
       rzp.on('payment.failed', () => {
         setError('Payment failed or was cancelled.')
         setSubmitting(false)
+        trackPaymentFailedAction({
+          propertySlug: slug,
+          bookingReference: null,
+          paymentMode: 'pay_now',
+          amount: effectiveTotalAmount,
+          meta: { amountPaise, orderId, couponCode: appliedCoupon?.code ?? null },
+        }).catch(() => {})
         track(
           'payment_failed',
           { amount: effectiveTotalAmount, amountPaise, orderId, couponCode: appliedCoupon?.code ?? null },
@@ -635,6 +645,13 @@ export default function CheckoutForm({
       })
 
       rzp.open()
+      trackPaymentInitiatedAction({
+        propertySlug: slug,
+        bookingReference: null,
+        paymentMode: 'pay_now',
+        amount: effectiveTotalAmount,
+        meta: { amountPaise, orderId, couponCode: appliedCoupon?.code ?? null },
+      }).catch(() => {})
       track(
         'payment_initiated',
         {

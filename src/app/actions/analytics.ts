@@ -2,6 +2,11 @@
 
 import { recordEvent } from '@/lib/analytics/recorder'
 import { isAnalyticsEventName } from '@/lib/analytics/events'
+import {
+  recordBookingCompleted,
+  recordPaymentFailed,
+  recordPaymentInitiated,
+} from '@/lib/analytics/bookingOutcome'
 
 /**
  * Server-side event logger for use in trusted server paths (e.g. after Razorpay
@@ -22,4 +27,24 @@ export async function trackEventAction(
     propertySlug: propertySlug ?? null,
     source: 'server',
   })
+}
+
+type BookingOutcomeInput = {
+  bookingReference?: string | null
+  propertySlug: string
+  amount: number
+  paymentMode: 'pay_now' | 'pay_later' | 'pay_at_property'
+  meta?: Record<string, unknown>
+}
+
+export async function trackBookingCompletedAction(input: BookingOutcomeInput): Promise<void> {
+  await recordBookingCompleted(input)
+}
+
+export async function trackPaymentInitiatedAction(input: BookingOutcomeInput): Promise<void> {
+  await recordPaymentInitiated(input)
+}
+
+export async function trackPaymentFailedAction(input: BookingOutcomeInput): Promise<void> {
+  await recordPaymentFailed(input)
 }

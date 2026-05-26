@@ -39,7 +39,11 @@ import {
 } from '@/lib/zenvanaGuestApi'
 import { toast } from 'sonner'
 import { track } from '@/lib/analytics/client'
-import { trackEventAction } from '@/app/actions/analytics'
+import {
+  trackBookingCompletedAction,
+  trackPaymentFailedAction,
+  trackPaymentInitiatedAction,
+} from '@/app/actions/analytics'
 
 const MULTI_ROOM_STORAGE_KEY = 'zenvana_multi_room_booking'
 const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
@@ -423,17 +427,16 @@ export default function MultiRoomCheckoutForm({
         pointsToRedeem: appliedCoupon ? 0 : Math.floor(pointsToRedeem / 10) * 10,
       })
 
-      trackEventAction(
-        'booking_completed',
-        {
-          bookingReference: data.bookingReference,
-          paymentMode: 'pay_later',
-          amount: effectiveTotalAmount,
+      trackBookingCompletedAction({
+        bookingReference: data.bookingReference,
+        propertySlug: slug,
+        paymentMode: 'pay_later',
+        amount: effectiveTotalAmount,
+        meta: {
           couponCode: appliedCoupon?.code ?? null,
           roomTypeName,
         },
-        slug,
-      ).catch(() => {})
+      }).catch(() => {})
 
       pushConfirmation(data.bookingReference)
     } catch (err) {
@@ -494,19 +497,18 @@ export default function MultiRoomCheckoutForm({
               response.razorpay_signature,
               bookingPayload
             )
-            trackEventAction(
-              'booking_completed',
-              {
-                bookingReference: data.bookingReference,
-                paymentMode: 'pay_now',
-                amount: effectiveTotalAmount,
+            trackBookingCompletedAction({
+              bookingReference: data.bookingReference,
+              propertySlug: slug,
+              paymentMode: 'pay_now',
+              amount: effectiveTotalAmount,
+              meta: {
                 amountPaise,
                 couponCode: appliedCoupon?.code ?? null,
                 razorpayPaymentId: response.razorpay_payment_id,
                 roomTypeName,
               },
-              slug,
-            ).catch(() => {})
+            }).catch(() => {})
             setSubmitting(false)
             pushConfirmation(data.bookingReference)
           } catch (err) {
@@ -521,6 +523,13 @@ export default function MultiRoomCheckoutForm({
       rzp.on('payment.failed', () => {
         setError('Payment failed or was cancelled.')
         setSubmitting(false)
+        trackPaymentFailedAction({
+          propertySlug: slug,
+          bookingReference: null,
+          paymentMode: 'pay_now',
+          amount: effectiveTotalAmount,
+          meta: { orderId, couponCode: appliedCoupon?.code ?? null },
+        }).catch(() => {})
         track(
           'payment_failed',
           { amount: effectiveTotalAmount, orderId, couponCode: appliedCoupon?.code ?? null },
@@ -529,6 +538,13 @@ export default function MultiRoomCheckoutForm({
       })
 
       rzp.open()
+      trackPaymentInitiatedAction({
+        propertySlug: slug,
+        bookingReference: null,
+        paymentMode: 'pay_now',
+        amount: effectiveTotalAmount,
+        meta: { amountPaise, orderId, couponCode: appliedCoupon?.code ?? null },
+      }).catch(() => {})
       track(
         'payment_initiated',
         {

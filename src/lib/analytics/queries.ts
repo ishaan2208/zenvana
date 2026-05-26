@@ -512,6 +512,45 @@ export async function listRecentEvents(
   }))
 }
 
+export type RecentAuditRow = {
+  id: string
+  eventName: string
+  source: string
+  status: string
+  reasonCode: string
+  bookingReference: string | null
+  propertySlug: string | null
+  recordedAt: string
+}
+
+export async function listRecentAuditEvents(limit = 50): Promise<RecentAuditRow[]> {
+  const rows = await prisma.analyticsEventAudit.findMany({
+    orderBy: { recordedAt: 'desc' },
+    take: Math.min(limit, 200),
+    select: {
+      id: true,
+      eventName: true,
+      source: true,
+      status: true,
+      reasonCode: true,
+      bookingReference: true,
+      propertySlug: true,
+      recordedAt: true,
+    },
+  })
+
+  return rows.map((row) => ({
+    id: row.id.toString(),
+    eventName: row.eventName,
+    source: row.source,
+    status: row.status,
+    reasonCode: row.reasonCode,
+    bookingReference: row.bookingReference,
+    propertySlug: row.propertySlug,
+    recordedAt: row.recordedAt.toISOString(),
+  }))
+}
+
 export type SessionDetail = {
   id: string
   createdAt: string

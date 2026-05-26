@@ -14,6 +14,7 @@ import { JsonLd } from '@/components/JsonLd'
 import { GoogleAdsTag } from '@/components/GoogleAdsTag'
 import { SiteAnalytics, GtmNoscript } from '@/components/SiteAnalytics'
 import { InitialSplash } from '@/components/InitialSplash'
+import { PageViewTracker } from '@/components/analytics/PageViewTracker'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
@@ -182,6 +183,9 @@ export default function RootLayout({
         >
           <Analytics />
           <SiteAnalytics />
+          <Suspense fallback={null}>
+            <PageViewTracker />
+          </Suspense>
           <Suspense fallback={null}>
             <NavigationLoadingProvider>
               <AppToaster />

@@ -18,6 +18,7 @@ import {
   getTimeSeries,
   getTopProperties,
   getUtmTable,
+  listRecentAuditEvents,
   listRecentEvents,
   type DashboardFilters,
   type DashboardRange,
@@ -121,6 +122,11 @@ export async function fetchRecentEventsAction(
 ) {
   await requireAdmin()
   return listRecentEvents(limit, range, filters)
+}
+
+export async function fetchRecentAuditEventsAction(limit = 40) {
+  await requireAdmin()
+  return listRecentAuditEvents(limit)
 }
 
 export async function rebuildAnalyticsRollupsAction(

@@ -16,6 +16,7 @@ import {
   rebuildAnalyticsRollupsAction,
   fetchDashboardSummaryAction,
   fetchFunnelAction,
+  fetchRecentAuditEventsAction,
   fetchRecentEventsAction,
   fetchTimeSeriesAction,
   fetchTopPropertiesAction,
@@ -163,6 +164,7 @@ export function AnalyticsAdminClient({ authorized: initialAuthorized }: Props) {
           topProperties: fetchTopPropertiesAction,
           utm: fetchUtmTableAction,
           recent: fetchRecentEventsAction,
+          audit: fetchRecentAuditEventsAction,
         }}
       />
     </div>

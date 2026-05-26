@@ -6,6 +6,12 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { track } from '@/lib/analytics/client'
 
 const DEBOUNCE_MS = 300
+const IGNORED_PREFIXES = ['/internal', '/api']
+
+export function shouldTrackPath(pathname: string | null): boolean {
+  if (!pathname) return false
+  return !IGNORED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+}
 
 export function PageViewTracker() {
   const pathname = usePathname()
@@ -14,6 +20,7 @@ export function PageViewTracker() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    if (!shouldTrackPath(pathname)) return
     const fullPath = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : '')
     if (lastPathRef.current === fullPath) return
 

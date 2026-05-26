@@ -81,6 +81,7 @@ import type {
   DashboardRange,
   DashboardSummary,
   FunnelStep,
+  RecentAuditRow,
   RecentEventRow,
   TimeSeriesPoint,
   TopProperty,
@@ -99,6 +100,7 @@ type Loaders = {
   topProperties: (range: DashboardRange, filters?: DashboardFilters) => Promise<TopProperty[]>
   utm: (range: DashboardRange, filters?: DashboardFilters) => Promise<UtmRow[]>
   recent: (range: DashboardRange, filters?: DashboardFilters, limit?: number) => Promise<RecentEventRow[]>
+  audit: (limit?: number) => Promise<RecentAuditRow[]>
 }
 
 type KpiKey = 'sessions' | 'bookings' | 'conversion' | 'events'
@@ -342,6 +344,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
   const [topProperties, setTopProperties] = useState<TopProperty[]>([])
   const [utm, setUtm] = useState<UtmRow[]>([])
   const [recent, setRecent] = useState<RecentEventRow[]>([])
+  const [recentAudit, setRecentAudit] = useState<RecentAuditRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
   const [loading, startTransition] = useTransition()
@@ -371,7 +374,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
       try {
         setError(null)
         const L = loadersRef.current
-        const [a, s, f, t, p, u, r] = await Promise.all([
+        const [a, s, f, t, p, u, r, ra] = await Promise.all([
           L.activeUsers(),
           L.summary(range, filters),
           L.funnel(range, filters),
@@ -379,6 +382,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
           L.topProperties(range, filters),
           L.utm(range, filters),
           L.recent(range, filters, 100),
+          L.audit(40),
         ])
         setActiveUsers(a)
         setSummary(s)
@@ -387,6 +391,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
         setTopProperties(p)
         setUtm(u)
         setRecent(r)
+        setRecentAudit(ra)
         setUpdatedAt(new Date())
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
@@ -667,6 +672,19 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
             </CardHeader>
             <CardContent>
               <RecentEventsTable rows={recent} onPick={setActiveEvent} />
+            </CardContent>
+          </Card>
+
+          {/* Recent audit events */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CircleDot className="h-4 w-4 text-muted-foreground" />
+                Recent audit signals
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RecentAuditTable rows={recentAudit} />
             </CardContent>
           </Card>
         </>
@@ -1023,6 +1041,45 @@ function RecentEventsTable({ rows, onPick }: { rows: RecentEventRow[]; onPick: (
         </table>
       </ScrollArea>
     </div>
+  )
+}
+
+function RecentAuditTable({ rows }: { rows: RecentAuditRow[] }) {
+  if (!rows.length) return <EmptyHint>No audit events yet.</EmptyHint>
+
+  return (
+    <ScrollArea className="h-[280px] rounded-md border">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 z-10 bg-background/95 backdrop-blur">
+          <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+            <th className="px-3 py-2.5 font-semibold">When</th>
+            <th className="px-3 py-2.5 font-semibold">Event</th>
+            <th className="px-3 py-2.5 font-semibold">Status</th>
+            <th className="px-3 py-2.5 font-semibold">Reason</th>
+            <th className="px-3 py-2.5 font-semibold">Property</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className="border-t">
+              <td className="whitespace-nowrap px-3 py-2.5 text-xs text-muted-foreground" title={new Date(row.recordedAt).toLocaleString()}>
+                {relativeTime(row.recordedAt)}
+              </td>
+              <td className="px-3 py-2.5">
+                <span className="font-medium">{prettifyEventName(row.eventName)}</span>
+              </td>
+              <td className="px-3 py-2.5">
+                <Badge variant={row.status === 'accepted' ? 'secondary' : 'destructive'} className="text-[10px]">
+                  {row.status}
+                </Badge>
+              </td>
+              <td className="px-3 py-2.5 text-xs text-muted-foreground">{row.reasonCode}</td>
+              <td className="px-3 py-2.5 text-muted-foreground">{row.propertySlug ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </ScrollArea>
   )
 }
 
