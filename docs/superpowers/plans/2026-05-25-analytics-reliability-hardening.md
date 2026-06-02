@@ -56,6 +56,7 @@
 ### Task 1: Add Test Harness (Vitest) Before Behavior Changes
 
 **Files:**
+
 - Modify: `package.json`
 - Create: `vitest.config.ts`
 - Create: `tsconfig.vitest.json`
@@ -129,6 +130,7 @@ git commit -m "test(analytics): add vitest harness for reliability hardening"
 ### Task 2: Add Audit Table to Prisma Schema
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`
 - Create: `prisma/migrations/<timestamp>_add_analytics_event_audit/migration.sql`
 - Test: migration apply + Prisma client generation
@@ -175,10 +177,12 @@ model AnalyticsEventAudit {
 - [ ] **Step 4: Run migration and verify it passes**
 
 Run:
+
 - `npm run db:migrate -- --name add_analytics_event_audit`
 - `npm run db:generate`
 
 Expected:
+
 - migration succeeds
 - Prisma client now includes `analyticsEventAudit`.
 
@@ -194,6 +198,7 @@ git commit -m "feat(analytics): add event audit table for reliability diagnostic
 ### Task 3: Implement Central Audit Writer Module
 
 **Files:**
+
 - Create: `src/lib/analytics/audit.ts`
 - Test: `src/lib/analytics/__tests__/audit.test.ts`
 
@@ -299,6 +304,7 @@ git commit -m "feat(analytics): add audit writer and canonical reason codes"
 ### Task 4: Instrument Recorder Outcomes with Audit Writes
 
 **Files:**
+
 - Modify: `src/lib/analytics/recorder.ts`
 - Test: `src/lib/analytics/__tests__/recorder.test.ts`
 
@@ -337,7 +343,11 @@ Expected: FAIL because recorder does not call audit writer yet.
 
 ```ts
 // recorder.ts (pattern excerpt)
-import { AUDIT_REASON, AUDIT_STATUS, writeAnalyticsAudit } from '@/lib/analytics/audit'
+import {
+  AUDIT_REASON,
+  AUDIT_STATUS,
+  writeAnalyticsAudit,
+} from '@/lib/analytics/audit'
 
 // on invalid event
 await writeAnalyticsAudit({
@@ -382,6 +392,7 @@ git commit -m "feat(analytics): emit recorder audit rows for terminal outcomes"
 ### Task 5: Add `/api/track` Structured Observability + Audit Writes
 
 **Files:**
+
 - Modify: `src/app/api/track/route.ts`
 - Test: `src/app/api/track/__tests__/route.test.ts`
 
@@ -413,7 +424,11 @@ Expected: FAIL due to missing audit/log instrumentation assertions.
 
 ```ts
 // route.ts (pattern excerpt)
-import { AUDIT_REASON, AUDIT_STATUS, writeAnalyticsAudit } from '@/lib/analytics/audit'
+import {
+  AUDIT_REASON,
+  AUDIT_STATUS,
+  writeAnalyticsAudit,
+} from '@/lib/analytics/audit'
 
 if (!isAllowedOrigin(request)) {
   console.warn('[analytics][track] blocked origin', {
@@ -448,6 +463,7 @@ git commit -m "feat(analytics): add track route audit and structured failure log
 ### Task 6: Expand PageView Coverage to Global Layout with Safe Exclusions
 
 **Files:**
+
 - Modify: `src/components/analytics/PageViewTracker.tsx`
 - Modify: `src/app/layout.tsx`
 - Modify: `src/app/(booking)/layout.tsx`
@@ -519,6 +535,7 @@ git commit -m "feat(analytics): move pageview tracking to global layout with exc
 ### Task 7: Add Server-Authoritative Booking Outcome Helper
 
 **Files:**
+
 - Create: `src/lib/analytics/bookingOutcome.ts`
 - Test: `src/lib/analytics/__tests__/bookingOutcome.test.ts`
 
@@ -598,6 +615,7 @@ git commit -m "feat(analytics): add server booking outcome tracking helper"
 ### Task 8: Integrate Booking Helper into Checkout Flows + Add Audit Panel
 
 **Files:**
+
 - Modify: `src/app/(booking)/book/[slug]/checkout/CheckoutForm.tsx`
 - Modify: `src/app/(booking)/book/[slug]/checkout/MultiRoomCheckoutForm.tsx`
 - Modify: `src/lib/analytics/queries.ts`
@@ -665,11 +683,13 @@ export async function fetchRecentAuditEventsAction(limit = 50) {
 - [ ] **Step 4: Run tests and UI checks to verify it passes**
 
 Run:
+
 - `npm test -- src/lib/analytics/__tests__/checkout-outcome-mapping.test.ts`
 - `npm test -- src/lib/analytics/__tests__/bookingOutcome.test.ts src/lib/analytics/__tests__/recorder.test.ts`
 - `npm run lint`
 
 Expected:
+
 - tests PASS
 - lint PASS
 - internal analytics dashboard shows recent audit rows.
@@ -686,6 +706,7 @@ git commit -m "feat(analytics): wire server-authoritative booking tracking and a
 ### Task 9: End-to-End Verification and Production Readiness Checklist
 
 **Files:**
+
 - Modify: `docs/superpowers/specs/2026-05-24-analytics-reliability-hardening-design.md` (append verification evidence section)
 - Create: `docs/superpowers/plans/analytics-reliability-verification-notes.md`
 
@@ -702,6 +723,7 @@ git commit -m "feat(analytics): wire server-authoritative booking tracking and a
 - [ ] **Step 2: Run checks and capture current failures**
 
 Run:
+
 - `npm test`
 - `npm run lint`
 
@@ -713,10 +735,12 @@ Expected before fixes complete: at least one failure or missing verification not
 # Analytics Reliability Verification Notes
 
 ## Command Output
+
 - `npm test`: PASS
 - `npm run lint`: PASS
 
 ## Scenario Evidence
+
 - Single-room pay-at-property: PASS (bookingReference XYZ...)
 - Single-room pay-now: PASS
 - Multi-room pay-later: PASS
@@ -727,6 +751,7 @@ Expected before fixes complete: at least one failure or missing verification not
 - [ ] **Step 4: Re-run full checks to verify passing state**
 
 Run:
+
 - `npm test`
 - `npm run lint`
 - `npm run build`
