@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-03T00:00:00.000Z",
+  "title": "Design System: Zenvana Hotels",
+  "extensions": {
+    "colorMeta": {
+      "midnight-mirage": {
+        "role": "primary",
+        "displayName": "Midnight Mirage",
+        "canonical": "oklch(22% 0.08 250)",
+        "tonalRamp": ["#050810", "#0A0E1A", "#10172A", "#1A2236", "#001F3F", "#173872", "#2E3447", "#5C6478", "#8E96AA", "#C2C8D5"]
+      },
+      "praxeti-white": {
+        "role": "neutral",
+        "displayName": "Praxeti White",
+        "canonical": "oklch(96% 0.02 110)",
+        "tonalRamp": ["#BCC2A2", "#DDE0C9", "#EDEFE0", "#F6F7ED", "#FBFCF6", "#FCFDF8", "#FDFEF9", "#FEFEFA", "#FFFFFB", "#FFFFFF"]
+      },
+      "spring-accent": {
+        "role": "accent",
+        "displayName": "Spring Accent",
+        "canonical": "oklch(82% 0.18 115)",
+        "tonalRamp": ["#3D4A0A", "#5A6E12", "#7A9220", "#9AB62E", "#B8D43C", "#DBE64C", "#E2ED6E", "#EAF290", "#F2F7B2", "#FAFCD4"]
+      },
+      "book-green": {
+        "role": "success",
+        "displayName": "Book Green",
+        "canonical": "oklch(45% 0.14 155)",
+        "tonalRamp": ["#042818", "#063520", "#0A4028", "#0F5032", "#14603C", "#00804C", "#339966", "#66B380", "#99CC99", "#CCE6CC"]
+      },
+      "editorial-gold": {
+        "role": "tertiary",
+        "displayName": "Editorial Gold",
+        "canonical": "oklch(72% 0.10 85)",
+        "tonalRamp": ["#3D3010", "#5A4818", "#7E6628", "#A8893E", "#C8A85A", "#D8C075", "#E8D693", "#F4E8C2", "#FBF6E8", "#FDFBF2"]
+      },
+      "nuit-blanche": {
+        "role": "secondary",
+        "displayName": "Nuit Blanche",
+        "canonical": "oklch(38% 0.12 260)",
+        "tonalRamp": ["#081428", "#0C1E3C", "#102855", "#173872", "#1E488F", "#5B85C2", "#94B0DA", "#CDD9EE", "#E8EEF8", "#F2F6FC"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(12% 0.02 260)",
+        "tonalRamp": ["#020408", "#050810", "#0A0E1A", "#10172A", "#1A2236", "#2E3447", "#5C6478", "#8E96AA", "#C2C8D5", "#E2E5EC"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headlines, property names, editorial moments." },
+      "headline": { "displayName": "Headline", "purpose": "Section titles, blog h2." },
+      "title": { "displayName": "Title", "purpose": "Card titles, UI subheads via Lexend." },
+      "body": { "displayName": "Body", "purpose": "Prose, descriptions, form labels." },
+      "label": { "displayName": "Label", "purpose": "Short uppercase labels; use sparingly." }
+    },
+    "shadows": [
+      { "name": "soft", "value": "0 8px 30px rgba(0, 31, 63, 0.08)", "purpose": "Default card hover, blog cards." },
+      { "name": "card", "value": "0 10px 30px rgba(0, 31, 63, 0.10)", "purpose": "Quiet cards, prose images." },
+      { "name": "editorial", "value": "0 24px 80px -20px rgba(8, 17, 31, 0.45)", "purpose": "Hero photography frames." },
+      { "name": "gold-glow", "value": "0 0 0 1px rgba(200, 168, 90, 0.4), 0 18px 60px -25px rgba(200, 168, 90, 0.45)", "purpose": "Signature tier highlights only." }
+    ],
+    "motion": [
+      { "name": "ease-editorial", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Default editorial transitions and fade-up entrances." },
+      { "name": "ease-out", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Hover and state changes." },
+      { "name": "duration-slow", "value": "700ms", "purpose": "Image scale on editorial hover." },
+      { "name": "duration-fast", "value": "200ms", "purpose": "Button and link feedback." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "2xl", "value": "1400px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main conversion CTA: book stay, checkout confirm.",
+      "html": "<button class=\"ds-btn-primary\">Book your stay</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 9999px; padding: 12px 20px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; background: #001F3F; color: #F6F7ED; cursor: pointer; transition: opacity 0.2s cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-primary:hover { opacity: 0.95; } .ds-btn-primary:focus-visible { outline: 2px solid #DBE64C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Light Button",
+      "kind": "button",
+      "refersTo": "button-light",
+      "description": "Secondary action on dark or photo backgrounds.",
+      "html": "<button class=\"ds-btn-light\">View properties</button>",
+      "css": ".ds-btn-light { display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(246, 247, 237, 0.7); border-radius: 9999px; padding: 12px 20px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; background: rgba(246, 247, 237, 0.9); color: #001F3F; cursor: pointer; transition: background 0.2s ease; } .ds-btn-light:hover { background: #FFFFFF; } .ds-btn-light:focus-visible { outline: 2px solid #DBE64C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Book Input",
+      "kind": "input",
+      "refersTo": "book-input",
+      "description": "Booking bar date and guest fields.",
+      "html": "<input class=\"ds-book-input\" type=\"text\" placeholder=\"Check-in date\" aria-label=\"Check-in date\" />",
+      "css": ".ds-book-input { width: 100%; height: 48px; border-radius: 1rem; border: 1px solid rgba(0, 31, 63, 0.15); background: rgba(246, 247, 237, 0.85); padding: 0 16px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: #001F3F; outline: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; } .ds-book-input::placeholder { color: #3A4F66; } .ds-book-input:focus-visible { border-color: #DBE64C; box-shadow: 0 0 0 3px rgba(219, 230, 76, 0.25); }"
+    },
+    {
+      "name": "Quiet Card",
+      "kind": "card",
+      "refersTo": "quiet-card",
+      "description": "Elevated content container with soft editorial shadow.",
+      "html": "<div class=\"ds-quiet-card\"><h3 class=\"ds-quiet-card-title\">Rosewood</h3><p class=\"ds-quiet-card-body\">Boutique comfort on Rajpur Road with rooftop views.</p></div>",
+      "css": ".ds-quiet-card { border-radius: 1.5rem; border: 1px solid rgba(0, 31, 63, 0.12); background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(8px); padding: 24px; box-shadow: 0 10px 30px rgba(0, 31, 63, 0.06); } .ds-quiet-card-title { font-family: Fraunces, Georgia, serif; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; color: #001F3F; margin: 0 0 8px; } .ds-quiet-card-body { font-family: Inter, sans-serif; font-size: 0.9375rem; line-height: 1.75; color: #3A4F66; margin: 0; }"
+    },
+    {
+      "name": "Tier Pill Essential",
+      "kind": "chip",
+      "refersTo": "button-primary",
+      "description": "Property tier badge for Essential tier.",
+      "html": "<span class=\"ds-tier-pill\">Essential</span>",
+      "css": ".ds-tier-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; border: 1px solid rgba(110, 170, 90, 0.4); background: rgba(110, 170, 90, 0.12); padding: 4px 12px; font-family: Inter, sans-serif; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.2em; color: hsl(110, 38%, 48%); }"
+    },
+    {
+      "name": "Site Link",
+      "kind": "nav",
+      "refersTo": "button-light",
+      "description": "Primary navigation text link.",
+      "html": "<a class=\"ds-site-link\" href=\"#\">Hotels</a>",
+      "css": ".ds-site-link { font-family: Inter, sans-serif; font-size: 0.875rem; letter-spacing: 0.01em; color: rgba(0, 31, 63, 0.8); text-decoration: none; transition: color 0.2s ease; } .ds-site-link:hover { color: #001F3F; } .ds-site-link:focus-visible { outline: 2px solid #DBE64C; outline-offset: 2px; border-radius: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Considered Stay",
+    "overview": "Zenvana's visual system is editorial hospitality for the Himalayan foothills: serif display type, sand-and-ink neutrals, photography-forward layouts, and restrained accent color. It reads like an Indian boutique hotel that trusts its guests to notice quality without being sold to.",
+    "keyCharacteristics": [
+      "Serif editorial display (Fraunces) paired with Inter body",
+      "Sand background with midnight ink text; spring green accent used sparingly",
+      "Pill-shaped CTAs, large corner radii, soft editorial shadows",
+      "Photography-first heroes with mandatory contrast scrims",
+      "Tier accents for property differentiation",
+      "Motion with full prefers-reduced-motion degradation"
+    ],
+    "rules": [
+      { "name": "The Scrim Rule", "body": "Text over photography must always sit on a scrim or overlay that guarantees WCAG AA contrast.", "section": "colors" },
+      { "name": "The One Accent Rule", "body": "Spring green and editorial gold combined occupy ≤15% of any viewport.", "section": "colors" },
+      { "name": "The Weight Rule", "body": "Body copy never uses font-weight below 400.", "section": "typography" },
+      { "name": "The Serif Ceiling Rule", "body": "Display headings max at clamp 3.75rem (~60px).", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Shadows appear as a response to state, not as permanent decoration.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Fraunces for display headlines and Inter for body",
+      "Do apply hero scrims whenever type sits over photography",
+      "Do lazy-load images and respect variable bandwidth on Indian mobile",
+      "Do provide full keyboard and screen-reader paths through booking checkout",
+      "Do degrade all motion under prefers-reduced-motion"
+    ],
+    "donts": [
+      "Don't use OTA-style price-first grids or impersonal listing cards",
+      "Don't ship SaaS template patterns: gradient heroes, metric blocks, identical icon-card grids",
+      "Don't use luxury cliché: gold gradient text, thin gray type over photos",
+      "Don't add eyebrow kickers above every section or numbered scaffolding without purpose",
+      "Don't use side-stripe borders on cards or alerts",
+      "Don't gate content visibility on animation classes"
+    ]
+  }
+}

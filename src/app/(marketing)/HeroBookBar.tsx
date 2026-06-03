@@ -155,8 +155,14 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
     router.push(roomsUrl)
   }
 
+  const submitHint = !slug
+    ? 'Select a property to continue'
+    : !isCheckOutValid
+      ? 'Choose valid check-in and check-out dates'
+      : null
+
   return (
-    <form onSubmit={handleSubmit} className="w-full">
+    <form onSubmit={handleSubmit} className="w-full" aria-label="Book your stay">
       <div
         className={cn(
           'flex flex-col gap-2 rounded-lg border bg-card p-3 text-card-foreground shadow-sm',
@@ -171,7 +177,12 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                 <MapPinned className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
                 <SelectValue placeholder="Choose property" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent
+                position="popper"
+                sideOffset={6}
+                collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+                className="max-h-[min(16rem,calc(100dvh-10rem))] w-[var(--radix-select-trigger-width)]"
+              >
                 {properties.map((p) => (
                   <SelectItem key={p.slug} value={p.slug}>
                     {p.publicName}
@@ -194,7 +205,12 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                 {checkIn ? formatDate(checkIn) : 'Check-in'}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent
+              className="w-auto max-h-[min(20rem,calc(100dvh-10rem))] overflow-y-auto p-0"
+              align="start"
+              sideOffset={6}
+              collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+            >
               <Calendar
                 mode="single"
                 selected={checkIn}
@@ -225,7 +241,12 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                 {checkOut ? formatDate(checkOut) : 'Check-out'}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent
+              className="w-auto max-h-[min(20rem,calc(100dvh-10rem))] overflow-y-auto p-0"
+              align="start"
+              sideOffset={6}
+              collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+            >
               <Calendar
                 mode="single"
                 selected={checkOut}
@@ -242,7 +263,12 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
             <SelectTrigger className="h-10 w-full border-input bg-background sm:w-[90px]">
               <SelectValue placeholder="Rooms" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent
+              position="popper"
+              sideOffset={6}
+              collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+              className="max-h-[min(16rem,calc(100dvh-10rem))]"
+            >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <SelectItem key={n} value={String(n)}>
                   {n} room{n !== 1 ? 's' : ''}
@@ -256,7 +282,12 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
               <Users className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
               <SelectValue placeholder={useGuestsPerRoomMode ? 'Guests per room' : 'Guests'} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent
+              position="popper"
+              sideOffset={6}
+              collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+              className="max-h-[min(16rem,calc(100dvh-10rem))]"
+            >
               {useGuestsPerRoomMode ? (
                 [1, 2, 3].map((n) => (
                   <SelectItem key={n} value={String(n)}>
@@ -277,6 +308,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
             type="submit"
             disabled={!canSubmit}
             className="h-10 shrink-0 w-full md:w-fit"
+            aria-describedby={submitHint ? 'hero-book-hint' : undefined}
             onMouseEnter={prefetchRooms}
             onFocus={prefetchRooms}
           >
@@ -286,11 +318,17 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
         </div>
       </div>
 
-      {!isCheckOutValid && checkIn && checkOut && (
+      {submitHint ? (
+        <p id="hero-book-hint" className="mt-2 text-xs text-white/90" role="status">
+          {submitHint}
+        </p>
+      ) : null}
+
+      {!isCheckOutValid && checkIn && checkOut && slug ? (
         <p className="mt-2 text-xs text-destructive">
           Check-out must be after check-in.
         </p>
-      )}
+      ) : null}
     </form>
   )
 }

@@ -6,6 +6,7 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarCheck,
+  ChevronDown,
   Clock,
   Crown,
   Gem,
@@ -236,7 +237,6 @@ export default async function HomePage() {
       <StayDirectSection />
       <DiningSection />
       <WeddingsTeaserSection />
-      <GallerySection />
       <Suspense fallback={<GuestVoicesSectionFallback />}>
         <GuestVoicesSection />
       </Suspense>
@@ -383,8 +383,11 @@ function WhyZenvanaSection() {
           <div className="editorial-eyebrow">A note from the owner</div>
           <div className="rule-gold mt-3" />
           <h2 className="editorial-display mt-6 text-3xl font-semibold sm:text-4xl lg:text-5xl">
-            Best Hotel in Dehradun · Zenvana on Rajpur Road
+            A small collection on Rajpur Road
           </h2>
+          <p className="sr-only">
+            Best hotel in Dehradun — Zenvana Hotels boutique stays near Mussoorie.
+          </p>
           <p className="mt-4 text-base text-muted-foreground sm:text-lg">
             A serene boutique collection at the foothills of Mussoorie.
           </p>
@@ -441,8 +444,7 @@ function PropertyPyramidSection({ properties }: { properties: PublicPropertyList
       <div className="container-shell section-pad">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
-            <div className="editorial-eyebrow">The collection</div>
-            <h2 className="editorial-display mt-4 text-3xl font-semibold sm:text-4xl lg:text-5xl">
+            <h2 className="editorial-display text-3xl font-semibold sm:text-4xl lg:text-5xl">
               Five hotels. One quiet stretch of road.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
@@ -603,7 +605,7 @@ function StayDirectSection() {
                       <Icon className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-gold-200/90">
+                      <h3 className="text-sm font-semibold leading-snug text-gold-200">
                         {title}
                       </h3>
                       <p className="mt-2 text-sm leading-7 text-white/80">
@@ -648,8 +650,7 @@ function DiningSection() {
           </div>
 
           <div className="order-1 lg:order-2 lg:col-span-5">
-            <div className="editorial-eyebrow">Dining</div>
-            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
+            <h2 className="editorial-display text-3xl sm:text-4xl lg:text-5xl">
               An evening in Dehradun, slowed down by a few floors of altitude.
             </h2>
             <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
@@ -682,8 +683,7 @@ function WeddingsTeaserSection() {
       <div className="container-shell section-pad">
         <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
           <div className="lg:col-span-5">
-            <div className="editorial-eyebrow">Celebrations</div>
-            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
+            <h2 className="editorial-display text-3xl sm:text-4xl lg:text-5xl">
               The only Rajpur Road brand that can absorb a 150-room weekend.
             </h2>
             <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
@@ -740,59 +740,6 @@ function WeddingsTeaserSection() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ──────────────────────────────────────────────────────────────
- * GALLERY
- * ────────────────────────────────────────────────────────────── */
-function GallerySection() {
-  const galleryImages = [
-    '/images/dehradun/Rosewood.png',
-    '/images/dehradun/silkwood .png',
-    '/images/dehradun/MonteVerde.png',
-    '/images/dehradun/Lucury room 1.png',
-    '/images/dehradun/cherrwood building pic 1.png',
-    '/images/dehradun/SILVER W BUILDING PIC.png',
-    '/images/dehradun/feasta.png',
-    '/images/dehradun/restaurantImage.png',
-  ]
-
-  return (
-    <section className="section-rule">
-      <div className="container-shell section-pad">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <div className="editorial-eyebrow">Gallery</div>
-            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
-              A visual feel for the stay.
-            </h2>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Real interiors, real F&amp;B, real evenings. No stock library.
-            </p>
-          </div>
-          <Link href="/hotels" className="site-button-light w-fit">
-            View full gallery
-          </Link>
-        </div>
-
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-          {galleryImages.map((src, idx) => (
-            <div key={`${src}-${idx}`} className="photo-card aspect-[4/3]">
-              <Image
-                src={src}
-                alt="Zenvana Hotels Dehradun · interior"
-                fill
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                quality={60}
-                className="object-cover transition duration-500 ease-editorial hover:scale-[1.03]"
-              />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.16),transparent_60%),linear-gradient(to_bottom,_rgba(0,0,0,0.06),rgba(0,0,0,0.1))]" />
-            </div>
-          ))}
         </div>
       </div>
     </section>
@@ -860,8 +807,7 @@ function LocationSection({
       <div className="container-shell section-pad">
         <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
           <div className="lg:col-span-5">
-            <div className="editorial-eyebrow">Location</div>
-            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
+            <h2 className="editorial-display text-3xl sm:text-4xl lg:text-5xl">
               Where the city meets the hills.
             </h2>
             <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg">
@@ -911,8 +857,7 @@ function HomeFaqSection() {
     <section className="section-rule">
       <div className="container-shell section-pad">
         <div className="mx-auto max-w-3xl text-center">
-          <div className="editorial-eyebrow">Useful to know</div>
-          <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
+          <h2 className="editorial-display text-3xl sm:text-4xl lg:text-5xl">
             Quiet answers to common questions.
           </h2>
           <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg">
@@ -924,10 +869,13 @@ function HomeFaqSection() {
         <div className="mx-auto mt-10 grid max-w-3xl gap-3">
           {HOME_FAQS.map((faq) => (
             <details key={faq.question} className="group quiet-card p-5 sm:p-6">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-medium tracking-tight text-foreground sm:text-lg">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-medium tracking-tight text-foreground sm:text-lg [&::-webkit-details-marker]:hidden">
                 <span>{faq.question}</span>
-                <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition group-open:rotate-45">
-                  +
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition group-open:rotate-180"
+                  aria-hidden
+                >
+                  <ChevronDown className="h-4 w-4" />
                 </span>
               </summary>
               <p className="mt-4 text-sm leading-7 text-muted-foreground">
@@ -950,8 +898,7 @@ function BookingCtaSection() {
       <div className="container-shell section-pad">
         <div className="overflow-hidden rounded-[2rem] bg-signature-gradient px-6 py-12 text-white sm:px-8 sm:py-14 lg:px-10 lg:py-16">
           <div className="text-center">
-            <div className="editorial-eyebrow text-white/70">Booking</div>
-            <h2 className="editorial-display mt-4 text-3xl sm:text-4xl lg:text-5xl">
+            <h2 className="editorial-display text-3xl sm:text-4xl lg:text-5xl">
               A quieter stay starts with a clean booking.
             </h2>
             <p className="mt-4 text-sm leading-7 text-white/80 sm:text-base">
@@ -1005,11 +952,11 @@ function MobileBookingCta() {
           <WhatsAppIcon className="h-5 w-5" />
         </a>
         <Link
-          href="/hotels"
+          href="#book"
           className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-foreground text-sm font-medium text-background transition hover:opacity-95"
         >
           <CalendarCheck className="h-4 w-4" />
-          Browse hotels
+          Book your stay
         </Link>
       </div>
     </div>

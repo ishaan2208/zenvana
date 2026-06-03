@@ -284,10 +284,7 @@
   }
 
   .gold-text {
-    background: linear-gradient(135deg, #E8D693 0%, #C8A85A 50%, #8C6E2B 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: hsl(var(--gold));
   }
 
   .underline-gold {

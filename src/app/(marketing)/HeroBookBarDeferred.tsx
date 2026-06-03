@@ -19,7 +19,7 @@ export function HeroBookBarDeferred({ properties }: { properties: HeroBookBarPro
 
   if (!ready) {
     return (
-      <div className="w-full" aria-busy="true">
+      <div id="book" className="w-full scroll-mt-28" aria-busy="true">
         <div className="flex min-h-[11rem] flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-3 shadow-sm sm:min-h-[4.5rem] sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <div className="h-10 flex-1 animate-pulse rounded-md bg-white/10 sm:min-w-[8rem]" />
           <div className="h-10 flex-1 animate-pulse rounded-md bg-white/10 sm:min-w-[7rem]" />
@@ -34,5 +34,9 @@ export function HeroBookBarDeferred({ properties }: { properties: HeroBookBarPro
     )
   }
 
-  return <HeroBookBar properties={properties} />
+  return (
+    <div id="book" className="scroll-mt-28">
+      <HeroBookBar properties={properties} />
+    </div>
+  )
 }
