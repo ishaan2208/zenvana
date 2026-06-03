@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     description:
       'Explore the story behind Zenvana Hotels and discover what makes our Dehradun stay experience warm and memorable.',
     type: 'website',
-    images: [{ url: '/images/about-hero.jpg', alt: 'Zenvana Hotels About Us hero banner' }],
+    images: [{ url: '/images/dehradun/dehradun-hero.jpg', alt: 'Zenvana Hotels About Us hero banner' }],
   },
 }
 

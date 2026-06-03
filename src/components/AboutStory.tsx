@@ -45,9 +45,8 @@ export function AboutStory() {
 
         <div className="lg:col-span-5">
           <div className="editorial-image quiet-card relative aspect-[4/5]">
-            {/* REPLACE WITH YOUR IMAGE */}
             <Image
-              src="/images/about-story.jpg"
+              src="/images/dehradun/Reception (1).png"
               alt="Elegant portrait-style image showing hotel interior details"
               fill
               className="object-cover"

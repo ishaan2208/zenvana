@@ -15,18 +15,16 @@ export function AboutSplit() {
       <div className="container-shell pb-16 pt-14 sm:pb-20 sm:pt-16 lg:pb-24 lg:pt-20">
         <div className="grid gap-5 md:grid-cols-2">
           <div className="editorial-image quiet-card relative aspect-[16/11]">
-            {/* REPLACE WITH YOUR IMAGE */}
             <Image
-              src="/images/about-interior.jpg"
+              src="/images/dehradun/Reception Desk (2).png"
               alt="Hotel interior seating and decor with warm lighting"
               fill
               className="object-cover"
             />
           </div>
           <div className="editorial-image quiet-card relative aspect-[16/11]">
-            {/* REPLACE WITH YOUR IMAGE */}
             <Image
-              src="/images/about-view.jpg"
+              src="/images/dehradun/foothills-editorial.jpg"
               alt="Balcony and scenic view from the hotel property"
               fill
               className="object-cover"
