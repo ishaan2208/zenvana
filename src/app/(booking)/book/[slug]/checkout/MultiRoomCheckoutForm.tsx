@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { useAppRouter } from '@/hooks/useAppRouter'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   BedDouble,
   CalendarRange,
@@ -147,6 +147,7 @@ export default function MultiRoomCheckoutForm({
   const [couponBusy, setCouponBusy] = useState(false)
   const [couponError, setCouponError] = useState<string | null>(null)
   const applyButtonRef = useRef<HTMLButtonElement>(null)
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     try {
@@ -827,6 +828,7 @@ export default function MultiRoomCheckoutForm({
                     onClick={handleApplyCoupon}
                     disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim() || Boolean(appliedCoupon)}
                     whileTap={
+                      !reduceMotion &&
                       !appliedCoupon && !couponBusy && couponCodeInput.trim() && pointsToRedeem === 0
                         ? { scale: 0.96 }
                         : undefined
@@ -836,7 +838,7 @@ export default function MultiRoomCheckoutForm({
                         : 'bg-primary text-primary-foreground'
                       }`}
                   >
-                    {couponBusy && (
+                    {couponBusy && !reduceMotion && (
                       <motion.span
                         aria-hidden
                         initial={{ x: '-130%' }}

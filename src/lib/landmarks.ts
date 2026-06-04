@@ -135,7 +135,7 @@ function maybeNumberField(obj: unknown, ...keys: string[]): number | undefined {
   return undefined
 }
 
-function normalizeLandmark(raw: unknown): Landmark | null {
+export function normalizeLandmark(raw: unknown): Landmark | null {
   if (!raw) return null
   if (typeof raw === 'string') {
     const name = raw.trim()
@@ -146,8 +146,8 @@ function normalizeLandmark(raw: unknown): Landmark | null {
     const name = maybeStringField(raw, 'name', 'title', 'label', 'place')
     if (!name) return null
     const category = maybeStringField(raw, 'category', 'type', 'tag')
-    const lat = maybeNumberField(raw, 'latitude', 'lat')
-    const lng = maybeNumberField(raw, 'longitude', 'lng', 'lon')
+    const lat = maybeNumberField(raw, 'lat', 'latitude')
+    const lng = maybeNumberField(raw, 'lng', 'lon', 'longitude')
     return {
       slug: slugifyLandmark(name),
       name,
@@ -157,6 +157,67 @@ function normalizeLandmark(raw: unknown): Landmark | null {
     }
   }
   return null
+}
+
+/** Normalize stored JSON — array, wrapped object, or JSON string. */
+export function coerceLandmarksArray(landmarks: unknown): unknown[] {
+  if (landmarks == null) return []
+  if (typeof landmarks === 'string') {
+    try {
+      return coerceLandmarksArray(JSON.parse(landmarks))
+    } catch {
+      return []
+    }
+  }
+  if (Array.isArray(landmarks)) return landmarks
+  if (typeof landmarks === 'object') {
+    const o = landmarks as Record<string, unknown>
+    for (const key of ['landmarks', 'items', 'nearby', 'places']) {
+      const nested = o[key]
+      if (Array.isArray(nested)) return nested
+    }
+  }
+  return []
+}
+
+/** Short line for pickers (e.g. hero book bar): first landmark names, middot-separated. */
+export function formatPropertyLandmarkHint(landmarks: unknown, maxItems = 3): string | undefined {
+  const list = coerceLandmarksArray(landmarks)
+  if (list.length === 0) return undefined
+  const names: string[] = []
+  for (const raw of list) {
+    const lm = normalizeLandmark(raw)
+    if (!lm || names.includes(lm.name)) continue
+    names.push(lm.name)
+    if (names.length >= maxItems) break
+  }
+  if (names.length === 0) return undefined
+  return names.join(' · ')
+}
+
+export type PropertyLandmarkHintInput = {
+  landmarks?: unknown
+  latitude?: number | null
+  longitude?: number | null
+}
+
+/** Profile landmarks first; otherwise nearest curated anchors from map coordinates. */
+export function buildPropertyLandmarkHint(
+  input: PropertyLandmarkHintInput,
+  maxItems = 3,
+): string | undefined {
+  const fromProfile = formatPropertyLandmarkHint(input.landmarks, maxItems)
+  if (fromProfile) return fromProfile
+
+  const lat = input.latitude
+  const lng = input.longitude
+  if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return undefined
+  }
+
+  const nearby = nearestLandmarksForMap(lat, lng, maxItems)
+  if (nearby.length === 0) return undefined
+  return nearby.map((l) => l.name).join(' · ')
 }
 
 function dedupeBySlug(landmarks: Landmark[]): Landmark[] {

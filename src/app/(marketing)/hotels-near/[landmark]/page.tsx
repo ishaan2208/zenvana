@@ -193,7 +193,7 @@ export default async function HotelsNearLandmarkPage({ params }: Props) {
               Hotels near <span className="gold-text">{lm.name}</span>
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/82 sm:text-lg sm:leading-8">
-              The Zenvana collection sits a short drive from {lm.name}, with five
+              The Zenvana collection sits a short drive from {lm.name}, with seven
               boutique hotels on or near Rajpur Road. Below: every property sorted by
               estimated distance, with photos, drive time, and direct booking.
             </p>

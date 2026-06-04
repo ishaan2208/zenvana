@@ -50,7 +50,7 @@ const FAQS = [
   {
     question: 'How many rooms can Zenvana absorb for a single event?',
     answer:
-      'Across our five properties on Rajpur Road we have 150 rooms in total — enough to host weddings of 200–300 guests as a full cluster takeover, plus a rooftop hall that seats up to 150 for the ceremony, sangeet, or reception itself. For larger headcounts we will work with you on a phased plan.',
+      'Across our seven properties on Rajpur Road we have 150 rooms in total — enough to host weddings of 200–300 guests as a full cluster takeover, plus a rooftop hall that seats up to 150 for the ceremony, sangeet, or reception itself. For larger headcounts we will work with you on a phased plan.',
   },
   {
     question: 'Do you handle catering in-house?',
@@ -60,7 +60,7 @@ const FAQS = [
   {
     question: 'Can guests stay across multiple Zenvana properties for one event?',
     answer:
-      'Absolutely — that is our core advantage. With five hotels on the same stretch of Rajpur Road, you can place close family at one property and out-of-town guests at another, with shared transport between them.',
+      'Absolutely — that is our core advantage. With seven hotels on the same stretch of Rajpur Road, you can place close family at one property and out-of-town guests at another, with shared transport between them.',
   },
   {
     question: 'What kind of events do you typically host?',
@@ -117,7 +117,7 @@ export default function WeddingsPage() {
       sub: 'Across the Zenvana cluster on Rajpur Road',
     },
     {
-      headline: '5 properties',
+      headline: '7 properties',
       sub: 'All within a short drive on Rajpur Road',
     },
     {
@@ -160,7 +160,7 @@ export default function WeddingsPage() {
               <span className="gold-text">150-room weekend.</span>
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-white/85 sm:text-lg sm:leading-8">
-              Five hotels. One quiet stretch of Rajpur Road. A single event team. One
+              Seven hotels. One quiet stretch of Rajpur Road. A single event team. One
               kitchen. One proposal. The cluster math that no single boutique on this road
               can match — and a softer, more personal alternative to the big resort
               venues.

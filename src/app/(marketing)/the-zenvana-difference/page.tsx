@@ -81,7 +81,7 @@ export default function ZenvanaDifferencePage() {
               The Zenvana difference
             </span>
             <h1 className="editorial-display mt-6 text-4xl font-semibold leading-[0.94] sm:text-5xl lg:text-7xl">
-              Five hotels.<br />
+              Seven hotels.<br />
               <span className="gold-text">One operator.</span><br />
               The same hands on the road.
             </h1>
@@ -117,7 +117,7 @@ export default function ZenvanaDifferencePage() {
         <Container className="py-8 sm:py-10">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
             {[
-              { headline: '5', sub: 'Properties on Rajpur Road' },
+              { headline: '7', sub: 'Properties on Rajpur Road' },
               { headline: '150', sub: 'Rooms across the cluster' },
               { headline: '1', sub: 'Owner-operator. No franchise layer.' },
               { headline: '0', sub: 'OTA commission on direct bookings' },
@@ -345,7 +345,7 @@ export default function ZenvanaDifferencePage() {
               {
                 icon: Building2,
                 title: 'Zenvana PMS',
-                text: 'Our in-house property management system runs check-ins, housekeeping, room availability, and rate calendars across all five properties from one shift screen.',
+                text: 'Our in-house property management system runs check-ins, housekeeping, room availability, and rate calendars across all seven properties from one shift screen.',
               },
               {
                 icon: Cog,
@@ -462,7 +462,7 @@ export default function ZenvanaDifferencePage() {
               The next chapter is uphill.
             </h2>
             <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg">
-              Five hotels on Rajpur Road is the foundation. The road from here climbs.
+              Seven hotels on Rajpur Road is the foundation. The road from here climbs.
             </p>
           </div>
 

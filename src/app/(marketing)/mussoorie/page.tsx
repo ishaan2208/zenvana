@@ -76,7 +76,7 @@ const FAQS = [
   {
     question: 'Where can I stay until then?',
     answer:
-      'Our five hotels on Rajpur Road, Dehradun are open and operating today. Many wait-list guests use the Dehradun cluster as a base while planning to be among the first into Mussoorie when it opens.',
+      'Our seven hotels on Rajpur Road, Dehradun are open and operating today. Many wait-list guests use the Dehradun cluster as a base while planning to be among the first into Mussoorie when it opens.',
   },
   {
     question: 'Is the wait-list binding?',
@@ -379,7 +379,7 @@ export default function MussooriePage() {
                   Stay with us in Dehradun while the foothills get ready.
                 </h2>
                 <p className="mt-5 text-sm leading-7 text-white/82 sm:text-base sm:leading-8">
-                  Five boutique hotels on or near Rajpur Road. Five different moods. The
+                  Seven boutique hotels on or near Rajpur Road. Seven different moods. The
                   same operating standard the Mussoorie flagship will be built on.
                 </p>
               </div>

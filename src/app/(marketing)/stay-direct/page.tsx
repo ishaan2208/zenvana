@@ -143,7 +143,7 @@ export default function StayDirectPage() {
       ota: 'partial' as const,
     },
     {
-      feature: 'Loyalty across all 5 hotels',
+      feature: 'Loyalty across all 7 hotels',
       direct: true,
       ota: false,
     },
@@ -309,7 +309,7 @@ export default function StayDirectPage() {
               {[
                 {
                   title: 'Pick the property and dates',
-                  text: 'Compare the five hotels on the listing page or jump straight to the one you have in mind.',
+                  text: 'Compare the seven hotels on the listing page or jump straight to the one you have in mind.',
                 },
                 {
                   title: 'Reserve with the direct booking engine',

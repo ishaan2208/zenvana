@@ -94,10 +94,16 @@ export function webSiteJsonLd() {
 /**
  * Hotel chain / collection schema for the homepage.
  * Communicates that Zenvana is a multi-property brand, not a single hotel.
+ *
+ * NOTE: aggregateRating is intentionally NOT defaulted here. Google's review
+ * snippet policy requires review markup to reflect genuine, verifiable ratings —
+ * never inject a placeholder. Pass a real, sourced rating via `opts` only.
  */
 export function hotelGroupJsonLd(
   properties: Array<{ slug: string; publicName: string; heroImageUrl?: string }> = [],
+  opts: { aggregateRating?: { ratingValue: string | number; reviewCount: string | number } } = {},
 ) {
+  const { aggregateRating } = opts
   return {
     '@context': 'https://schema.org',
     '@type': 'HotelGroup',
@@ -107,10 +113,15 @@ export function hotelGroupJsonLd(
     logo: ORG_LOGO,
     description: ORG_DESCRIPTION,
     parentOrganization: { '@id': `${SITE_URL}/#organization` },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ...DEFAULT_AGGREGATE_RATING,
-    },
+    ...(aggregateRating && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: String(aggregateRating.ratingValue),
+        reviewCount: String(aggregateRating.reviewCount),
+        bestRating: '5',
+        worstRating: '1',
+      },
+    }),
     location: {
       '@type': 'Place',
       address: {
@@ -128,6 +139,41 @@ export function hotelGroupJsonLd(
       ...(p.heroImageUrl && { image: p.heroImageUrl }),
     })),
   }
+}
+
+/**
+ * Per-property LodgingBusiness nodes for the homepage @graph.
+ *
+ * Makes every hotel a first-class SEO entity in the brand's knowledge graph so
+ * brand-name searches ("Rosewood Rajpur Road", "Silverwood Dehradun") resolve to
+ * Zenvana. Emits ONLY real data available from the public listing: the branded
+ * name, canonical URL, hero image, and the shared Rajpur Road / Dehradun
+ * locality (all properties sit on Rajpur Road). Per-property geo, price, and
+ * ratings are emitted on each property's own /hotels/[slug] page node (same
+ * @id, so Google merges) — they are never fabricated here.
+ */
+export function collectionLodgingJsonLd(
+  properties: Array<{ slug: string; publicName: string; heroImageUrl?: string }> = [],
+): object[] {
+  return properties.map((p) => ({
+    '@context': 'https://schema.org',
+    '@type': 'LodgingBusiness',
+    '@id': `${SITE_URL}/hotels/${p.slug}#lodging`,
+    name: p.publicName,
+    url: `${SITE_URL}/hotels/${p.slug}`,
+    ...(p.heroImageUrl && { image: p.heroImageUrl }),
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: 'Rajpur Road',
+      addressLocality: 'Dehradun',
+      addressRegion: 'Uttarakhand',
+      postalCode: '248001',
+      addressCountry: 'IN',
+    },
+    parentOrganization: { '@id': `${SITE_URL}/#organization` },
+    brand: { '@id': `${SITE_URL}/#organization` },
+    isPartOf: { '@id': `${SITE_URL}/#hotelgroup` },
+  }))
 }
 
 export type PropertyForStructuredData = {

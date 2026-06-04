@@ -4,22 +4,27 @@ import Image from 'next/image'
 import {
   ArrowLeft,
   ArrowRight,
-  BadgeCheck,
   BedDouble,
   CalendarCheck,
   Camera,
   MapPin,
+  Navigation,
   Phone,
+  Plane,
   ShieldCheck,
   Sparkles,
+  Train,
 } from 'lucide-react'
 
 import { getPublicPropertyBySlug, getPublicProperties } from '@/lib/api'
 import { Container } from '@/components/Container'
 import { Button } from '@/components/Button'
+import { PlaneButton } from '@/components/PlaneButton'
 import { EmblaImageGallery } from '@/components/EmblaImageGallery'
+import { FilterableGallery } from '@/components/FilterableGallery'
 import { PropertyMapSection } from '@/components/PropertyMapSection'
-import { normalizeGalleryImages, pickHeroAndGallery } from '@/lib/media'
+import { normalizeGalleryImages, pickHeroAndGallery, type GalleryImage } from '@/lib/media'
+import { placesNear, formatKm } from '@/lib/distances'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 import {
   lodgingBusinessJsonLd,
@@ -54,9 +59,13 @@ export async function generateMetadata({ params }: Props) {
 
   const location = [property.city, property.state].filter(Boolean).join(', ')
   const { heroUrl } = pickHeroAndGallery(property.images)
+  const ogImage = property.ogImageUrl ?? heroUrl
 
-  const title = `${property.publicName} by Zenvana | Boutique Hotel in ${property.city ?? 'Dehradun'} | Book Direct`
+  const title =
+    property.seoTitle ??
+    `${property.publicName} by Zenvana | Boutique Hotel in ${property.city ?? 'Dehradun'} | Book Direct`
   const description =
+    property.seoDescription ??
     property.descriptionShort ??
     `${property.publicName} by Zenvana offers a thoughtful stay in ${location || 'Dehradun'}. Explore rooms, see real property photos, and book direct for a smoother arrival.`
 
@@ -84,13 +93,13 @@ export async function generateMetadata({ params }: Props) {
       description,
       url: canonical,
       type: 'website',
-      images: heroUrl ? [{ url: heroUrl, alt: property.publicName }] : [],
+      images: ogImage ? [{ url: ogImage, alt: property.publicName }] : [],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: heroUrl ? [heroUrl] : [],
+      images: ogImage ? [ogImage] : [],
     },
   }
 }
@@ -147,7 +156,7 @@ export default async function PropertyPage({ params, searchParams }: Props) {
         />
       )}
 
-      <main className="bg-background text-foreground pb-24 xl:pb-0">
+      <main className="page-enter bg-background text-foreground pb-24 xl:pb-0">
         <PropertyHero
           property={property}
           heroUrl={heroUrl}
@@ -157,11 +166,7 @@ export default async function PropertyPage({ params, searchParams }: Props) {
           couponCode={couponCode}
         />
 
-        <QuickFacts
-          property={property}
-          location={location}
-          totalImageCount={totalImageCount}
-        />
+        <QuickFacts property={property} location={location} />
 
         <QuickAnchorNav
           hasGallery={galleryImages.length > 0}
@@ -201,6 +206,8 @@ export default async function PropertyPage({ params, searchParams }: Props) {
                 fullAddress={property.fullAddress}
                 mapPlaceUrl={property.googleMapPlaceUrl}
               />
+
+              <GettingHereSection property={property} />
 
               {property.faqs && property.faqs.length > 0 && (
                 <FaqSection faqs={property.faqs} />
@@ -397,18 +404,18 @@ function PropertyHero({
           </p>
 
           <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center">
-            <Button
+            <PlaneButton
               href={
                 couponCode
                   ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
                   : `/book/${property.slug}`
               }
-              color="blue"
-              className="flex items-center justify-center gap-2 rounded-full px-7 py-3.5"
+              sentLabel="Opening dates"
+              className="rounded-full bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(37,99,235,0.6)] transition-colors hover:bg-blue-500"
             >
               <CalendarCheck className="h-4 w-4" />
               Check availability
-            </Button>
+            </PlaneButton>
 
             {property.googleMapPlaceUrl ? (
               <a
@@ -471,7 +478,7 @@ function PropertyHero({
 
             <div className="mt-5 flex items-center justify-center gap-2 text-[10px] font-medium uppercase tracking-[0.32em] text-white/40">
               <span className="h-px w-8 bg-white/20" />
-              {totalImageCount} photographs
+              Rooms · spaces · surroundings
               <span className="h-px w-8 bg-white/20" />
             </div>
           </div>
@@ -488,27 +495,25 @@ function PropertyHero({
 function QuickFacts({
   property,
   location,
-  totalImageCount,
 }: {
   property: Property
   location: string
-  totalImageCount: number
 }) {
   const items = [
     {
-      icon: Camera,
-      label: 'Photographs',
-      value: `${totalImageCount}`,
+      icon: Plane,
+      label: 'Airport',
+      value: '≈ 45 min',
+    },
+    {
+      icon: Train,
+      label: 'Railway',
+      value: '20–25 min',
     },
     {
       icon: BedDouble,
       label: 'Room types',
       value: `${property.roomTypes?.length ?? 0}`,
-    },
-    {
-      icon: BadgeCheck,
-      label: 'Direct rate',
-      value: 'Best',
     },
     {
       icon: MapPin,
@@ -681,31 +686,21 @@ function OverviewSplitSection({
             </p>
           )}
 
-          {/* Editorial pull-quote-style accents */}
-          <div className="mt-10 space-y-4">
-            <div className="flex items-start gap-4 border-l border-border pl-5">
-              <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-foreground/70" />
-              <div>
-                <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                  Trust by design
-                </div>
-                <p className="mt-1.5 text-sm leading-[1.8] text-foreground/80">
-                  Real imagery, clear room presentation, and practical stay information in one place.
-                </p>
-              </div>
+          {/* Place orientation — specific, useful, SEO-rich (no filler) */}
+          <div className="mt-9 rounded-2xl border border-border/60 bg-card/40 p-5 sm:p-6">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+              <Navigation className="h-3.5 w-3.5 text-gold-500" />
+              On Rajpur Road
             </div>
-
-            <div className="flex items-start gap-4 border-l border-border pl-5">
-              <CalendarCheck className="mt-1 h-4 w-4 shrink-0 text-foreground/70" />
-              <div>
-                <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                  Always within reach
-                </div>
-                <p className="mt-1.5 text-sm leading-[1.8] text-foreground/80">
-                  Booking stays visible without interrupting the story of the stay.
-                </p>
-              </div>
-            </div>
+            <p className="mt-3 text-sm leading-[1.85] text-foreground/85">
+              A short drive from the centre of Dehradun: about 20–25 minutes from the railway
+              station and ISBT, roughly 45 minutes from Jolly Grant Airport, and 35–45 minutes up
+              to Mussoorie. Exact distances and nearby spots are in{' '}
+              <a href="#getting-here" className="underline-gold underline-offset-4 hover:text-foreground">
+                Getting here
+              </a>
+              .
+            </p>
           </div>
         </div>
 
@@ -765,7 +760,7 @@ function GallerySection({
   images,
 }: {
   propertyName: string
-  images: Array<{ url: string }>
+  images: GalleryImage[]
 }) {
   return (
     <section id="gallery" className="scroll-mt-28">
@@ -777,19 +772,7 @@ function GallerySection({
       />
 
       <div className="mt-10">
-        <EmblaImageGallery
-          images={images.map((img, index) => ({
-            url: img.url,
-            alt: `${propertyName} gallery image ${index + 1}`,
-          }))}
-          aspectClassName="aspect-[16/11]"
-          autoPlay
-          showThumbs
-        />
-        <div className="mt-4 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-          <span>{images.length} photographs</span>
-          <span className="hidden sm:inline">Use arrows or swipe to view</span>
-        </div>
+        <FilterableGallery images={images} propertyName={propertyName} />
       </div>
     </section>
   )
@@ -910,6 +893,91 @@ function RoomsSection({
 }
 
 /* ------------------------------------------------------------------ */
+/*  GETTING HERE — real transit + nearby distances (local SEO)         */
+/* ------------------------------------------------------------------ */
+
+function GettingHereSection({ property }: { property: Property }) {
+  const { transit, nearby } = placesNear(
+    property.latitude,
+    property.longitude,
+    property.nearbyPlaces,
+  )
+  if (transit.length === 0 && nearby.length === 0) return null
+
+  return (
+    <section id="getting-here" className="scroll-mt-28">
+      <div className="max-w-2xl">
+        <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+          <Navigation className="h-3.5 w-3.5 text-gold-500" />
+          <span>Getting here</span>
+        </div>
+        <h2 className="mt-5 font-serif text-3xl font-light leading-[0.98] tracking-[-0.04em] text-foreground sm:text-4xl">
+          Close to the station, the airport, and the hills.
+        </h2>
+        <p className="mt-5 text-[15px] leading-[1.85] text-muted-foreground sm:text-base">
+          Distances are straight-line from {property.publicName}; drive times are typical for the
+          Rajpur Road corridor and vary with traffic.
+        </p>
+      </div>
+
+      <div className="mt-10 grid gap-8 lg:grid-cols-2 lg:gap-14">
+        <div>
+          <h3 className="font-serif text-lg font-light tracking-[-0.02em] text-foreground">
+            By air, rail &amp; road
+          </h3>
+          <dl className="mt-4 divide-y divide-border/60">
+            {transit.map((p) => (
+              <div key={p.name} className="flex items-baseline justify-between gap-4 py-3.5">
+                <dt className="min-w-0">
+                  <span className="block text-[14.5px] leading-snug text-foreground">{p.name}</span>
+                  <span className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                    {p.category}
+                  </span>
+                </dt>
+                <dd className="shrink-0 text-right">
+                  <span className="block font-serif text-[15px] text-foreground">{p.driveTime}</span>
+                  <span className="text-[11px] text-muted-foreground">≈ {formatKm(p.km)}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        <div>
+          <h3 className="font-serif text-lg font-light tracking-[-0.02em] text-foreground">
+            Around the corner
+          </h3>
+          <dl className="mt-4 divide-y divide-border/60">
+            {nearby.map((p) => (
+              <div key={p.name} className="flex items-baseline justify-between gap-4 py-3.5">
+                <dt className="min-w-0">
+                  <span className="block text-[14.5px] leading-snug text-foreground">{p.name}</span>
+                  <span className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                    {p.category}
+                  </span>
+                </dt>
+                <dd className="shrink-0 font-serif text-[15px] text-foreground">≈ {formatKm(p.km)}</dd>
+              </div>
+            ))}
+          </dl>
+          {property.googleMapPlaceUrl ? (
+            <a
+              href={property.googleMapPlaceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex items-center gap-2 text-[13px] font-medium text-foreground underline-gold underline-offset-4 hover:text-foreground"
+            >
+              <Navigation className="h-4 w-4" />
+              Open in Google Maps
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /*  FAQ — editorial line accordion                                     */
 /* ------------------------------------------------------------------ */
 
@@ -1009,7 +1077,7 @@ function BookingSidebar({
           </Button>
 
           <div className="mt-6 space-y-4 border-t border-border/60 pt-6">
-            <SidebarStat icon={Camera} label="Photographs" value={`${totalImageCount}`} />
+            <SidebarStat icon={Plane} label="Airport" value="≈ 45 min" sub="Jolly Grant (DED)" />
             <SidebarStat icon={BedDouble} label="Room types" value={`${roomCount}`} />
             <SidebarStat icon={MapPin} label="Setting" value={location} sub={property.fullAddress ?? undefined} />
             <SidebarStat icon={ShieldCheck} label="Coordination" value="Direct line" sub="Reach the team easily before arrival." />
@@ -1108,18 +1176,18 @@ function PropertyMobileBookingBar({
           </a>
         ) : null}
 
-        <Button
+        <PlaneButton
           href={
             couponCode
               ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
               : `/book/${property.slug}`
           }
-          color="blue"
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full"
+          sentLabel="Opening dates"
+          className="h-12 flex-1 rounded-full bg-blue-600 px-5 text-sm font-medium text-white transition-colors hover:bg-blue-500"
         >
           <CalendarCheck className="h-4 w-4" />
-          <span className="font-medium tracking-[0.02em]">Check availability</span>
-        </Button>
+          <span className="tracking-[0.02em]">Check availability</span>
+        </PlaneButton>
       </div>
     </div>
   )

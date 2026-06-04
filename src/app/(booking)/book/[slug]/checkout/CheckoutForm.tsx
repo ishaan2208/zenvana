@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import Script from 'next/script'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   BadgeCheck,
   CalendarRange,
@@ -154,6 +154,7 @@ export default function CheckoutForm({
   const [couponBusy, setCouponBusy] = useState(false)
   const [couponError, setCouponError] = useState<string | null>(null)
   const applyButtonRef = useRef<HTMLButtonElement>(null)
+  const reduceMotion = useReducedMotion()
   const [pointsBalance, setPointsBalance] = useState<number | null>(null)
   const [guestPhone, setGuestPhone] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
@@ -1018,6 +1019,7 @@ export default function CheckoutForm({
                   onClick={handleApplyCoupon}
                   disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim() || Boolean(appliedCoupon)}
                   whileTap={
+                    !reduceMotion &&
                     !appliedCoupon && !couponBusy && couponCodeInput.trim() && pointsToRedeem === 0
                       ? { scale: 0.96 }
                       : undefined
@@ -1027,7 +1029,7 @@ export default function CheckoutForm({
                       : 'bg-primary text-primary-foreground'
                     }`}
                 >
-                  {couponBusy && (
+                  {couponBusy && !reduceMotion && (
                     <motion.span
                       aria-hidden
                       initial={{ x: '-130%' }}

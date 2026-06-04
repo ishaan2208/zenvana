@@ -5,12 +5,11 @@ import { Suspense } from 'react'
 import {
   ArrowRight,
   BadgeCheck,
+  BookOpen,
   CalendarCheck,
   ChevronDown,
   Clock,
   Crown,
-  Gem,
-  Leaf,
   MapPin,
   MapPinned,
   PartyPopper,
@@ -28,13 +27,28 @@ import {
   getPublicPropertyBySlug,
 } from '@/lib/api'
 import { HeroBookBarDeferred } from './HeroBookBarDeferred'
+import { MobileBookingDrawer } from './MobileBookingDrawer'
+import type { HeroBookBarProperty } from './HeroBookBar'
+import { PropertyPyramidSection } from './PropertyPyramidSection'
 import { JsonLd } from '@/components/JsonLd'
-import { LiveBookingsCounter } from '@/components/LiveBookingsCounter'
+import { TrustStripSection } from './TrustStripSection'
 import { GuestVoicesSection } from '@/components/GuestVoicesSection'
 import { DeferredLocationMap } from '../../components/DeferredLocationMap'
-import { faqPageJsonLd, hotelGroupJsonLd } from '@/lib/structured-data'
+import {
+  breadcrumbJsonLd,
+  collectionLodgingJsonLd,
+  faqPageJsonLd,
+  hotelGroupJsonLd,
+} from '@/lib/structured-data'
 import { GoogleAdsHomeConversion } from '@/components/GoogleAdsTag'
 import { HeroVideo } from '@/components/HeroVideo'
+import { BlogStoryThumbnail } from '@/components/blog/BlogStoryThumbnail'
+import { getBlogPostHref, getPublishedBlogPosts } from '@/lib/blog'
+import { deriveBlogCategory } from '@/lib/blogContent'
+import {
+  estimateReadingTimeMinutes,
+  formatPublishedDate,
+} from '@/lib/blogReadingTime'
 
 function GuestVoicesSectionFallback() {
   return (
@@ -84,7 +98,7 @@ const HOME_FAQS = [
   {
     question: 'How many properties are in the Zenvana collection?',
     answer:
-      'Zenvana operates a small collection of boutique hotels — Rosewood, Silkwood, Monte Verde, Silverwood, and Cherrywood — each with its own character and price point, all on or near Rajpur Road.',
+      'Zenvana operates a small collection of boutique hotels — Rosewood, Silkwood, Monte Verde, Silverwood, Cherrywood, Limewood, and Serenewood — each with its own character and price point, all on or near Rajpur Road.',
   },
   {
     question: 'Why book direct on zenvanahotels.com instead of OTAs?',
@@ -118,90 +132,6 @@ const HOME_FAQS = [
   },
 ]
 
-/* ──────────────────────────────────────────────────────────────
- * Property pyramid — Essential / Refined / Signature
- * Mapping is editable; defaults reflect operator's intent.
- * ────────────────────────────────────────────────────────────── */
-type Tier = 'essential' | 'refined' | 'signature'
-
-type PyramidEntry = {
-  name: string
-  slug: string
-  tier: Tier
-  imageSrc: string
-  intent: string
-}
-
-const PYRAMID_CONFIG: PyramidEntry[] = [
-  {
-    name: 'Rosewood',
-    slug: 'rosewood',
-    tier: 'essential',
-    imageSrc: '/images/dehradun/Rosewood.png',
-    intent: 'A clean, light-led entry stay — designed around the bed, the morning, and the road back into the city.',
-  },
-  {
-    name: 'Silkwood',
-    slug: 'silkwood',
-    tier: 'refined',
-    imageSrc: '/images/dehradun/silkwood .png',
-    intent: 'A few quiet steps up — softer materials, more space, and the kind of room that suits longer evenings.',
-  },
-  {
-    name: 'Cherrywood',
-    slug: 'cherrywood',
-    tier: 'refined',
-    imageSrc: '/images/dehradun/cherrwood building pic 1.png',
-    intent: 'A higher vantage point, calmer evenings, and a slower city to watch from above.',
-  },
-  {
-    name: 'Monte Verde',
-    slug: 'monteverde',
-    tier: 'signature',
-    imageSrc: '/images/dehradun/MonteVerde.png',
-    intent: 'Our most considered stay — generous proportions, soft lighting, and a rhythm built for unhurried days.',
-  },
-  {
-    name: 'Silverwood',
-    slug: 'silverwood',
-    tier: 'signature',
-    imageSrc: '/images/dehradun/SILVER W BUILDING PIC.png',
-    intent: 'Framed views of the foothills and a quieter pace — the room you choose when the trip itself is the point.',
-  },
-]
-
-const TIER_META: Record<
-  Tier,
-  { label: string; tagline: string; pillClass: string; ringClass: string; icon: typeof Leaf }
-> = {
-  essential: {
-    label: 'Essential',
-    tagline: 'Considered value, built around comfort.',
-    pillClass: 'tier-pill tier-pill-essential',
-    ringClass: 'ring-1 ring-tier-essential/30',
-    icon: Leaf,
-  },
-  refined: {
-    label: 'Refined',
-    tagline: 'A little more space, a little more quiet.',
-    pillClass: 'tier-pill tier-pill-refined',
-    ringClass: 'ring-1 ring-tier-refined/40',
-    icon: Gem,
-  },
-  signature: {
-    label: 'Signature',
-    tagline: 'Our most considered, slow-paced stays.',
-    pillClass: 'tier-pill tier-pill-signature',
-    ringClass: 'ring-1 ring-tier-signature/45',
-    icon: Crown,
-  },
-}
-
-function resolvePyramidHref(slug: string, properties: PublicPropertyListItem[]) {
-  const hit = properties.find((p) => p.slug === slug)
-  return hit ? `/hotels/${hit.slug}` : '/hotels'
-}
-
 const TRUST_OWNER_USER_ID = 1
 const BOOKINGS_ENDPOINT = `/api/public/bookings-count?userId=${TRUST_OWNER_USER_ID}`
 
@@ -212,6 +142,8 @@ export default async function HomePage() {
   const heroProperties = properties.map((p) => ({
     slug: p.slug,
     publicName: p.publicName,
+    heroImageUrl: p.heroImageUrl,
+    fullAddress: p.fullAddress,
   }))
   const groupProperties = properties.map((p) => ({
     slug: p.slug,
@@ -226,12 +158,18 @@ export default async function HomePage() {
       <JsonLd
         data={[
           hotelGroupJsonLd(groupProperties),
+          ...collectionLodgingJsonLd(groupProperties),
           faqPageJsonLd(HOME_FAQS),
+          breadcrumbJsonLd([{ name: 'Home', url: SITE_URL }]),
         ]}
       />
 
       <HeroSection properties={heroProperties} />
-      <TrustStripSection initialBookingsCount={initialBookingsCount} />
+      <TrustStripSection
+        initialBookingsCount={initialBookingsCount}
+        bookingsEndpoint={BOOKINGS_ENDPOINT}
+        propertyCount={properties.length}
+      />
       <WhyZenvanaSection />
       <PropertyPyramidSection properties={properties} />
       <StayDirectSection />
@@ -246,10 +184,13 @@ export default async function HomePage() {
         longitude={limewood?.longitude}
         mapPlaceUrl={limewood?.googleMapPlaceUrl}
       />
+      <Suspense fallback={<JournalSectionFallback />}>
+        <JournalSection />
+      </Suspense>
       <HomeFaqSection />
       <BookingCtaSection />
 
-      <MobileBookingCta />
+      <MobileBookingCta properties={heroProperties} />
     </div>
     </>
   )
@@ -261,7 +202,12 @@ export default async function HomePage() {
 function HeroSection({
   properties,
 }: {
-  properties: { slug: string; publicName: string }[]
+  properties: {
+    slug: string
+    publicName: string
+    heroImageUrl?: string
+    fullAddress?: string
+  }[]
 }) {
   return (
     <section className="relative min-h-[92svh] overflow-hidden">
@@ -296,83 +242,6 @@ function HeroSection({
 }
 
 /* ──────────────────────────────────────────────────────────────
- * TRUST STRIP — under hero
- * ────────────────────────────────────────────────────────────── */
-function TrustStripSection({
-  initialBookingsCount,
-}: {
-  initialBookingsCount: number | null
-}) {
-  type StatCard = {
-    icon: typeof Star
-    headline: React.ReactNode
-    tag: string
-    sub: string
-  }
-  const stats: StatCard[] = [
-    {
-      icon: Star,
-      headline: '4.0+',
-      tag: 'guest rating',
-      sub: 'Across MakeMyTrip, Booking & Google',
-    },
-    {
-      icon: BadgeCheck,
-      headline: (
-        <LiveBookingsCounter
-          initialValue={initialBookingsCount}
-          endpoint={BOOKINGS_ENDPOINT}
-        />
-      ),
-      tag: 'verified stays',
-      sub: 'Across the Zenvana collection · live count',
-    },
-    {
-      icon: MapPin,
-      headline: '5',
-      tag: 'properties',
-      sub: 'On or near Rajpur Road, Dehradun',
-    },
-    {
-      icon: ShieldCheck,
-      headline: 'Best rate',
-      tag: 'when you book direct',
-      sub: 'Match-or-beat any public OTA price',
-    },
-  ]
-
-  return (
-    <section className="border-y border-border/60 bg-card/40">
-      <div className="container-shell py-6 sm:py-8 lg:py-10">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          {stats.map(({ icon: Icon, headline, tag, sub }) => (
-            <div
-              key={tag}
-              className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/70 px-4 py-3 sm:px-5 sm:py-4"
-            >
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                  {tag}
-                </div>
-                <div className="mt-0.5 font-serif text-xl tracking-[-0.02em] text-foreground sm:text-2xl">
-                  {headline}
-                </div>
-                <div className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">
-                  {sub}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ──────────────────────────────────────────────────────────────
  * WHY ZENVANA — H1-equivalent SEO + owner-operator narrative
  * ────────────────────────────────────────────────────────────── */
 function WhyZenvanaSection() {
@@ -400,7 +269,7 @@ function WhyZenvanaSection() {
               hotels where neither half had to give in.
             </p>
             <p>
-              Today we run five properties on or around{' '}
+              Today we run seven properties on or around{' '}
               <a
                 href="https://en.wikipedia.org/wiki/Rajpur_Road"
                 target="_blank"
@@ -423,108 +292,6 @@ function WhyZenvanaSection() {
               — The Zenvana team
             </p>
           </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ──────────────────────────────────────────────────────────────
- * PROPERTY PYRAMID — Essential / Refined / Signature
- * ────────────────────────────────────────────────────────────── */
-function PropertyPyramidSection({ properties }: { properties: PublicPropertyListItem[] }) {
-  const tiers: Tier[] = ['essential', 'refined', 'signature']
-  const grouped = tiers.map((tier) => ({
-    tier,
-    items: PYRAMID_CONFIG.filter((p) => p.tier === tier),
-  }))
-
-  return (
-    <section id="collection" className="section-rule bg-background">
-      <div className="container-shell section-pad">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <h2 className="editorial-display text-3xl font-semibold sm:text-4xl lg:text-5xl">
-              Five hotels. One quiet stretch of road.
-            </h2>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Pick the room that fits the trip. Every property is on or near Rajpur Road —
-              you don&apos;t lose anything by choosing differently.
-            </p>
-          </div>
-          <Link href="/hotels" className="site-button-light w-fit md:mt-2">
-            Compare all hotels
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </div>
-
-        <div className="mt-12 space-y-12 sm:space-y-16">
-          {grouped.map(({ tier, items }) => {
-            const meta = TIER_META[tier]
-            const Icon = meta.icon
-            return (
-              <div key={tier}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className={meta.pillClass}>
-                      <Icon className="h-3 w-3" />
-                      {meta.label}
-                    </span>
-                    <span className="text-sm text-muted-foreground sm:text-base">
-                      {meta.tagline}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2">
-                  {items.map((item) => {
-                    const href = resolvePyramidHref(item.slug, properties)
-                    return (
-                      <Link
-                        key={item.slug}
-                        href={href}
-                        className={`group relative block overflow-hidden rounded-[1.75rem] border border-border/60 bg-card transition duration-500 ease-editorial hover:-translate-y-1 hover:shadow-editorial ${meta.ringClass}`}
-                      >
-                        <div className="relative aspect-[16/11] overflow-hidden">
-                          <Image
-                            src={item.imageSrc}
-                            alt={`${item.name} by Zenvana — ${meta.label} stay in Dehradun`}
-                            fill
-                            sizes="(max-width: 768px) 100vw, 50vw"
-                            loading={item.slug === 'rosewood' ? 'eager' : 'lazy'}
-                            fetchPriority={item.slug === 'rosewood' ? 'high' : 'auto'}
-                            quality={65}
-                            className="object-cover transition duration-700 ease-editorial group-hover:scale-[1.04]"
-                          />
-                          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_30%,rgba(0,0,0,0.45)_100%)]" />
-                          <span
-                            className={`${meta.pillClass} absolute left-4 top-4 backdrop-blur`}
-                          >
-                            <Icon className="h-3 w-3" />
-                            {meta.label}
-                          </span>
-                        </div>
-                        <div className="flex flex-col gap-3 p-5 sm:p-6">
-                          <div className="flex items-baseline justify-between gap-3">
-                            <h3 className="editorial-display text-2xl text-foreground sm:text-3xl">
-                              {item.name}
-                            </h3>
-                            <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground/80 transition group-hover:translate-x-0.5 group-hover:text-foreground">
-                              Explore
-                              <ArrowRight className="h-4 w-4" />
-                            </span>
-                          </div>
-                          <p className="text-sm leading-7 text-muted-foreground sm:text-base">
-                            {item.intent}
-                          </p>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
         </div>
       </div>
     </section>
@@ -687,7 +454,7 @@ function WeddingsTeaserSection() {
               The only Rajpur Road brand that can absorb a 150-room weekend.
             </h2>
             <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-              Five hotels on the same stretch of road means weddings, corporate offsites,
+              Seven hotels on the same stretch of road means weddings, corporate offsites,
               and private celebrations don&apos;t need to compromise on capacity. We can
               flex from an intimate 30-cover dinner to a 200-guest weekend across multiple
               properties.
@@ -850,6 +617,118 @@ function LocationSection({
 }
 
 /* ──────────────────────────────────────────────────────────────
+ * FROM THE JOURNAL — latest posts (topical authority + internal links)
+ * ────────────────────────────────────────────────────────────── */
+function JournalCard({
+  post,
+}: {
+  post: Awaited<ReturnType<typeof getPublishedBlogPosts>>[number]
+}) {
+  const href = getBlogPostHref(post)
+  const category = deriveBlogCategory(post)
+  const readTime = estimateReadingTimeMinutes(post.contentHtml)
+  const date = post.publishedAt ? formatPublishedDate(post.publishedAt) : null
+
+  return (
+    <article className="group flex min-w-0 flex-col">
+      <BlogStoryThumbnail
+        post={post}
+        href={href}
+        aspect="3/2"
+        sizes="(min-width: 1024px) 30vw, (min-width: 768px) 45vw, 100vw"
+      />
+      <div className="mt-5 flex flex-1 flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+          <span className="text-gold-600 dark:text-gold-300">{category}</span>
+          <span aria-hidden="true">·</span>
+          <span>{readTime} min read</span>
+          {date ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <time dateTime={post.publishedAt!.toISOString()}>{date}</time>
+            </>
+          ) : null}
+        </div>
+        <Link href={href}>
+          <h3 className="editorial-display text-xl leading-[1.2] text-foreground transition group-hover:opacity-80 sm:text-2xl">
+            {post.title}
+          </h3>
+        </Link>
+        <p className="line-clamp-3 text-sm leading-7 text-muted-foreground">{post.excerpt}</p>
+      </div>
+    </article>
+  )
+}
+
+async function JournalSection() {
+  const posts = await getPublishedBlogPosts().catch(() => [])
+  const latest = posts.slice(0, 3)
+
+  return (
+    <section className="section-rule bg-card/30">
+      <div className="container-shell section-pad">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-2xl">
+            <div className="editorial-eyebrow">From the Journal</div>
+            <h2 className="editorial-display mt-3 text-3xl font-semibold sm:text-4xl lg:text-5xl">
+              Notes from Rajpur Road.
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+              Slow guides to staying in Dehradun, the Mussoorie foothills, and the everyday
+              rituals that make the city worth lingering in — written by the team that runs
+              our hotels.
+            </p>
+          </div>
+          <Link href="/blog" className="site-button-light w-fit md:mt-2">
+            Read the Journal
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </div>
+
+        {latest.length > 0 ? (
+          <div className="mt-12 grid gap-10 md:grid-cols-3 md:gap-x-6 lg:gap-x-10">
+            {latest.map((post) => (
+              <JournalCard key={post.id} post={post} />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-12 rounded-[1.75rem] border border-border/60 bg-background/60 px-6 py-14 text-center sm:py-16">
+            <BookOpen className="mx-auto h-6 w-6 text-gold-400" />
+            <h3 className="editorial-display mt-4 text-2xl text-foreground">
+              The Journal is being written.
+            </h3>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-muted-foreground">
+              Our first stories about Rajpur Road, the foothills, and slow stays in Dehradun
+              are on the way.
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function JournalSectionFallback() {
+  return (
+    <section className="section-rule bg-card/30" aria-busy="true">
+      <div className="container-shell section-pad">
+        <div className="h-9 w-56 animate-pulse rounded-full bg-muted/60" />
+        <div className="mt-12 grid gap-10 md:grid-cols-3 md:gap-x-6 lg:gap-x-10">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex flex-col gap-4">
+              <div className="aspect-[3/2] animate-pulse rounded-[1.5rem] bg-muted/60" />
+              <div className="h-3 w-24 animate-pulse rounded-full bg-muted/60" />
+              <div className="h-5 w-full animate-pulse rounded-full bg-muted/60" />
+              <div className="h-16 w-full animate-pulse rounded-2xl bg-muted/40" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
  * FAQ
  * ────────────────────────────────────────────────────────────── */
 function HomeFaqSection() {
@@ -931,7 +810,7 @@ function BookingCtaSection() {
 /* ──────────────────────────────────────────────────────────────
  * MOBILE STICKY BOOKING CTA
  * ────────────────────────────────────────────────────────────── */
-function MobileBookingCta() {
+function MobileBookingCta({ properties }: { properties: HeroBookBarProperty[] }) {
   return (
     <div className="mobile-cta-bar lg:hidden">
       <div className="mx-auto flex max-w-7xl items-center gap-2">
@@ -951,13 +830,7 @@ function MobileBookingCta() {
         >
           <WhatsAppIcon className="h-5 w-5" />
         </a>
-        <Link
-          href="#book"
-          className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-foreground text-sm font-medium text-background transition hover:opacity-95"
-        >
-          <CalendarCheck className="h-4 w-4" />
-          Book your stay
-        </Link>
+        <MobileBookingDrawer properties={properties} />
       </div>
     </div>
   )

@@ -48,6 +48,7 @@ export function Button({ className, ...props }: ButtonProps) {
   props.color ??= 'slate'
 
   className = clsx(
+    'pressable', // tactile press feedback (single-source .pressable in globals.css)
     baseStyles[props.variant],
     props.variant === 'outline'
       ? variantStyles.outline[props.color]

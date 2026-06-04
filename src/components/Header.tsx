@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   ArrowRight,
   BadgePercent,
@@ -390,6 +390,7 @@ function MobileMenu({
   onGuestChange: (g: ZenvanaGuestMe | null) => void
   onClose: () => void
 }) {
+  const reduceMotion = useReducedMotion()
   return (
     <>
       <motion.button
@@ -405,9 +406,9 @@ function MobileMenu({
       <motion.div
         role="dialog"
         aria-modal="true"
-        initial={{ opacity: 0, y: 18, scale: 0.985 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 14, scale: 0.985 }}
+        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.985 }}
+        animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.985 }}
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 mx-auto w-[calc(100%-1.5rem)] max-w-md lg:hidden"
         style={{
@@ -538,13 +539,14 @@ function MobileNavCard({
   onClose: () => void
 }) {
   const Icon = item.icon
+  const reduceMotion = useReducedMotion()
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 8 }}
-      transition={{ delay: 0.03 * index, duration: 0.18 }}
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+      transition={{ delay: reduceMotion ? 0 : 0.03 * index, duration: 0.18 }}
     >
       <Link
         href={item.href}

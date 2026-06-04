@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { Reveal } from '@/components/motion/Reveal'
 import {
   ArrowRight,
   BadgeCheck,
@@ -32,7 +33,7 @@ export const revalidate = 3600
 export const metadata = {
   title: 'All Hotels in Dehradun · Zenvana Collection',
   description:
-    'Browse every Zenvana boutique hotel on Rajpur Road, Dehradun — Rosewood, Silkwood, Monte Verde, Silverwood and Cherrywood. Compare rooms, see real photos, and book direct.',
+    'Browse every Zenvana boutique hotel on Rajpur Road, Dehradun — Rosewood, Silkwood, Monte Verde, Silverwood, Cherrywood, Limewood, and Serenewood. Compare rooms, see real photos, and book direct.',
   keywords: [
     'hotels in Dehradun',
     'best hotel in Dehradun',
@@ -144,7 +145,7 @@ export default async function HotelsPage({ searchParams }: Props) {
   })
 
   return (
-    <main className="mobile-cta-pad bg-background text-foreground">
+    <main className="page-enter mobile-cta-pad bg-background text-foreground">
       <JsonLd data={[breadcrumbJsonLd(breadcrumbs), itemListData]} />
       {/* <HotelsHero />
       <HighlightsStrip /> */}
@@ -172,8 +173,9 @@ export default async function HotelsPage({ searchParams }: Props) {
             <EmptyState />
           ) : (
             <ul className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {propertiesForGrid.map((p) => (
+              {propertiesForGrid.map((p, i) => (
                 <li key={p.id}>
+                  <Reveal delay={i * 70} className="h-full">
                   <Link
                     href={
                       couponCode
@@ -270,6 +272,7 @@ export default async function HotelsPage({ searchParams }: Props) {
                       </CardContent>
                     </Card>
                   </Link>
+                  </Reveal>
                 </li>
               ))}
             </ul>

@@ -49,6 +49,16 @@
 
     --radius: 1rem;
 
+    /* ── Motion system (single source of truth) ───────────── */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);     /* default UI entrances */
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* iOS/Vaul-style sheets */
+    --ease-elegant: ease;                          /* slower, Sonner-like */
+    --duration-instant: 100ms;
+    --duration-fast: 150ms;
+    --duration-base: 200ms;
+    --duration-slow: 300ms;
+
     /* Tier accents (light) */
     --tier-essential: 110 38% 48%;   /* mantis green — entry, fresh */
     --tier-refined: 218 65% 38%;     /* sapphire — confident */
@@ -188,11 +198,11 @@
   }
 
   .site-button-dark {
-    @apply inline-flex items-center justify-center rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-95;
+    @apply inline-flex items-center justify-center rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-95 active:scale-[0.97];
   }
 
   .site-button-light {
-    @apply inline-flex items-center justify-center rounded-full border border-border/70 bg-background/90 px-5 py-3 text-sm font-medium text-foreground transition hover:bg-card;
+    @apply inline-flex items-center justify-center rounded-full border border-border/70 bg-background/90 px-5 py-3 text-sm font-medium text-foreground transition hover:bg-card active:scale-[0.97];
   }
 
   .editorial-image {
@@ -339,6 +349,32 @@
     animation: marquee 32s linear infinite;
   }
   .trust-rail:hover { animation-play-state: paused; }
+
+  /* ── Guest reviews marquee (homepage) ─────────────────── */
+  .guest-reviews-marquee {
+    overflow: hidden;
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 6%,
+      black 94%,
+      transparent
+    );
+  }
+
+  .guest-reviews-track {
+    will-change: transform;
+  }
+
+  .guest-reviews-marquee[data-active='true'] .guest-reviews-track {
+    animation: marquee var(--guest-reviews-marquee-duration, 55s) linear infinite;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .guest-reviews-marquee[data-active='true']:hover .guest-reviews-track {
+      animation-play-state: paused;
+    }
+  }
 
   /* ── Mobile-friendly section padding ──────────────────── */
   .section-pad {
@@ -546,6 +582,17 @@
   }
 }
 
+/* Shared horizontal marquee (trust rail + guest reviews). Tailwind utilities
+   do not emit these keyframes unless animate-marquee is used in markup. */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 @keyframes typing-dot {
   0%,
   20% {
@@ -579,9 +626,159 @@
 /* Reduced motion: kill marquee + heavy entrance animations */
 @media (prefers-reduced-motion: reduce) {
   .trust-rail { animation: none; }
+  .guest-reviews-marquee {
+    overflow-x: auto;
+    mask-image: none;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .guest-reviews-track {
+    animation: none;
+    will-change: auto;
+  }
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────
+ * MOTION SYSTEM — reusable primitives (single source of truth)
+ * Composite-only (transform/opacity), interruptible, reduced-motion aware.
+ * ────────────────────────────────────────────────────────────── */
+
+/* Tactile press feedback for buttons / pressable cards. */
+.pressable {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.pressable:active {
+  transform: scale(0.97);
+}
+
+/* Scroll/mount entrance reveal — opacity + small rise, staggerable via
+   --reveal-delay. Driven by JS ([data-inview]); the <Reveal> primitive sets it. */
+.reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: transform, opacity;
+}
+.reveal[data-inview='true'] {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+/* One-shot page-open entrance — pure CSS, never JS-gated, always resolves to
+   visible (safe for conversion/SEO pages). */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.page-enter {
+  animation: page-enter var(--duration-slow) var(--ease-out) both;
+}
+
+/* Reduced motion: keep a gentle opacity fade, drop movement/scale.
+   Class specificity + !important beats the global duration-zeroing rule above. */
+@media (prefers-reduced-motion: reduce) {
+  .pressable:active {
+    transform: none;
+  }
+  .reveal {
+    transform: none !important;
+    transition: opacity var(--duration-base) var(--ease-out) !important;
+  }
+  .reveal[data-inview='true'] {
+    transform: none !important;
+  }
+  .page-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * PLANE CTA — "request sent / taking off" feedback on next-page CTAs.
+ * The paper plane lifts off and arcs away; a vapor trail streaks behind it;
+ * the label slides out and a "Taking you there" line slides in. Composite-only.
+ * ────────────────────────────────────────────────────────────── */
+.plane-button {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.plane-button__plane {
+  display: inline-flex;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.plane-button:not([data-flying='true']):hover .plane-button__plane {
+  transform: translate(2px, -1px) rotate(-6deg);
+}
+/* Vapor trail — hidden until takeoff. */
+.plane-button__trail {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 1.5px;
+  width: 0;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, currentColor);
+  opacity: 0;
+}
+.plane-button[data-flying='true'] .plane-button__plane {
+  animation: plane-takeoff 720ms var(--ease-out) forwards;
+}
+.plane-button[data-flying='true'] .plane-button__label {
+  animation: plane-label-out 240ms var(--ease-out) forwards;
+}
+.plane-button[data-flying='true'] .plane-button__sent {
+  animation: plane-sent-in 360ms 140ms var(--ease-out) both;
+}
+.plane-button[data-flying='true'] .plane-button__trail {
+  animation: plane-trail 720ms var(--ease-out) forwards;
+}
+
+@keyframes plane-takeoff {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  22%  { transform: translate(1px, 2px) rotate(6deg); }
+  100% { transform: translate(34px, -30px) rotate(-22deg); opacity: 0; }
+}
+@keyframes plane-label-out {
+  to { transform: translateY(-120%); opacity: 0; }
+}
+@keyframes plane-sent-in {
+  from { transform: translateY(120%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes plane-trail {
+  0%   { width: 0; opacity: 0; }
+  35%  { opacity: 0.7; }
+  100% { width: 70%; opacity: 0; }
+}
+
+/* The "Taking you there" line is stacked under the label; only revealed on takeoff. */
+.plane-button__sent {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  opacity: 0;
+  transform: translateY(120%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plane-button[data-flying='true'] .plane-button__plane { animation: none; opacity: 0.6; }
+  .plane-button[data-flying='true'] .plane-button__label { animation: none; opacity: 0; }
+  .plane-button[data-flying='true'] .plane-button__sent { animation: plane-fade-in 160ms ease both; }
+  .plane-button[data-flying='true'] .plane-button__trail { animation: none; opacity: 0; }
+  .plane-button:not([data-flying='true']):hover .plane-button__plane { transform: none; }
+}
+@keyframes plane-fade-in { from { opacity: 0; } to { opacity: 1; } }

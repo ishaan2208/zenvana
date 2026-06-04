@@ -19,6 +19,10 @@ export type PublicPropertyListItem = {
   state: string | null
   shortDescription?: string
   heroImageUrl?: string
+  fullAddress?: string
+  landmarks?: unknown
+  latitude?: number
+  longitude?: number
   canonicalUrl?: string
   /** Hotels grid: show “Great value” pill when true (from PropertyPublicProfile). */
   showValueBadge?: boolean
@@ -65,6 +69,18 @@ export type PublicPropertyDetail = {
   googleMapPlaceUrl?: string
   canonicalUrl?: string
   showValueBadge?: boolean
+  nearbyPlaces?: Array<{
+    name: string
+    category: string
+    kind: 'transit' | 'nearby'
+    lat?: number
+    lng?: number
+    distanceKm?: number
+    driveTime?: string
+  }>
+  seoTitle?: string
+  seoDescription?: string
+  ogImageUrl?: string
   roomTypes: Array<{
     id: number
     name: string

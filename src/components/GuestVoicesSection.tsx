@@ -8,10 +8,11 @@
  *   GOOGLE_PLACE_IDS=ChIJxxxxxxxxx,ChIJyyyyyyyyy
  */
 
-import { Quote, Star } from 'lucide-react'
+import { Star } from 'lucide-react'
 
+import type { GuestReviewItem } from '@/components/GuestReviewCard'
+import { GuestReviewsMarquee } from '@/components/GuestReviewsMarquee'
 import { getAggregatedReviews } from '@/lib/google-reviews'
-import { ReviewAvatar } from '@/components/ReviewAvatar'
 
 type StaticReview = {
   name: string
@@ -19,7 +20,6 @@ type StaticReview = {
   stars: number
   imageSrc?: string
   text: string
-  source?: string
 }
 
 const STATIC_REVIEWS: StaticReview[] = [
@@ -59,8 +59,33 @@ const STATIC_AGGREGATE = {
   source: 'MakeMyTrip · Booking · Google',
 }
 
+function toGuestReviewItems(
+  useLive: boolean,
+  live: Awaited<ReturnType<typeof getAggregatedReviews>> | null,
+): GuestReviewItem[] {
+  if (useLive && live) {
+    return live.reviews.map((review, index) => ({
+      id: `google-${index}-${review.authorName}`,
+      name: review.authorName,
+      stars: Math.round(review.rating),
+      text: review.text,
+      imageSrc: review.authorPhotoUrl,
+      subline: [review.relativeTime, review.sourcePlaceName].filter(Boolean).join(' · '),
+    }))
+  }
+
+  return STATIC_REVIEWS.map((review, index) => ({
+    id: `static-${index}`,
+    name: review.name,
+    stars: review.stars,
+    text: review.text,
+    imageSrc: review.imageSrc,
+    subline: review.city,
+  }))
+}
+
 export async function GuestVoicesSection() {
-  const live = await getAggregatedReviews({ totalLimit: 8 }).catch(() => null)
+  const live = await getAggregatedReviews({ totalLimit: 16 }).catch(() => null)
   const useLive = !!live && live.reviews.length >= 3
 
   const aggregateValue = useLive ? live!.ratingValue : STATIC_AGGREGATE.ratingValue
@@ -70,6 +95,8 @@ export async function GuestVoicesSection() {
       ? 'Across Google reviews · multiple Zenvana properties'
       : `Google reviews · ${live!.sources[0]?.placeName ?? 'Zenvana'}`
     : STATIC_AGGREGATE.source
+
+  const reviewItems = toGuestReviewItems(useLive, live)
 
   return (
     <section className="section-rule bg-background">
@@ -83,7 +110,7 @@ export async function GuestVoicesSection() {
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
               {useLive
                 ? 'Pulled live from Google. Real names, real stays, and the rating that follows us into the next booking.'
-                : "We don’t curate around the bad ones. These are real names, real stays, and the rating that follows us into the next booking."}
+                : "We don't curate around the bad ones. These are real names, real stays, and the rating that follows us into the next booking."}
             </p>
           </div>
           <div className="lg:col-span-5">
@@ -103,53 +130,8 @@ export async function GuestVoicesSection() {
           </div>
         </div>
 
-        <div className="mt-10 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0">
-          {(useLive ? live!.reviews : STATIC_REVIEWS).map((r, idx) => (
-            <ReviewCard key={idx} review={r} />
-          ))}
-        </div>
+        <GuestReviewsMarquee reviews={reviewItems} />
       </div>
     </section>
-  )
-}
-
-function ReviewCard({ review }: { review: StaticReview | NonNullable<Awaited<ReturnType<typeof getAggregatedReviews>>>['reviews'][number] }) {
-  // Discriminate between live (camelCase from google-reviews.ts) and static review.
-  const isLive = 'rating' in review
-  const name = isLive ? review.authorName : review.name
-  const stars = isLive ? Math.round(review.rating) : review.stars
-  const text = review.text
-  const imageSrc = isLive ? review.authorPhotoUrl : review.imageSrc
-  const subline = isLive
-    ? [review.relativeTime, review.sourcePlaceName].filter(Boolean).join(' · ')
-    : review.city
-
-  return (
-    <article className="quiet-card min-w-[280px] max-w-[360px] flex-1 snap-start p-6 sm:min-w-[340px]">
-      <Quote className="h-5 w-5 text-gold-400" />
-      <p className="mt-3 text-sm leading-7 text-foreground/90">{text}</p>
-      <div className="mt-5 flex items-center gap-3 border-t border-border/60 pt-4">
-        <ReviewAvatar name={name} imageSrc={imageSrc} size={40} />
-        <div>
-          <div className="text-sm font-semibold text-foreground">{name}</div>
-          {(subline || stars > 0) && (
-            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-              {subline && <span>{subline}</span>}
-              {subline && stars > 0 && <span>·</span>}
-              {stars > 0 && (
-                <span className="flex items-center gap-0.5 text-amber-500">
-                  {Array.from({ length: 5 }, (_, s) => (
-                    <Star
-                      key={s}
-                      className={s < stars ? 'h-3 w-3 fill-current' : 'h-3 w-3 opacity-30'}
-                    />
-                  ))}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </article>
   )
 }

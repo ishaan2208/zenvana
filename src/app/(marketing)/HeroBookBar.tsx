@@ -1,10 +1,12 @@
 'use client'
 
+import Image from 'next/image'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import { usePrefetchBookRooms } from '@/hooks/usePrefetchBookRooms'
 import { buildBookRoomsPath } from '@/lib/book-rooms-url'
-import { Calendar as CalendarIcon, ChevronRight, MapPinned, Users } from 'lucide-react'
+import * as SelectPrimitive from '@radix-ui/react-select'
+import { Calendar as CalendarIcon, Check, ChevronRight, MapPinned, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -60,6 +62,8 @@ function startOfDay(d: Date): Date {
 export type HeroBookBarProperty = {
   slug: string
   publicName: string
+  heroImageUrl?: string
+  fullAddress?: string
 }
 
 type HeroBookBarProps = {
@@ -124,6 +128,10 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
   const isCheckOutValid =
     checkIn != null && checkOut != null && checkOut > checkIn
   const canSubmit = Boolean(slug) && isCheckOutValid
+  const selectedProperty = useMemo(
+    () => properties.find((p) => p.slug === slug),
+    [properties, slug],
+  )
 
   const roomsUrl = useMemo(() => {
     if (!canSubmit || !checkIn || !checkOut || !slug) return null
@@ -175,18 +183,62 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
             <Select value={slug} onValueChange={setSlug}>
               <SelectTrigger className="h-10 w-full border-input bg-background">
                 <MapPinned className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                <SelectValue placeholder="Choose property" />
+                <SelectValue placeholder="Choose property">
+                  {selectedProperty?.publicName}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent
                 position="popper"
                 sideOffset={6}
                 collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
-                className="max-h-[min(16rem,calc(100dvh-10rem))] w-[var(--radix-select-trigger-width)]"
+                className="max-h-[min(20rem,calc(100dvh-10rem))] w-[max(var(--radix-select-trigger-width),18rem)]"
               >
                 {properties.map((p) => (
-                  <SelectItem key={p.slug} value={p.slug}>
-                    {p.publicName}
-                  </SelectItem>
+                  <SelectPrimitive.Item
+                    key={p.slug}
+                    value={p.slug}
+                    textValue={p.publicName}
+                    className={cn(
+                      'group/property-option relative flex w-full cursor-default select-none rounded-sm py-2.5 pl-2 pr-8 outline-none',
+                      'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
+                      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+                    )}
+                  >
+                    <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
+                      <SelectPrimitive.ItemIndicator>
+                        <Check className="h-4 w-4" />
+                      </SelectPrimitive.ItemIndicator>
+                    </span>
+                    <span className="flex min-w-0 flex-1 items-start gap-3">
+                      {p.heroImageUrl ? (
+                        <Image
+                          src={p.heroImageUrl}
+                          alt=""
+                          width={40}
+                          height={40}
+                          className="h-10 w-10 shrink-0 rounded-md object-cover"
+                          unoptimized={p.heroImageUrl.startsWith('http')}
+                        />
+                      ) : (
+                        <span
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                          aria-hidden
+                        >
+                          {p.publicName.slice(0, 2)}
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1 text-left">
+                        <SelectPrimitive.ItemText className="block truncate text-sm font-medium leading-snug">
+                          {p.publicName}
+                        </SelectPrimitive.ItemText>
+                        {p.fullAddress ? (
+                          <span className="mt-0.5 block truncate text-xs font-normal leading-snug text-muted-foreground transition-colors group-data-[highlighted]/property-option:text-black">
+                            {p.fullAddress}
+                          </span>
+                        ) : null}
+                      </span>
+                    </span>
+                  </SelectPrimitive.Item>
                 ))}
               </SelectContent>
             </Select>
@@ -307,13 +359,42 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
           <Button
             type="submit"
             disabled={!canSubmit}
-            className="h-10 shrink-0 w-full md:w-fit"
+            className={cn(
+              'group/book relative h-10 shrink-0 touch-manipulation',
+              'inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-full px-6 text-sm font-semibold tracking-tight',
+              'transition-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-card',
+              'w-full md:w-auto md:min-w-[7.5rem]',
+              canSubmit
+                ? [
+                    'bg-gold-300 text-ink-800 shadow-[0_1px_2px_rgba(10,14,26,0.1)]',
+                    'ring-1 ring-inset ring-white/20',
+                    'transition-[transform,background-color,box-shadow] duration-200 ease-editorial',
+                    'motion-safe:active:scale-[0.97]',
+                    'motion-reduce:active:scale-100 motion-reduce:transition-none',
+                    'hover:bg-gold-200',
+                    'focus-visible:ring-gold-400/55',
+                    '[@media(hover:hover)_and_(pointer:fine)]:hover:shadow-[0_4px_16px_-4px_rgba(200,168,90,0.5)]',
+                    'before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/20 before:to-transparent',
+                  ]
+                : [
+                    'cursor-not-allowed bg-muted text-muted-foreground/75',
+                    'ring-1 ring-inset ring-border/50 shadow-none',
+                    'focus-visible:ring-muted-foreground/25',
+                  ],
+            )}
             aria-describedby={submitHint ? 'hero-book-hint' : undefined}
             onMouseEnter={prefetchRooms}
             onFocus={prefetchRooms}
           >
-            Book
-            <ChevronRight className="ml-1 h-4 w-4" />
+            <span className="relative z-[1]">Book stay</span>
+            <ChevronRight
+              className={cn(
+                'relative z-[1] h-4 w-4 shrink-0 transition-transform duration-200 ease-editorial',
+                canSubmit &&
+                  'motion-safe:[@media(hover:hover)_and_(pointer:fine)]:group-hover/book:translate-x-0.5',
+              )}
+              aria-hidden
+            />
           </Button>
         </div>
       </div>
