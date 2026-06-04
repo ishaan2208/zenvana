@@ -56,7 +56,7 @@ export async function PropertyPyramidSection({ properties }: Props) {
   // Roster comes from the live backend (single source of truth). Fall back to
   // the curated set only if the API is unreachable, so the collection is never blank.
   const roster = properties.length > 0 ? properties : fallbackPyramidProperties()
-  const cards = await buildPyramidCardData(roster)
+  const cards = (await buildPyramidCardData(roster)).sort((a, b) => a.rank - b.rank)
   const grouped = PYRAMID_TIER_ORDER.map((tier) => ({
     tier,
     items: cards.filter((p) => p.tier === tier),
