@@ -1,7 +1,11 @@
 export type BookingRoom = {
   bookingId: number
-  checkIn: string
-  checkOut: string
+  checkInDate: string
+  checkOutDate: string
+  /** @deprecated */
+  checkIn?: string
+  /** @deprecated */
+  checkOut?: string
   id: number
   occupancy: number
   propertyId: number

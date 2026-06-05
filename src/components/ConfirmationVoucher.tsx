@@ -3,6 +3,7 @@
 import React from 'react'
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
 import { format } from 'date-fns'
+import { stayCheckIn, stayCheckOut } from '@/lib/booking-room-dates'
 
 const styles = StyleSheet.create({
   page: { padding: 30, fontFamily: 'Helvetica' },
@@ -82,10 +83,10 @@ type VoucherRoom = {
   occupancy: number
   tariff: number
   totalNight: number
-  checkIn: string
-  checkOut: string
-  checkInDate?: string | null
-  checkOutDate?: string | null
+  checkInDate: string
+  checkOutDate: string
+  checkIn?: string | null
+  checkOut?: string | null
   room_type: { name: string }
 }
 
@@ -123,8 +124,8 @@ export default function ConfirmationVoucher({
   booking: VoucherBooking
   logoUrl: string | null
 }) {
-  const getRoomCheckInDate = (room: VoucherRoom) => room.checkInDate ?? room.checkIn
-  const getRoomCheckOutDate = (room: VoucherRoom) => room.checkOutDate ?? room.checkOut
+  const getRoomCheckInDate = (room: VoucherRoom) => stayCheckIn(room)
+  const getRoomCheckOutDate = (room: VoucherRoom) => stayCheckOut(room)
 
   return (
     <Document>

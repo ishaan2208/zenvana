@@ -11,6 +11,7 @@ import {
   getPublicBookingVoucherDetailsByReference,
   type PublicVoucherBookingDetails,
 } from '@/lib/api'
+import { stayCheckIn, stayCheckOut } from '@/lib/booking-room-dates'
 
 type VoucherRequestData = {
   slug?: string
@@ -85,11 +86,11 @@ const styles = StyleSheet.create({
 })
 
 function getRoomCheckInDate(room: PublicVoucherBookingDetails['BookingRoom'][number]) {
-  return room.checkInDate ?? room.checkIn
+  return stayCheckIn(room)
 }
 
 function getRoomCheckOutDate(room: PublicVoucherBookingDetails['BookingRoom'][number]) {
-  return room.checkOutDate ?? room.checkOut
+  return stayCheckOut(room)
 }
 
 const RATE_PLAN_LABEL: Record<'EP' | 'CP' | 'MAP' | 'AP', string> = {

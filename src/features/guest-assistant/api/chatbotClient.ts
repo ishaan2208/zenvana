@@ -11,7 +11,12 @@ export type ChatbotGuestData = {
   bookingRoomId?: number
   roomNumber?: string
   selectedRoomId?: number
-  BookingRoom?: Array<{ checkIn?: string; checkOut?: string }>
+  BookingRoom?: Array<{
+    checkInDate?: string | null
+    checkOutDate?: string | null
+    checkIn?: string | null
+    checkOut?: string | null
+  }>
 }
 
 async function parseJson(res: Response) {

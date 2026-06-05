@@ -191,7 +191,9 @@ export type ZenvanaGuestBookingRow = {
   id: number
   bookingReference: string
   guestName: string
+  /** Date-only stay start (YYYY-MM-DD), from BookingRoom.checkInDate */
   checkIn: string
+  /** Date-only stay end (YYYY-MM-DD), from BookingRoom.checkOutDate */
   checkOut: string
   totalAmount: number
   bookingStatus: string

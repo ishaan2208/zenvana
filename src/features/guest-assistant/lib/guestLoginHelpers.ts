@@ -1,3 +1,4 @@
+import { stayCheckIn, stayCheckOut } from '@/lib/booking-room-dates'
 import type { ChatbotGuestData } from '../api/chatbotClient'
 import { guestStorage } from './guestStorage'
 import { useStayStore } from '../stores/stayStore'
@@ -29,8 +30,8 @@ export function persistGuestSession(
     phoneNumber: data.guestPhoneNumber ?? phoneNumber,
     roomNumber: data.roomNumber,
     guestName: data.guestName,
-    checkInDate: bookingRooms[0]?.checkIn,
-    checkOutDate: bookingRooms[0]?.checkOut,
+    checkInDate: String(stayCheckIn(bookingRooms[0]) || ''),
+    checkOutDate: String(stayCheckOut(bookingRooms[0]) || ''),
   } satisfies GuestSession)
 
   useStayStore.getState().setStay(

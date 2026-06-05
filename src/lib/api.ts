@@ -625,10 +625,12 @@ export type PublicVoucherBookingRoom = {
   roomPlan?: 'EP' | 'CP' | 'MAP' | 'AP'
   tariff: number
   totalNight: number
-  checkIn: string
-  checkOut: string
-  checkInDate?: string | null
-  checkOutDate?: string | null
+  checkInDate: string
+  checkOutDate: string
+  /** @deprecated Use checkInDate */
+  checkIn?: string | null
+  /** @deprecated Use checkOutDate */
+  checkOut?: string | null
   room_type: { name: string }
 }
 
