@@ -45,6 +45,41 @@ function normalizeSlug(slug: string): string {
     .replace(/^-|-$/g, '')
 }
 
+function sanitizeBlogAlternateHref(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  if (!trimmed.startsWith('/')) {
+    throw new Error('Alternate href must start with / (e.g. /best-hotel-in-dehradun)')
+  }
+  if (/\s/.test(trimmed)) {
+    throw new Error('Alternate href cannot contain spaces. Use hyphens instead (e.g. /hotels-in-dehradun)')
+  }
+  return trimmed
+}
+
+function sanitizeBlogCanonicalUrl(
+  value: string | null | undefined,
+  slug: string,
+): string | null {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      new URL(trimmed)
+      return trimmed
+    } catch {
+      throw new Error('Canonical URL is not a valid URL')
+    }
+  }
+  if (!trimmed.startsWith('/')) {
+    throw new Error('Canonical URL must be an absolute path (/) or full URL (https://…)')
+  }
+  if (/\s/.test(trimmed)) {
+    throw new Error(`Canonical URL cannot contain spaces. Did you mean /blog/${slug}?`)
+  }
+  return trimmed
+}
+
 function revalidateBlogPaths(post: Pick<BlogPost, 'slug' | 'alternateHref'>, previousSlug?: string) {
   revalidatePath('/blog')
   revalidatePath(`/blog/${post.slug}`)
@@ -72,6 +107,8 @@ export async function getBlogPostAdminById(id: string): Promise<BlogPostAdminRec
 
 export async function createBlogPostAdmin(input: BlogPostInput): Promise<BlogPostAdminRecord> {
   const slug = normalizeSlug(input.slug)
+  const alternateHref = sanitizeBlogAlternateHref(input.alternateHref)
+  const canonicalUrl = sanitizeBlogCanonicalUrl(input.canonicalUrl, slug)
   const status = input.status ?? BlogPostStatus.DRAFT
   const post = await prisma.blogPost.create({
     data: {
@@ -79,11 +116,11 @@ export async function createBlogPostAdmin(input: BlogPostInput): Promise<BlogPos
       title: input.title.trim(),
       excerpt: input.excerpt.trim(),
       contentHtml: sanitizeBlogHtml(input.contentHtml),
-      alternateHref: input.alternateHref?.trim() || null,
+      alternateHref,
       seoTitle: input.seoTitle?.trim() || input.title.trim(),
       seoDescription: input.seoDescription?.trim() || input.excerpt.trim(),
       seoKeywords: input.seoKeywords ?? [],
-      canonicalUrl: input.canonicalUrl?.trim() || null,
+      canonicalUrl,
       ogTitle: input.ogTitle?.trim() || null,
       ogDescription: input.ogDescription?.trim() || null,
       ogImageUrl: input.ogImageUrl?.trim() || null,
@@ -114,6 +151,8 @@ export async function updateBlogPostAdmin(
 
   const status = input.status ?? existing.status
   const newSlug = normalizeSlug(input.slug)
+  const alternateHref = sanitizeBlogAlternateHref(input.alternateHref)
+  const canonicalUrl = sanitizeBlogCanonicalUrl(input.canonicalUrl, newSlug)
   const publishedAt =
     status === BlogPostStatus.PUBLISHED
       ? existing.publishedAt ?? new Date()
@@ -130,11 +169,11 @@ export async function updateBlogPostAdmin(
       title: input.title.trim(),
       excerpt: input.excerpt.trim(),
       contentHtml: sanitizeBlogHtml(input.contentHtml),
-      alternateHref: input.alternateHref?.trim() || null,
+      alternateHref,
       seoTitle: input.seoTitle?.trim() || input.title.trim(),
       seoDescription: input.seoDescription?.trim() || input.excerpt.trim(),
       seoKeywords: input.seoKeywords ?? [],
-      canonicalUrl: input.canonicalUrl?.trim() || null,
+      canonicalUrl,
       ogTitle: input.ogTitle?.trim() || null,
       ogDescription: input.ogDescription?.trim() || null,
       ogImageUrl: input.ogImageUrl?.trim() || null,

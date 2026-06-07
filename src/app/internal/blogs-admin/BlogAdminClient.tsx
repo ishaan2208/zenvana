@@ -523,12 +523,7 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
     )
   }
 
-  const previewHref = form.slug
-    ? getBlogPostHref({
-        slug: form.slug,
-        alternateHref: form.alternateHref.trim() || null,
-      })
-    : null
+  const previewHref = form.slug ? `/blog/${form.slug}` : null
   const publishedCount = initialPosts.filter((p) => p.status === BlogPostStatus.PUBLISHED).length
   const draftCount = initialPosts.length - publishedCount
 
