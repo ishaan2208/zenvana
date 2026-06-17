@@ -51,6 +51,8 @@ export function RatePlanSelector({
   initialRatePlan,
 }: Props) {
   const maxRooms = Math.min(Math.max(1, availableRooms), Math.max(1, requestedRooms))
+  const nightsCount = Math.max(1, parseInt(nights, 10) || 1)
+  const isMultiNight = nightsCount > 1
   const initialPlan = initialRatePlan ? plans.find((p) => p.plan === initialRatePlan) : null
 
   const [selectedPlan, setSelectedPlan] = useState<PublicRatesWithPlansPlan | null>(
@@ -149,7 +151,7 @@ export function RatePlanSelector({
 
                       <div className="shrink-0 rounded-[1rem] border border-border/60 bg-card px-3 py-2 text-right dark:bg-card/70">
                         <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                          Total
+                          {isMultiNight ? `Total · ${nightsCount} nights` : 'Total'}
                         </div>
                         <div className="mt-1 text-lg font-semibold text-foreground">
                           <PriceWithMarketRate
@@ -164,7 +166,19 @@ export function RatePlanSelector({
 
                     <div className="mt-5 border-t border-border/60 pt-4">
                       <p className="text-xs leading-6 text-muted-foreground">
-                        Total for {nights} night{nights !== '1' ? 's' : ''} · 1 room
+                        {isMultiNight ? (
+                          <>
+                            <PriceWithMarketRate
+                              amount={plan.averagePricePerNight}
+                              marketAmount={plan.averageMarketRatePerNight}
+                              suffix="/night"
+                              size="sm"
+                            />{' '}
+                            × {nightsCount} nights · 1 room
+                          </>
+                        ) : (
+                          'Total for 1 night · 1 room'
+                        )}
                       </p>
                     </div>
                   </CardContent>
