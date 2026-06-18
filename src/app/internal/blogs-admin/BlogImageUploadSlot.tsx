@@ -2,6 +2,7 @@
 
 import { BlogMediaRole, type BlogMedia } from '@prisma/client'
 import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { compressBlogImage } from '@/lib/blogImageCompression'
@@ -260,13 +261,12 @@ export function BlogImageUploadSlot({
               unoptimized
             />
           ) : current ? (
-            <Image
+            <CloudinaryImage
               src={current.url}
               alt={current.altText || spec.label}
               fill
               sizes="(min-width: 1024px) 500px, 100vw"
               className="object-cover"
-              unoptimized={current.url.startsWith('http')}
             />
           ) : (
             <button

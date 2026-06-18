@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 import { notFound, permanentRedirect } from 'next/navigation'
+
+import CloudinaryImage from '@/components/CloudinaryImage'
 
 import { BlogComments } from '@/components/blog/BlogComments'
 import { BlogCoverPicture } from '@/components/blog/BlogCoverPicture'
@@ -239,14 +240,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                         key={media.id}
                         className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted shadow-[0_8px_30px_rgba(0,31,63,0.08)]"
                       >
-                        <Image
+                        <CloudinaryImage
                           src={media.url}
                           alt={media.altText || post.title}
                           fill
                           sizes="(min-width: 640px) 45vw, 100vw"
                           className="object-cover"
                           loading="lazy"
-                          unoptimized={media.url.startsWith('http')}
                         />
                       </div>
                     ))}

@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import { usePrefetchBookRooms } from '@/hooks/usePrefetchBookRooms'
@@ -211,13 +211,12 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                     </span>
                     <span className="flex min-w-0 flex-1 items-start gap-3">
                       {p.heroImageUrl ? (
-                        <Image
+                        <CloudinaryImage
                           src={p.heroImageUrl}
                           alt=""
                           width={40}
                           height={40}
                           className="h-10 w-10 shrink-0 rounded-md object-cover"
-                          unoptimized={p.heroImageUrl.startsWith('http')}
                         />
                       ) : (
                         <span

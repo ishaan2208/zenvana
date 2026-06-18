@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import {
   ArrowLeft,
   BadgeCheck,
@@ -208,7 +208,7 @@ function PropertyBookingHeader({
 
         <div className="relative min-h-[220px] border-t border-border/60 lg:min-h-full lg:border-l lg:border-t-0">
           {heroUrl ? (
-            <Image
+            <CloudinaryImage
               src={heroUrl}
               alt={propertyName}
               fill
