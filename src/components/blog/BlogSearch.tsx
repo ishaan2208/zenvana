@@ -1,7 +1,7 @@
 'use client'
 
 import Fuse, { type FuseResultMatch } from 'fuse.js'
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
@@ -194,14 +194,13 @@ export function BlogSearch({ items, categories }: Props) {
               <article key={item.slug} className="group blog-card">
                 <Link href={item.href} className="blog-card-media" aria-label={item.title}>
                   {item.heroImageUrl ? (
-                    <Image
+                    <CloudinaryImage
                       src={item.heroImageUrl}
                       alt={item.title}
                       fill
                       sizes="(min-width: 1280px) 380px, (min-width: 768px) 45vw, 100vw"
                       className="object-cover"
                       loading={index < 3 ? 'eager' : 'lazy'}
-                      unoptimized={item.heroImageUrl.startsWith('http')}
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-muted to-card" />

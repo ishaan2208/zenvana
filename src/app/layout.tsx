@@ -161,6 +161,10 @@ export default function RootLayout({
   return (
     <html lang="en-IN" className="h-full scroll-smooth" suppressHydrationWarning>
       <head>
+        {/* Images are delivered straight from Cloudinary's CDN — warm the connection
+            early so the LCP hero starts downloading without TLS/DNS round-trips. */}
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://connect.facebook.net" />
         <GoogleAdsTag />

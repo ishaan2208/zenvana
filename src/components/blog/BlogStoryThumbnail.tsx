@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import Link from 'next/link'
 import type { BlogMedia, BlogPost } from '@prisma/client'
 
@@ -80,7 +80,7 @@ export function BlogStoryThumbnail({
       aria-label={post.title}
       className={`group relative block w-full overflow-hidden ${ASPECT_CLASS[aspect]} ${className}`}
     >
-      <Image
+      <CloudinaryImage
         src={variant.url}
         alt={variant.alt}
         fill
@@ -88,7 +88,6 @@ export function BlogStoryThumbnail({
         priority={priority}
         loading={loading}
         className="object-cover transition duration-700 ease-out group-hover:scale-[1.03]"
-        unoptimized={variant.url.startsWith('http')}
       />
     </Link>
   )

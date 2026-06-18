@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import { Reveal } from '@/components/motion/Reveal'
 import {
   ArrowRight,
@@ -198,7 +198,7 @@ export default async function HotelsPage({ searchParams }: Props) {
                       ) : null}
                       <div className="relative overflow-hidden">
                         {p.heroImageUrl ? (
-                          <Image
+                          <CloudinaryImage
                             src={p.heroImageUrl}
                             alt={p.publicName}
                             width={1200}

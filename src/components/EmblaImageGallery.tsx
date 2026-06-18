@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import useEmblaCarousel from 'embla-carousel-react'
 import Autoplay from 'embla-carousel-autoplay'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -62,7 +62,7 @@ export function EmblaImageGallery({
               className="min-w-0 shrink-0 grow-0 basis-full"
             >
               <div className={`relative w-full ${aspectClassName}`}>
-                <Image
+                <CloudinaryImage
                   src={image.url}
                   alt={image.alt}
                   fill
@@ -121,7 +121,7 @@ export function EmblaImageGallery({
                   }`}
               >
                 <div className="relative h-16 w-24 sm:h-20 sm:w-28">
-                  <Image
+                  <CloudinaryImage
                     src={image.url}
                     alt={image.alt}
                     fill

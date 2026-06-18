@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import {
   ArrowLeft,
   ArrowRight,
@@ -276,7 +276,7 @@ function PropertyHero({
       {/* Atmospheric blurred backdrop — image becomes pure ambience */}
       {heroUrl ? (
         <div className="absolute inset-0">
-          <Image
+          <CloudinaryImage
             src={heroUrl}
             alt=""
             fill
@@ -329,7 +329,7 @@ function PropertyHero({
         <div className="mt-8 sm:mt-12">
           <div className="relative mx-auto aspect-[4/5] w-full max-w-[300px] overflow-hidden rounded-[1.25rem] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/10 sm:max-w-md sm:rounded-[1.5rem]">
             {heroUrl ? (
-              <Image
+              <CloudinaryImage
                 src={heroUrl}
                 alt={`${property.publicName} in ${location}`}
                 fill
@@ -460,7 +460,7 @@ function PropertyHero({
                   className="group relative overflow-hidden rounded-[0.85rem] border border-white/8 bg-white/[0.04] backdrop-blur-xl"
                 >
                   <div className="relative aspect-[1.05/1]">
-                    <Image
+                    <CloudinaryImage
                       src={img.url}
                       alt={`${property.publicName} preview ${index + 1}`}
                       fill
@@ -710,7 +710,7 @@ function OverviewSplitSection({
             {/* Large featured tile */}
             {collage[0] && (
               <div className="group relative col-span-6 aspect-[5/4] overflow-hidden rounded-[1.25rem] border border-border/60 bg-card/60 sm:col-span-4 sm:aspect-[4/5]">
-                <Image
+                <CloudinaryImage
                   src={collage[0].url}
                   alt={`${property.publicName} gallery image 1`}
                   fill
@@ -730,7 +730,7 @@ function OverviewSplitSection({
                   key={`${img.url}-${index}`}
                   className="group relative aspect-[4/3] overflow-hidden rounded-[1.25rem] border border-border/60 bg-card/60 sm:aspect-[4/4]"
                 >
-                  <Image
+                  <CloudinaryImage
                     src={img.url}
                     alt={`${property.publicName} gallery image ${index + 2}`}
                     fill
@@ -1251,7 +1251,7 @@ function CompareOtherProperties({
               >
                 <div className="relative aspect-[4/5] overflow-hidden bg-muted">
                   {p.heroImageUrl ? (
-                    <Image
+                    <CloudinaryImage
                       src={p.heroImageUrl}
                       alt={`${p.publicName} by Zenvana`}
                       fill

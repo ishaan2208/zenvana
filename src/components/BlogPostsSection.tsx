@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
@@ -86,13 +86,12 @@ export function BlogPostsSection({
           {lead ? (
             <article className="group blog-card lg:col-span-7">
               <Link href={lead.href ?? `/blog/${lead.slug}`} className="blog-card-media lg:aspect-[16/10]" aria-label={lead.title}>
-                <Image
+                <CloudinaryImage
                   src={lead.heroImageUrl || FALLBACK_IMAGE}
                   alt={lead.title}
                   fill
                   sizes="(min-width: 1024px) 56vw, 100vw"
                   className="object-cover"
-                  unoptimized={(lead.heroImageUrl || '').startsWith('http')}
                 />
                 <div className="absolute left-3 top-3">
                   <span className="blog-chip blog-chip-accent">{lead.category ?? 'Featured'}</span>
@@ -146,14 +145,13 @@ export function BlogPostsSection({
                     className="blog-card-media aspect-[16/10] sm:aspect-[16/9] lg:aspect-[16/8]"
                     aria-label={post.title}
                   >
-                    <Image
+                    <CloudinaryImage
                       src={post.heroImageUrl || FALLBACK_IMAGE}
                       alt={post.title}
                       fill
                       sizes="(min-width: 1024px) 40vw, 50vw"
                       className="object-cover"
                       loading="lazy"
-                      unoptimized={(post.heroImageUrl || '').startsWith('http')}
                     />
                     {post.category ? (
                       <div className="absolute left-3 top-3">
@@ -191,14 +189,13 @@ export function BlogPostsSection({
                   className="blog-card-media"
                   aria-label={post.title}
                 >
-                  <Image
+                  <CloudinaryImage
                     src={post.heroImageUrl || FALLBACK_IMAGE}
                     alt={post.title}
                     fill
                     sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                     className="object-cover"
                     loading="lazy"
-                    unoptimized={(post.heroImageUrl || '').startsWith('http')}
                   />
                   {post.category ? (
                     <div className="absolute left-3 top-3">

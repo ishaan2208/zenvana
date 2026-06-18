@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
+import { cldArt } from '@/lib/cloudinaryLoader'
 import clsx from 'clsx'
 import { BedDouble, ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -255,10 +256,11 @@ export function RoomsCarousel({
             >
               <div className="relative aspect-[4/3] bg-muted">
                 {room.imageSrc ? (
-                  <Image
-                    src={room.imageSrc}
+                  <CloudinaryImage
+                    src={cldArt(room.imageSrc, '4:3')}
                     alt={room.imageAlt ?? `${room.name} room`}
                     fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover"
                   />
                 ) : null}

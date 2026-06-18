@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import Link from 'next/link'
 import { ArrowRight, Crown, Gem, Leaf } from 'lucide-react'
 
@@ -120,7 +120,7 @@ export async function PropertyPyramidSection({ properties }: Props) {
                               priority={priority}
                             />
                           ) : item.imageUrls.length === 1 ? (
-                            <Image
+                            <CloudinaryImage
                               src={item.imageUrls[0]}
                               alt={alt}
                               fill
@@ -128,7 +128,6 @@ export async function PropertyPyramidSection({ properties }: Props) {
                               loading={priority ? 'eager' : 'lazy'}
                               fetchPriority={priority ? 'high' : 'auto'}
                               quality={65}
-                              unoptimized={item.imageUrls[0]?.startsWith('http')}
                               className="object-cover"
                             />
                           ) : (

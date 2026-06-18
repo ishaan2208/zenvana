@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import { useEffect, useState } from 'react'
 
 import { useInViewOnce } from '@/hooks/useInViewOnce'
@@ -55,7 +55,7 @@ export function PropertyCardImageSlideshow({
       {urls.map((url, i) => {
         const active = i === index
         return (
-          <Image
+          <CloudinaryImage
             key={`${url}-${i}`}
             src={url}
             alt={active ? alt : ''}
@@ -66,7 +66,6 @@ export function PropertyCardImageSlideshow({
             fetchPriority={priority && i === 0 ? 'high' : 'auto'}
             quality={65}
             aria-hidden={!active}
-            unoptimized={url.startsWith('http')}
             className={cn(
               'object-cover transition-opacity ease-out motion-reduce:transition-none',
               active ? 'opacity-100' : 'opacity-0',

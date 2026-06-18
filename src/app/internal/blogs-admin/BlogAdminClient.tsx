@@ -1,7 +1,7 @@
 'use client'
 
 import { BlogMediaType, BlogPostStatus, type BlogMedia, type BlogPost } from '@prisma/client'
-import Image from 'next/image'
+import CloudinaryImage from '@/components/CloudinaryImage'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
@@ -1061,12 +1061,11 @@ function SeoTab({
         />
         {form.ogImageUrl || form.heroImageUrl ? (
           <div className="relative mt-3 aspect-[1200/630] max-w-md overflow-hidden rounded-xl border border-border">
-            <Image
+            <CloudinaryImage
               src={form.ogImageUrl || form.heroImageUrl}
               alt="OG preview"
               fill
               className="object-cover"
-              unoptimized={(form.ogImageUrl || form.heroImageUrl).startsWith('http')}
             />
           </div>
         ) : null}
@@ -1242,12 +1241,11 @@ function MediaTab({
                 <li key={item.id} className="overflow-hidden rounded-xl border border-border bg-background">
                   <div className="relative aspect-[4/3] bg-muted">
                     {item.type === BlogMediaType.IMAGE ? (
-                      <Image
+                      <CloudinaryImage
                         src={item.url}
                         alt={item.altText || 'Blog media'}
                         fill
                         className="object-cover"
-                        unoptimized={item.url.startsWith('http')}
                       />
                     ) : (
                       <video src={item.url} className="h-full w-full object-cover" muted playsInline />
@@ -1565,13 +1563,12 @@ function PostsSheet({
                     </div>
                     {post.heroImageUrl ? (
                       <div className="relative hidden h-12 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted sm:block">
-                        <Image
+                        <CloudinaryImage
                           src={post.heroImageUrl}
                           alt=""
                           fill
                           sizes="64px"
                           className="object-cover"
-                          unoptimized={post.heroImageUrl.startsWith('http')}
                         />
                       </div>
                     ) : null}
