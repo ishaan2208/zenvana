@@ -75,37 +75,58 @@ export function PropertyMapSection({
       setMapError('Map is unavailable right now.')
       return
     }
-    if (!mapContainerRef.current) return
+    const container = mapContainerRef.current
+    if (!container) return
 
     let isMounted = true
+    let started = false
 
-    loadGoogleMapsScript(apiKey)
-      .then(() => {
-        if (!isMounted || !mapContainerRef.current || !window.google?.maps) return
+    const initMap = () => {
+      if (started) return
+      started = true
+      loadGoogleMapsScript(apiKey)
+        .then(() => {
+          if (!isMounted || !mapContainerRef.current || !window.google?.maps) return
 
-        const center = { lat: latitude, lng: longitude }
+          const center = { lat: latitude, lng: longitude }
 
-        const map = new window.google.maps.Map(mapContainerRef.current, {
-          center,
-          zoom: 15,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          clickableIcons: false,
+          const map = new window.google.maps.Map(mapContainerRef.current, {
+            center,
+            zoom: 15,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+            clickableIcons: false,
+          })
+
+          new window.google.maps.Marker({
+            position: center,
+            map,
+            title: propertyName,
+          })
         })
-
-        new window.google.maps.Marker({
-          position: center,
-          map,
-          title: propertyName,
+        .catch(() => {
+          if (isMounted) setMapError('Map is unavailable right now.')
         })
-      })
-      .catch(() => {
-        if (isMounted) setMapError('Map is unavailable right now.')
-      })
+    }
+
+    // Defer the heavy Google Maps JS until the map is near the viewport. The map
+    // sits below the fold, so this keeps ~170KB of Maps script off the initial
+    // critical path where it was competing with LCP.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          observer.disconnect()
+          initMap()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+    observer.observe(container)
 
     return () => {
       isMounted = false
+      observer.disconnect()
     }
   }, [apiKey, latitude, longitude, propertyName])
 
