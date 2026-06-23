@@ -15,6 +15,7 @@ import { GoogleAdsTag } from '@/components/GoogleAdsTag'
 import { SiteAnalytics, GtmNoscript } from '@/components/SiteAnalytics'
 import { InitialSplash } from '@/components/InitialSplash'
 import { PageViewTracker } from '@/components/analytics/PageViewTracker'
+import { PhoneCallTracker } from '@/components/analytics/PhoneCallTracker'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
@@ -190,6 +191,7 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <PageViewTracker />
           </Suspense>
+          <PhoneCallTracker />
           <Suspense fallback={null}>
             <NavigationLoadingProvider>
               <AppToaster />
