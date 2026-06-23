@@ -12,6 +12,7 @@ import { Button } from '@/components/Button'
 import { PriceWithTax } from '@/components/PriceWithTax'
 import { DownloadConfirmationVoucherButton } from './DownloadConfirmationVoucherButton'
 import { getPublicBookingVoucherDetailsByReference } from '@/lib/api'
+import { BookingConfirmedConversion } from '@/components/analytics/BookingConfirmedConversion'
 
 export const metadata = {
   title: 'Booking confirmation',
@@ -62,6 +63,15 @@ export default async function ConfirmationPage({ searchParams }: Props) {
 
   return (
     <main className="bg-background text-foreground">
+      <BookingConfirmedConversion
+        bookingReference={q.bookingReference ?? null}
+        value={q.totalAmount ? Number(q.totalAmount) : null}
+        propertyName={q.propertyName ?? null}
+        propertySlug={q.slug ?? null}
+        roomTypeName={q.roomTypeName ?? null}
+        checkIn={q.checkIn ?? null}
+        checkOut={q.checkOut ?? null}
+      />
       <section className="relative overflow-hidden border-b border-border/60 bg-background">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(219,230,76,0.08),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(116,195,101,0.06),transparent_22%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(219,230,76,0.05),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(116,195,101,0.05),transparent_22%)]" />
 
