@@ -18,8 +18,9 @@ import { Button } from '@/components/Button'
 import { Container } from '@/components/Container'
 import { SoldOutTag } from '@/components/SoldOutTag'
 import { RoomCard } from './RoomCard'
-import { isRoomTypePurchasable } from './roomAvailability'
+import { isRoomTypePurchasable, sortRoomTypesByLowestRate } from './roomAvailability'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
+import { sanitizeReturnTo } from '@/lib/book-rooms-url'
 import { TrackOnMount } from '@/components/analytics/TrackOnMount'
 import {
   filterPreferDoubleSharing,
@@ -38,7 +39,16 @@ type Props = {
     guestsPerRoom?: string
     couponCode?: string
     promoCode?: string
+    returnTo?: string
   }>
+}
+
+function roomsBackLabel(returnTo: string | null): string {
+  if (!returnTo) return 'Back to stay details'
+  if (returnTo === '/') return 'Back to home'
+  if (returnTo === '/hotels') return 'Back to hotels'
+  if (returnTo.startsWith('/hotels/')) return 'Back to property'
+  return 'Back'
 }
 
 export const metadata = {
@@ -57,6 +67,7 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     guestsPerRoom: guestsPerRoomParam,
   } = q
   const couponCode = promoOrCouponFromSearchParams(q)
+  const returnTo = sanitizeReturnTo(q.returnTo)
 
   if (!checkIn || !checkOut) {
     redirect(`/book/${slug}`)
@@ -86,16 +97,19 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
   if (!property) notFound()
 
   if (!availability) {
+    const errorBackHref = returnTo ?? `/book/${slug}`
+    const errorBackLabel = roomsBackLabel(returnTo)
+
     return (
       <main className="min-h-screen bg-background text-foreground">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,198,0.10),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.08),transparent_28%)]" />
         <Container className="relative py-6 sm:py-8 lg:py-12">
           <Link
-            href={`/book/${slug}`}
+            href={errorBackHref}
             className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-4 py-2 text-sm font-medium text-foreground/80 backdrop-blur-xl transition hover:text-foreground dark:bg-background/40"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to stay details
+            {errorBackLabel}
           </Link>
 
           <section className="mt-5 overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl dark:bg-background/30">
@@ -276,8 +290,8 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
         : `${occupancy} guest${occupancy !== 1 ? 's' : ''}`
       : null
 
-  const bookableRoomTypes = roomTypesWithRates.filter((room) =>
-    isRoomTypePurchasable(room, rooms),
+  const bookableRoomTypes = sortRoomTypesByLowestRate(
+    roomTypesWithRates.filter((room) => isRoomTypePurchasable(room, rooms)),
   )
 
   const allRoomsSoldOutForStay =
@@ -292,6 +306,8 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     ...(couponCode ? { couponCode } : {}),
   })
   const stayDetailsHref = `/book/${slug}?${stayDetailsParams.toString()}`
+  const backHref = returnTo ?? stayDetailsHref
+  const backLabel = roomsBackLabel(returnTo)
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -305,11 +321,11 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
 
       <Container className="relative py-5 sm:py-6 lg:py-10">
         <Link
-          href={stayDetailsHref}
+          href={backHref}
           className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-4 py-2 text-sm font-medium text-foreground/80 backdrop-blur-xl transition hover:text-foreground dark:bg-background/40"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to stay details
+          {backLabel}
         </Link>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-8">

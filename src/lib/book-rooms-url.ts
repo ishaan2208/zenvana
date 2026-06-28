@@ -23,6 +23,17 @@ export type BookRoomsUrlParams = {
   totalGuests: number
   guestsPerRoom?: number
   couponCode?: string
+  /** Internal path only — used by room selection back navigation. */
+  returnTo?: string
+}
+
+/** Allow same-origin relative paths only (blocks open redirects). */
+export function sanitizeReturnTo(value: string | undefined | null): string | null {
+  if (!value) return null
+  if (!value.startsWith('/')) return null
+  if (value.startsWith('//')) return null
+  if (value.includes('://')) return null
+  return value
 }
 
 export function buildBookRoomsPath({
@@ -33,6 +44,7 @@ export function buildBookRoomsPath({
   totalGuests,
   guestsPerRoom,
   couponCode,
+  returnTo,
 }: BookRoomsUrlParams): string {
   const params = new URLSearchParams({
     checkIn,
@@ -46,6 +58,10 @@ export function buildBookRoomsPath({
   }
   if (couponCode) {
     params.set('couponCode', couponCode)
+  }
+  const safeReturnTo = sanitizeReturnTo(returnTo)
+  if (safeReturnTo) {
+    params.set('returnTo', safeReturnTo)
   }
 
   return `/book/${slug}/rooms?${params.toString()}`

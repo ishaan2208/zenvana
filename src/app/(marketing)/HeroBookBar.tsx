@@ -2,6 +2,7 @@
 
 import CloudinaryImage from '@/components/CloudinaryImage'
 import { useMemo, useState, useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import { usePrefetchBookRooms } from '@/hooks/usePrefetchBookRooms'
 import { buildBookRoomsPath } from '@/lib/book-rooms-url'
@@ -79,6 +80,7 @@ function toDateString(date: Date): string {
 
 export function HeroBookBar({ properties }: HeroBookBarProps) {
   const router = useAppRouter()
+  const pathname = usePathname()
   const today = useMemo(() => new Date(), [])
   const tomorrow = useMemo(() => {
     const d = new Date(today)
@@ -142,6 +144,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
       rooms: roomsNum,
       totalGuests,
       ...(useGuestsPerRoomMode ? { guestsPerRoom: guestsNum } : {}),
+      returnTo: pathname ?? '/',
     })
   }, [
     slug,
@@ -152,6 +155,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
     useGuestsPerRoomMode,
     guestsNum,
     canSubmit,
+    pathname,
   ])
 
   const { prefetchRooms } = usePrefetchBookRooms(roomsUrl)
@@ -257,10 +261,11 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-auto max-h-[min(20rem,calc(100dvh-10rem))] overflow-y-auto p-0"
+              className="w-auto p-0"
               align="start"
+              side="bottom"
               sideOffset={6}
-              collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+              collisionPadding={16}
             >
               <Calendar
                 mode="single"
@@ -274,6 +279,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                   }
                 }}
                 disabled={(date) => startOfDay(date) < startOfDay(checkInMin)}
+                className="p-2"
                 classNames={calendarClassNames}
               />
             </PopoverContent>
@@ -293,16 +299,18 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-auto max-h-[min(20rem,calc(100dvh-10rem))] overflow-y-auto p-0"
+              className="w-auto p-0"
               align="start"
+              side="bottom"
               sideOffset={6}
-              collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+              collisionPadding={16}
             >
               <Calendar
                 mode="single"
                 selected={checkOut}
                 onSelect={setCheckOut}
                 disabled={(date) => startOfDay(date) < startOfDay(checkOutMin)}
+                className="p-2"
                 classNames={calendarClassNames}
               />
             </PopoverContent>
