@@ -1208,7 +1208,7 @@ function FunnelStory({ funnel, onPick }: { funnel: FunnelStep[]; onPick: (s: Fun
         <span>
           {leak ? (
             <>
-              The biggest leak is at <span className="font-semibold text-foreground">"{friendlyFunnelStep(funnel[leak.toIdx].name, true)}"</span> — you lose <span className="font-semibold text-foreground">{formatPct(leak.dropPct, 0)}</span> of people there.
+              The biggest leak is at <span className="font-semibold text-foreground">&ldquo;{friendlyFunnelStep(funnel[leak.toIdx].name, true)}&rdquo;</span> — you lose <span className="font-semibold text-foreground">{formatPct(leak.dropPct, 0)}</span> of people there.
             </>
           ) : (
             <>Numbers show how many visitors reached each step. Percentages are compared to the first step.</>
