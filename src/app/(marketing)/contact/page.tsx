@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 import { ContactForm } from '@/components/ContactForm'
 import { Container } from '@/components/Container'
-import { HomeLimewoodMap } from '@/components/HomeLimewoodMap'
+import { DeferredLocationMap } from '@/components/DeferredLocationMap'
 import { getPublicPropertyBySlug } from '@/lib/api'
 import { Mail, MapPin, Phone } from 'lucide-react'
 import { JsonLd } from '@/components/JsonLd'
@@ -181,7 +181,7 @@ export default async function ContactPage() {
 
           <div className="quiet-card lg:col-span-7 overflow-hidden p-0">
             <div className="relative min-h-[320px] w-full bg-muted sm:min-h-[360px]">
-              <HomeLimewoodMap
+              <DeferredLocationMap
                 latitude={limewood?.latitude}
                 longitude={limewood?.longitude}
                 mapPlaceUrl={limewood?.googleMapPlaceUrl}

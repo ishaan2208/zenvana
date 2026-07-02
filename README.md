@@ -15,8 +15,11 @@ Create a `.env.local` file (or copy from `.env.example`) with:
 ```bash
 NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
 NEXT_PUBLIC_SITE_URL=http://localhost:3009
+# Optional: only needed when a visitor clicks "View map" on a property or contact page.
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_browser_api_key
 ```
+
+Homepage reviews and ratings come from the backend cache (`GET /api/v1/public/google-reviews`), refreshed daily by the backend cron — zenvana does not call Google Places directly.
 
 Next, run the development server:
 

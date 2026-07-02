@@ -1,11 +1,10 @@
 /**
- * Server component. Pulls live Google reviews when configured, otherwise
- * renders a curated set of editorial-tone testimonials so the section
+ * Server component. Pulls cached Google reviews from the backend when available,
+ * otherwise renders a curated set of editorial-tone testimonials so the section
  * always looks right.
  *
- * Configure in env to switch on the live path:
- *   GOOGLE_PLACES_API_KEY=AIza...
- *   GOOGLE_PLACE_IDS=ChIJxxxxxxxxx,ChIJyyyyyyyyy
+ * Reviews are refreshed daily by the backend google-ratings-snapshot cron.
+ * Requires NEXT_PUBLIC_BACKEND_URL to be set.
  */
 
 import { Star } from 'lucide-react'
@@ -109,7 +108,7 @@ export async function GuestVoicesSection() {
             </h2>
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
               {useLive
-                ? 'Pulled live from Google. Real names, real stays, and the rating that follows us into the next booking.'
+                ? 'Pulled from our cached Google reviews. Real names, real stays, and the rating that follows us into the next booking.'
                 : "We don't curate around the bad ones. These are real names, real stays, and the rating that follows us into the next booking."}
             </p>
           </div>

@@ -3,45 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, MapPin, Navigation } from 'lucide-react'
 
-declare global {
-  interface Window {
-    google?: any
-  }
-}
-
-let googleMapsScriptPromise: Promise<void> | null = null
-
-function loadGoogleMapsScript(apiKey: string): Promise<void> {
-  if (typeof window === 'undefined') {
-    return Promise.reject(new Error('Window is unavailable'))
-  }
-
-  if (window.google?.maps) return Promise.resolve()
-  if (googleMapsScriptPromise) return googleMapsScriptPromise
-
-  googleMapsScriptPromise = new Promise((resolve, reject) => {
-    const existing = document.getElementById('google-maps-js-sdk') as HTMLScriptElement | null
-
-    if (existing) {
-      existing.addEventListener('load', () => resolve(), { once: true })
-      existing.addEventListener('error', () => reject(new Error('Google Maps failed to load')), {
-        once: true,
-      })
-      return
-    }
-
-    const script = document.createElement('script')
-    script.id = 'google-maps-js-sdk'
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`
-    script.async = true
-    script.defer = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Google Maps failed to load'))
-    document.head.appendChild(script)
-  })
-
-  return googleMapsScriptPromise
-}
+import { MapViewGate } from '@/components/MapViewGate'
+import { loadGoogleMapsScript } from '@/lib/googleMapsLoader'
 
 type PropertyMapSectionProps = {
   propertyName: string
@@ -51,26 +14,20 @@ type PropertyMapSectionProps = {
   fullAddress?: string
 }
 
-export function PropertyMapSection({
+function PropertyMapCanvas({
   propertyName,
   latitude,
   longitude,
-  mapPlaceUrl,
-  fullAddress,
-}: PropertyMapSectionProps) {
+}: {
+  propertyName: string
+  latitude: number
+  longitude: number
+}) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const [mapError, setMapError] = useState<string | null>(null)
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
-  const directionsUrl =
-    latitude != null && longitude != null
-      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-        `${latitude},${longitude}`
-      )}&travelmode=driving`
-      : null
-
   useEffect(() => {
-    if (latitude == null || longitude == null) return
     if (!apiKey) {
       setMapError('Map is unavailable right now.')
       return
@@ -79,56 +36,67 @@ export function PropertyMapSection({
     if (!container) return
 
     let isMounted = true
-    let started = false
 
-    const initMap = () => {
-      if (started) return
-      started = true
-      loadGoogleMapsScript(apiKey)
-        .then(() => {
-          if (!isMounted || !mapContainerRef.current || !window.google?.maps) return
+    loadGoogleMapsScript(apiKey)
+      .then(() => {
+        if (!isMounted || !mapContainerRef.current || !window.google?.maps) return
 
-          const center = { lat: latitude, lng: longitude }
+        const center = { lat: latitude, lng: longitude }
 
-          const map = new window.google.maps.Map(mapContainerRef.current, {
-            center,
-            zoom: 15,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-            clickableIcons: false,
-          })
-
-          new window.google.maps.Marker({
-            position: center,
-            map,
-            title: propertyName,
-          })
+        const map = new window.google.maps.Map(mapContainerRef.current, {
+          center,
+          zoom: 15,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          clickableIcons: false,
         })
-        .catch(() => {
-          if (isMounted) setMapError('Map is unavailable right now.')
-        })
-    }
 
-    // Defer the heavy Google Maps JS until the map is near the viewport. The map
-    // sits below the fold, so this keeps ~170KB of Maps script off the initial
-    // critical path where it was competing with LCP.
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          observer.disconnect()
-          initMap()
-        }
-      },
-      { rootMargin: '300px' }
-    )
-    observer.observe(container)
+        new window.google.maps.Marker({
+          position: center,
+          map,
+          title: propertyName,
+        })
+      })
+      .catch(() => {
+        if (isMounted) setMapError('Map is unavailable right now.')
+      })
 
     return () => {
       isMounted = false
-      observer.disconnect()
     }
   }, [apiKey, latitude, longitude, propertyName])
+
+  if (mapError) {
+    return (
+      <div className="grid h-full min-h-[340px] place-items-center text-sm text-muted-foreground sm:min-h-[420px]">
+        {mapError}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      ref={mapContainerRef}
+      className="h-[340px] w-full sm:h-[420px]"
+      aria-label={`${propertyName} map`}
+    />
+  )
+}
+
+export function PropertyMapSection({
+  propertyName,
+  latitude,
+  longitude,
+  mapPlaceUrl,
+  fullAddress,
+}: PropertyMapSectionProps) {
+  const directionsUrl =
+    latitude != null && longitude != null
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+          `${latitude},${longitude}`,
+        )}&travelmode=driving`
+      : null
 
   if (latitude == null || longitude == null) {
     return null
@@ -154,11 +122,18 @@ export function PropertyMapSection({
 
       <div className="mt-8 overflow-hidden rounded-[2rem] border border-border/60 bg-card/70 shadow-[0_16px_40px_rgba(8,17,31,0.05)] dark:bg-card/55">
         <div className="relative">
-          <div
-            ref={mapContainerRef}
+          <MapViewGate
             className="h-[340px] w-full sm:h-[420px]"
-            aria-label={`${propertyName} map`}
-          />
+            ariaLabel={`${propertyName} map`}
+            title={propertyName}
+            subtitle={fullAddress}
+          >
+            <PropertyMapCanvas
+              propertyName={propertyName}
+              latitude={latitude}
+              longitude={longitude}
+            />
+          </MapViewGate>
 
           <div className="pointer-events-none absolute left-4 top-4">
             <div className="rounded-full border border-white/10 bg-black/40 px-3 py-2 text-xs font-medium text-white backdrop-blur-xl">
@@ -168,7 +143,7 @@ export function PropertyMapSection({
         </div>
       </div>
 
-      {(mapPlaceUrl || directionsUrl || mapError) && (
+      {(mapPlaceUrl || directionsUrl) && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {directionsUrl && (
             <a
@@ -193,8 +168,6 @@ export function PropertyMapSection({
               Open in Google Maps
             </a>
           )}
-
-          {mapError && <span className="text-sm text-muted-foreground">{mapError}</span>}
         </div>
       )}
     </section>
