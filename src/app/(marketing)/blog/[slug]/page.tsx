@@ -14,7 +14,7 @@ import { BlogNewsletter } from '@/components/blog/BlogNewsletter'
 import { Container } from '@/components/Container'
 import { JsonLd } from '@/components/JsonLd'
 import {
-  getAllPublishedBlogSlugs,
+  getAllPublishedBlogSlugsForBuild,
   getBlogPostHref,
   getPublishedBlogPosts,
   resolveBlogCanonicalPath,
@@ -46,7 +46,7 @@ export const revalidate = 3600
 export const dynamicParams = true
 
 export async function generateStaticParams() {
-  const slugs = await getAllPublishedBlogSlugs()
+  const slugs = await getAllPublishedBlogSlugsForBuild()
   return slugs.map((slug) => ({ slug }))
 }
 

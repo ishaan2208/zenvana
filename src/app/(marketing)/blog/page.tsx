@@ -75,7 +75,7 @@ function deriveIssue(date: Date) {
 type BlogPost = Awaited<ReturnType<typeof getPublishedBlogPosts>>[number]
 
 export default async function BlogPage() {
-  const blogPosts = await getPublishedBlogPosts()
+  const blogPosts = await getPublishedBlogPosts().catch(() => [])
   const issue = deriveIssue(new Date())
 
   const breadcrumbs = [

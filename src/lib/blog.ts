@@ -9,6 +9,10 @@ const publishedWhere = {
   status: BlogPostStatus.PUBLISHED,
 } as const
 
+export function isBlogDatabaseConfigured(): boolean {
+  return Boolean(process.env.DATABASE_URL?.trim())
+}
+
 export async function getPublishedBlogPosts(): Promise<BlogPostWithMedia[]> {
   return prisma.blogPost.findMany({
     where: publishedWhere,
@@ -81,6 +85,16 @@ export async function getAllPublishedBlogSlugs(): Promise<string[]> {
     orderBy: { slug: 'asc' },
   })
   return posts.map((post) => post.slug)
+}
+
+/** Safe for build-time static param generation when DATABASE_URL may be unavailable. */
+export async function getAllPublishedBlogSlugsForBuild(): Promise<string[]> {
+  if (!isBlogDatabaseConfigured()) return []
+  try {
+    return await getAllPublishedBlogSlugs()
+  } catch {
+    return []
+  }
 }
 
 export async function getIndexablePublishedBlogSlugs(): Promise<string[]> {
