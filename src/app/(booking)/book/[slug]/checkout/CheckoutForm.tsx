@@ -46,6 +46,7 @@ import {
 } from '@/app/actions/analytics'
 
 const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
+const OTP_REQUIRED_TOAST_ID = 'zenvana-checkout-otp-required'
 
 type Props = {
   slug: string
@@ -250,6 +251,7 @@ export default function CheckoutForm({
     setFieldErrors((prev) => ({ ...prev, guestPhone: undefined }))
     setError(null)
     toast.dismiss(GUEST_REQUIRED_TOAST_ID)
+    toast.dismiss(OTP_REQUIRED_TOAST_ID)
     resetPhoneVerification(value)
   }
 
@@ -258,6 +260,16 @@ export default function CheckoutForm({
     setFieldErrors((prev) => ({ ...prev, guestName: undefined }))
     setError(null)
     toast.dismiss(GUEST_REQUIRED_TOAST_ID)
+  }
+
+  function focusCheckoutField(fieldId: string) {
+    requestAnimationFrame(() => {
+      document.getElementById(fieldId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+      document.getElementById(fieldId)?.focus()
+    })
   }
 
   function validateRequiredFields() {
@@ -270,17 +282,24 @@ export default function CheckoutForm({
         'Please enter your full name and phone number before continuing.'
       setError(msg)
       toast.error(msg, { id: GUEST_REQUIRED_TOAST_ID, duration: 8000 })
-      const firstId = nextErrors.guestName ? 'guestName' : 'guestPhone'
-      requestAnimationFrame(() => {
-        document.getElementById(firstId)?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        })
-        document.getElementById(firstId)?.focus()
-      })
+      focusCheckoutField(nextErrors.guestName ? 'guestName' : 'guestPhone')
       return false
     }
     return true
+  }
+
+  function validateWhatsAppOtp() {
+    if (!otpRequiredForPayAtProperty || phoneVerified) return true
+
+    const msg = otpSent
+      ? 'Please enter the 6-digit OTP sent to your WhatsApp.'
+      : 'Please verify your phone number via WhatsApp before confirming your booking.'
+    const focusId = otpSent ? 'guestPhoneOtp' : 'sendWhatsappOtp'
+
+    setError(msg)
+    toast.error(msg, { id: OTP_REQUIRED_TOAST_ID, duration: 8000 })
+    focusCheckoutField(focusId)
+    return false
   }
 
   async function handleSendOtp() {
@@ -293,6 +312,7 @@ export default function CheckoutForm({
       setOtpExpiresAt(data.expiresAt ?? null)
       setResendCooldown(60)
       setOtp('')
+      toast.dismiss(OTP_REQUIRED_TOAST_ID)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send OTP')
     } finally {
@@ -309,6 +329,7 @@ export default function CheckoutForm({
       setVerifiedPhone(guestPhone)
       setOtp('')
       setOtpSent(false)
+      toast.dismiss(OTP_REQUIRED_TOAST_ID)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'OTP verification failed')
     } finally {
@@ -508,11 +529,7 @@ export default function CheckoutForm({
     e.preventDefault()
 
     if (!validateRequiredFields()) return
-
-    if (!payAtPropertyVerificationDone) {
-      setError('Please verify guest phone via WhatsApp OTP before booking.')
-      return
-    }
+    if (!validateWhatsAppOtp()) return
 
     setSubmitting(true)
     setError(null)
@@ -806,6 +823,7 @@ export default function CheckoutForm({
 
               {paymentMode === 'pay_at_property' && (
                 <div
+                  id="whatsappVerification"
                   className={`rounded-[1.35rem] border p-4 ${payAtPropertyVerificationDone
                     ? 'border-emerald-300/60 bg-emerald-50/80 text-emerald-800 dark:border-emerald-700/40 dark:bg-emerald-950/25 dark:text-emerald-300'
                     : 'border-[#25D366]/20 bg-[linear-gradient(180deg,rgba(37,211,102,0.10),rgba(37,211,102,0.04))] text-foreground dark:bg-[linear-gradient(180deg,rgba(37,211,102,0.12),rgba(37,211,102,0.03))]'
@@ -853,6 +871,7 @@ export default function CheckoutForm({
 
                       {!otpSent ? (
                         <button
+                          id="sendWhatsappOtp"
                           type="button"
                           disabled={!phoneReadyForOtp || otpBusy}
                           onClick={handleSendOtp}
@@ -872,13 +891,16 @@ export default function CheckoutForm({
 
                           <div className="flex flex-col gap-2 sm:flex-row">
                             <input
+                              id="guestPhoneOtp"
                               type="text"
                               inputMode="numeric"
                               maxLength={6}
                               value={otp}
-                              onChange={(e) =>
+                              onChange={(e) => {
                                 setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
-                              }
+                                setError(null)
+                                toast.dismiss(OTP_REQUIRED_TOAST_ID)
+                              }}
                               className="h-12 w-full rounded-[1rem] border border-border/70 bg-background/70 px-4 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/50"
                               placeholder="Enter 6-digit OTP"
                             />
@@ -1128,7 +1150,7 @@ export default function CheckoutForm({
             type="submit"
             color="blue"
             className="h-14 w-full rounded-[1.1rem] text-sm font-medium shadow-[0_14px_34px_rgba(37,99,235,0.22)]"
-            disabled={submitting || (paymentMode === 'pay_at_property' && !payAtPropertyVerificationDone)}
+            disabled={submitting}
           >
             {submitting
               ? 'Processing…'
