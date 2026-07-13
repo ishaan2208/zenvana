@@ -172,7 +172,13 @@ export default function RootLayout({
       </head>
       <body
         className={clsx(
-          'flex h-full flex-col antialiased',
+          // min-h-dvh (not h-full): a fixed-height flex body caps the sticky
+          // header's containing block at ~1 viewport, so it unsticks after the
+          // first screen. min-height lets the body grow with content — the
+          // sticky nav then holds for the whole page. flex-col still pins the
+          // footer on short pages (main is flex-1). Matches the min-h-dvh the
+          // route-group layout divs already use.
+          'flex min-h-dvh flex-col antialiased',
           inter.variable,
           lexend.variable,
           fraunces.variable,

@@ -34,6 +34,7 @@ import clsx from 'clsx'
 import { Logo } from '@/components/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { navItemTransition } from '@/lib/motion'
 import {
   formatZenvanaGuestProfileName,
   formatZenvanaGuestSalutationName,
@@ -60,14 +61,16 @@ const nav: NavItem[] = [
   { href: '/offers', label: 'Offers', icon: BadgePercent, blurb: 'Best current deals' },
 ]
 
-const desktopNav: { href: string; label: string }[] = [
-  { href: '/hotels', label: 'Hotels' },
-  { href: '/restaurant', label: 'Restaurant' },
-  { href: '/weddings', label: 'Weddings' },
-  { href: '/offers', label: 'Offers' },
-  { href: '/blog', label: 'Blog' },
-  { href: '/about', label: 'About' },
-  { href: '/contact', label: 'Contact' },
+// Icons ride each link so the scroll-condensed bar can collapse to icon-only
+// and still read — the label morphs away, the icon is what remains.
+const desktopNav: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: '/hotels', label: 'Hotels', icon: Building2 },
+  { href: '/restaurant', label: 'Restaurant', icon: UtensilsCrossed },
+  { href: '/weddings', label: 'Weddings', icon: PartyPopper },
+  { href: '/offers', label: 'Offers', icon: BadgePercent },
+  { href: '/blog', label: 'Blog', icon: NotebookPen },
+  { href: '/about', label: 'About', icon: Info },
+  { href: '/contact', label: 'Contact', icon: Phone },
 ]
 
 function isActivePath(pathname: string, href: string) {
@@ -77,7 +80,11 @@ function isActivePath(pathname: string, href: string) {
 
 export function Header() {
   const pathname = usePathname() ?? '/'
-  const [scrolled, setScrolled] = useState(false)
+  const reduceMotion = Boolean(useReducedMotion())
+  // Desktop bar condenses once the page scrolls (hysteresis so the bar's own
+  // height change can't oscillate the threshold). Mobile ignores this — see
+  // the `md:` guards on every `group-data-[compact=true]/nav:` class below.
+  const [compact, setCompact] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [guest, setGuest] = useState<ZenvanaGuestMe | null>(null)
 
@@ -86,10 +93,21 @@ export function Header() {
   }, [pathname])
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10)
+    let raf = 0
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const y = window.scrollY
+        setCompact((prev) => (prev ? y > 24 : y > 72))
+      })
+    }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
   }, [])
 
   useEffect(() => {
@@ -124,120 +142,214 @@ export function Header() {
 
   return (
     <>
+      {/* Sticky nav that CONDENSES INTO A CENTERED FLOATING PILL on scroll
+          (web2 style). The <header> is a positioning-only sticky wrapper: at
+          rest it paints a full-width glass band; on compact that band dissolves
+          (bg/border/shadow → transparent) so the inner bar detaches as a
+          self-contained floating pill. The inner bar is a Framer
+          `motion.div layout` — a transform-based FLIP morphs its width from
+          edge-to-edge to `w-fit mx-auto`. It is a normal-flow child of the
+          sticky header (NOT the sticky box itself), so there's no
+          FLIP-vs-sticky-offset hazard. The clusters keep their
+          `layout="position"` per-item springs for the parallax "wave". */}
       <header
+        data-compact={compact ? 'true' : 'false'}
         className={clsx(
-          'sticky top-0 z-50 border-b border-border bg-background pt-[env(safe-area-inset-top)] transition-colors duration-300',
-          scrolled && 'shadow-[0_10px_40px_-22px_rgba(0,0,0,0.32)]',
+          'group/nav sticky top-0 z-50 pt-[env(safe-area-inset-top)]',
+          'transition-[background-color,border-color,box-shadow] duration-300 ease-[var(--ease-out)]',
+          compact
+            ? // scrolled: the band dissolves — only the floating pill remains
+              'border-b border-transparent bg-transparent shadow-none'
+            : // at rest: full-width glass band, hairline + soft lift
+              'border-b border-border/60 bg-background/75 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45),0_8px_30px_-18px_rgba(0,31,63,0.16)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_8px_30px_-16px_rgba(0,0,0,0.5)]',
         )}
       >
         <div className="container-shell">
-          <div className="flex h-[76px] items-center justify-between gap-2 sm:h-[84px] sm:gap-3">
-            <Link
-              href="/"
-              aria-label="Zenvana home"
-              className="group flex min-w-0 items-center gap-3"
-            >
-              <div className="relative shrink-0">
-                <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl transition-opacity duration-300 group-hover:opacity-100" />
-                <Logo className="relative h-12 w-auto sm:h-14" />
-              </div>
-
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-[0.7rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                    Zenvana Hotels
-                  </span>
-                  <span className="hidden rounded-full border border-border/60 bg-card/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-flex">
-                    Boutique stays
-                  </span>
+          <motion.div
+            layout
+            transition={{
+              layout: { type: 'spring', stiffness: 300, damping: 30, mass: 1, delay: compact ? 0.05 : 0 },
+            }}
+            className={clsx(
+              'flex items-center transition-[gap,padding,margin,border-radius,background-color,border-color,box-shadow] duration-300 ease-[var(--ease-out)]',
+              compact
+                ? // scrolled: a detached, centered floating pill (web2 style)
+                  'mx-auto my-2.5 w-fit gap-2 rounded-full border border-border/60 bg-background/90 px-2.5 py-1.5 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.55),0_22px_50px_-22px_rgba(0,31,63,0.42)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_22px_50px_-20px_rgba(0,0,0,0.8)]'
+                : // at rest: full-width, transparent — the header band shows behind
+                  'h-[76px] w-full justify-between gap-2 border border-transparent bg-transparent px-0 sm:h-[84px] sm:gap-3',
+            )}
+          >
+            <motion.div layout="position" transition={{ layout: navItemTransition(0, reduceMotion) }}>
+              <Link
+                href="/"
+                aria-label="Zenvana home"
+                className="group flex min-w-0 items-center gap-3"
+              >
+                <div className="relative shrink-0">
+                  <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl transition-opacity duration-300 group-hover:opacity-100" />
+                  <Logo className="relative h-12 w-auto sm:h-14" />
                 </div>
 
+                <div className="min-w-0">
+                  <div
+                    className={clsx(
+                      'flex items-center gap-2 overflow-hidden whitespace-nowrap',
+                      'transition-[max-width,opacity,filter] duration-200 ease-[var(--ease-out)]',
+                      // expanding: the bar widens first (framer layout), text re-enters last
+                      'max-w-[14rem] opacity-100 blur-0 delay-[110ms]',
+                      // collapsing: text blurs out immediately, chrome follows
+                      'md:group-data-[compact=true]/nav:max-w-0 md:group-data-[compact=true]/nav:opacity-0 md:group-data-[compact=true]/nav:blur-[2px] md:group-data-[compact=true]/nav:delay-0',
+                    )}
+                  >
+                    <span className="truncate text-[0.7rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                      Zenvana Hotels
+                    </span>
+                    <span className="hidden shrink-0 rounded-full border border-border/60 bg-card/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-flex">
+                      Boutique stays
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
 
-              </div>
-            </Link>
-
-            <nav
-              aria-label="Primary navigation"
-              className="hidden lg:flex"
+            <motion.div
+              layout="position"
+              transition={{ layout: navItemTransition(1, reduceMotion) }}
             >
-              <div className="flex items-center gap-0.5 rounded-full border border-border/60 bg-card/70 p-1 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.24)] backdrop-blur-xl">
-                {desktopNav.map((item) => {
-                  const active = isActivePath(pathname, item.href)
+              <nav
+                aria-label="Primary navigation"
+                className="hidden lg:flex"
+              >
+                <div
+                  className={clsx(
+                    'flex items-center gap-0.5 rounded-full border border-border/60 bg-card/70 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.24)] backdrop-blur-xl',
+                    'p-1 transition-[padding] duration-200 ease-[var(--ease-out)]',
+                    'md:group-data-[compact=true]/nav:p-0.5',
+                  )}
+                >
+                  {desktopNav.map((item) => {
+                    const active = isActivePath(pathname, item.href)
+                    const Icon = item.icon
 
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      aria-current={active ? 'page' : undefined}
-                      className={clsx(
-                        'relative inline-flex items-center rounded-full px-3.5 py-2 text-[0.875rem] font-medium tracking-tight transition-colors duration-200 xl:px-4',
-                        active
-                          ? 'text-foreground'
-                          : 'text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      {active && (
-                        <motion.span
-                          layoutId="desktop-nav-pill"
-                          className="absolute inset-0 -z-10 rounded-full bg-background shadow-sm dark:bg-muted/80"
-                          transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? 'page' : undefined}
+                        title={item.label}
+                        className={clsx(
+                          'group/link relative inline-flex items-center justify-center rounded-full text-[0.875rem] font-medium tracking-tight transition-[padding,color] duration-200 xl:px-4',
+                          'px-3.5 py-2 md:group-data-[compact=true]/nav:px-2.5 md:group-data-[compact=true]/nav:py-2',
+                          active
+                            ? 'text-foreground'
+                            : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {active && (
+                          <motion.span
+                            layoutId="desktop-nav-pill"
+                            className="absolute inset-0 -z-10 rounded-full bg-background shadow-sm dark:bg-muted/80"
+                            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                          />
+                        )}
+                        {/* Icon: always visible — sits beside the label at rest,
+                            and is what remains when the label morphs away. */}
+                        <Icon
+                          aria-hidden
+                          className="h-[1.05rem] w-[1.05rem] shrink-0"
                         />
-                      )}
-                      <span>{item.label}</span>
-                    </Link>
-                  )
-                })}
-              </div>
-            </nav>
+                        {/* Label: the resting state; blur-fades out first on
+                            condense, re-enters last on expand (Kowalski morph). */}
+                        <span
+                          className={clsx(
+                            'inline-block overflow-hidden whitespace-nowrap',
+                            'transition-[max-width,opacity,filter] duration-200 ease-[var(--ease-out)]',
+                            'max-w-[8rem] opacity-100 blur-0 delay-[110ms]',
+                            // gap only while the label is present (fixed state)
+                            'ml-1.5 md:group-data-[compact=true]/nav:ml-0',
+                            'md:group-data-[compact=true]/nav:max-w-0 md:group-data-[compact=true]/nav:opacity-0 md:group-data-[compact=true]/nav:blur-[2px] md:group-data-[compact=true]/nav:delay-0',
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </nav>
+            </motion.div>
 
             <div className="flex shrink-0 items-center gap-2">
-              <div className="scale-[0.96] sm:scale-100">
+              <motion.div
+                layout="position"
+                transition={{ layout: navItemTransition(2, reduceMotion) }}
+                className="scale-[0.96] sm:scale-100"
+              >
                 <ThemeToggle />
-              </div>
+              </motion.div>
 
-              {guest ? (
-                <DesktopGuestMenu guest={guest} onLogout={() => setGuest(null)} />
-              ) : (
-                <Link
-                  href="/login"
-                  className="hidden items-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-3 py-2 text-sm font-medium text-foreground shadow-sm backdrop-blur-xl transition-colors hover:bg-card lg:inline-flex"
-                >
-                  <LogIn className="h-4 w-4" />
-                  Sign in
-                </Link>
-              )}
-
-              <Link
-                href="/hotels"
-                className="hidden h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-[0_12px_28px_-16px_rgba(0,0,0,0.45)] transition-transform duration-200 hover:-translate-y-0.5 md:inline-flex"
-              >
-                <BedDouble className="h-4 w-4" />
-                <span>Book a stay</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-
-              <Link
-                href="/hotels"
-                aria-label="Book a stay"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/60 bg-card/80 text-foreground shadow-sm backdrop-blur-xl transition-colors hover:bg-card md:hidden"
-              >
-                <CalendarDays className="h-5 w-5" />
-              </Link>
-
-              <button
-                type="button"
-                aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
-                aria-expanded={mobileOpen}
-                onClick={() => setMobileOpen((prev) => !prev)}
-                className={clsx(
-                  'inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/60 bg-card/80 text-foreground shadow-sm backdrop-blur-xl transition-all duration-200 hover:bg-card lg:hidden',
-                  mobileOpen && 'bg-primary text-primary-foreground',
+              <motion.div layout="position" transition={{ layout: navItemTransition(3, reduceMotion) }}>
+                {guest ? (
+                  <DesktopGuestMenu guest={guest} onLogout={() => setGuest(null)} />
+                ) : (
+                  <Link
+                    href="/login"
+                    title="Sign in"
+                    className="hidden items-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-3 py-2 text-sm font-medium text-foreground shadow-sm backdrop-blur-xl transition-[padding,background-color] hover:bg-card lg:inline-flex md:group-data-[compact=true]/nav:px-2"
+                  >
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    {/* label collapses in the floating pill, icon remains */}
+                    <span
+                      className={clsx(
+                        'overflow-hidden whitespace-nowrap',
+                        'transition-[max-width,opacity] duration-200 ease-[var(--ease-out)]',
+                        'max-w-[6rem] opacity-100 delay-[110ms]',
+                        'md:group-data-[compact=true]/nav:max-w-0 md:group-data-[compact=true]/nav:opacity-0 md:group-data-[compact=true]/nav:delay-0',
+                      )}
+                    >
+                      Sign in
+                    </span>
+                  </Link>
                 )}
-              >
-                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </button>
+              </motion.div>
+
+              {/* Primary conversion action — text label is never collapsed,
+                  scroll-condense only touches chrome around it. */}
+              <motion.div layout="position" transition={{ layout: navItemTransition(4, reduceMotion) }}>
+                <Link
+                  href="/hotels"
+                  className="hidden h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-[0_12px_28px_-16px_rgba(0,0,0,0.45)] transition-transform duration-200 hover:-translate-y-0.5 md:inline-flex"
+                >
+                  <BedDouble className="h-4 w-4" />
+                  <span>Book a stay</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+
+                <Link
+                  href="/hotels"
+                  aria-label="Book a stay"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/60 bg-card/80 text-foreground shadow-sm backdrop-blur-xl transition-colors hover:bg-card md:hidden"
+                >
+                  <CalendarDays className="h-5 w-5" />
+                </Link>
+              </motion.div>
+
+              <motion.div layout="position" transition={{ layout: navItemTransition(5, reduceMotion) }}>
+                <button
+                  type="button"
+                  aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+                  aria-expanded={mobileOpen}
+                  onClick={() => setMobileOpen((prev) => !prev)}
+                  className={clsx(
+                    'inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/60 bg-card/80 text-foreground shadow-sm backdrop-blur-xl transition-all duration-200 hover:bg-card lg:hidden',
+                    mobileOpen && 'bg-primary text-primary-foreground',
+                  )}
+                >
+                  {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </button>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </header>
 
