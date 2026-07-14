@@ -7,6 +7,7 @@ import {
   BedDouble,
   CalendarCheck,
   Camera,
+  Clock,
   MapPin,
   Navigation,
   Phone,
@@ -20,6 +21,7 @@ import { getPublicPropertyBySlug, getPublicProperties } from '@/lib/api'
 import { Container } from '@/components/Container'
 import { Button } from '@/components/Button'
 import { PlaneButton } from '@/components/PlaneButton'
+import { HourlyStayCallout } from '@/components/StayModeToggle'
 import { EmblaImageGallery } from '@/components/EmblaImageGallery'
 import { FilterableGallery } from '@/components/FilterableGallery'
 import { PropertyMapSection } from '@/components/PropertyMapSection'
@@ -196,6 +198,7 @@ export default async function PropertyPage({ params, searchParams }: Props) {
                   propertySlug={property.slug}
                   roomTypes={roomTypes}
                   couponCode={couponCode}
+                  hourlyStayEnabled={property.hourlyStayEnabled === true}
                 />
               )}
 
@@ -414,15 +417,40 @@ function PropertyHero({
               className="rounded-full bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(37,99,235,0.6)] transition-colors hover:bg-blue-500"
             >
               <CalendarCheck className="h-4 w-4" />
-              Check availability
+              Check overnight availability
             </PlaneButton>
 
-            {property.googleMapPlaceUrl ? (
+            {property.hourlyStayEnabled ? (
+              <PlaneButton
+                href={
+                  couponCode
+                    ? `/book/${property.slug}?${new URLSearchParams({ stayKind: 'hourly', couponCode }).toString()}`
+                    : `/book/${property.slug}?stayKind=hourly`
+                }
+                sentLabel="Opening hourly"
+                className="rounded-full border border-white/20 bg-white/10 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-xl transition-colors hover:bg-white/15"
+              >
+                <Clock className="h-4 w-4" />
+                Book hourly stay
+              </PlaneButton>
+            ) : property.googleMapPlaceUrl ? (
               <a
                 href={property.googleMapPlaceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-medium text-white/90 backdrop-blur-xl transition hover:border-white/30 hover:bg-white/[0.10]"
+              >
+                <MapPin className="h-4 w-4" />
+                View on map
+              </a>
+            ) : null}
+
+            {property.hourlyStayEnabled && property.googleMapPlaceUrl ? (
+              <a
+                href={property.googleMapPlaceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-medium text-white/90 backdrop-blur-xl transition hover:border-white/30 hover:bg-white/[0.10] sm:hidden"
               >
                 <MapPin className="h-4 w-4" />
                 View on map
@@ -786,6 +814,7 @@ function RoomsSection({
   propertySlug,
   roomTypes,
   couponCode,
+  hourlyStayEnabled,
 }: {
   propertySlug: string
   roomTypes: Array<{
@@ -795,6 +824,7 @@ function RoomsSection({
     images?: unknown
   }>
   couponCode?: string
+  hourlyStayEnabled?: boolean
 }) {
   return (
     <section id="rooms" className="scroll-mt-28">
@@ -871,8 +901,27 @@ function RoomsSection({
                       className="flex items-center justify-center gap-2 rounded-full px-6 py-3"
                     >
                       <CalendarCheck className="h-4 w-4" />
-                      Check availability
+                      Check overnight availability
                     </Button>
+
+                    {hourlyStayEnabled ? (
+                      <Button
+                        href={
+                          `/book/${propertySlug}?` +
+                          new URLSearchParams({
+                            stayKind: 'hourly',
+                            room: rt.name,
+                            ...(couponCode ? { couponCode } : {}),
+                          }).toString()
+                        }
+                        variant="outline"
+                        color="slate"
+                        className="flex items-center justify-center gap-2 rounded-full px-6 py-3"
+                      >
+                        <Clock className="h-4 w-4" />
+                        Book as hourly stay
+                      </Button>
+                    ) : null}
 
                     <a
                       href="#gallery"
@@ -1063,6 +1112,16 @@ function BookingSidebar({
         </div>
 
         <div className="px-6 py-6 sm:px-7">
+          {property.hourlyStayEnabled ? (
+            <div className="mb-5">
+              <HourlyStayCallout
+                durationsHours={property.hourlyStay?.durationsHours}
+                windowStart={property.hourlyStay?.windowStart}
+                windowEnd={property.hourlyStay?.windowEnd}
+              />
+            </div>
+          ) : null}
+
           <Button
             href={
               couponCode
@@ -1073,8 +1132,24 @@ function BookingSidebar({
             className="flex w-full items-center justify-center gap-2 rounded-full py-3.5"
           >
             <CalendarCheck className="h-4 w-4" />
-            Check availability
+            Check overnight availability
           </Button>
+
+          {property.hourlyStayEnabled ? (
+            <Button
+              href={
+                couponCode
+                  ? `/book/${property.slug}?${new URLSearchParams({ stayKind: 'hourly', couponCode }).toString()}`
+                  : `/book/${property.slug}?stayKind=hourly`
+              }
+              variant="outline"
+              color="slate"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-full py-3.5"
+            >
+              <Clock className="h-4 w-4" />
+              Book hourly stay
+            </Button>
+          ) : null}
 
           <div className="mt-6 space-y-4 border-t border-border/60 pt-6">
             <SidebarStat icon={Plane} label="Airport" value="≈ 45 min" sub="Jolly Grant (DED)" />
@@ -1163,31 +1238,66 @@ function PropertyMobileBookingBar({
   property: Property
   couponCode?: string
 }) {
+  const overnightHref = couponCode
+    ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
+    : `/book/${property.slug}`
+  const hourlyHref = couponCode
+    ? `/book/${property.slug}?${new URLSearchParams({ stayKind: 'hourly', couponCode }).toString()}`
+    : `/book/${property.slug}?stayKind=hourly`
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/92 px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur-xl xl:hidden">
-      <div className="mx-auto flex max-w-7xl items-center gap-3">
-        {property.primaryPhone ? (
-          <a
-            href={`tel:${property.primaryPhone}`}
-            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-foreground transition hover:bg-muted"
-            aria-label="Call property"
-          >
-            <Phone className="h-4 w-4" />
-          </a>
+      <div className="mx-auto flex max-w-7xl flex-col gap-2">
+        {property.hourlyStayEnabled ? (
+          <div className="flex items-center gap-2 px-0.5 text-[11px] font-medium uppercase tracking-[0.18em] text-amber-800 dark:text-amber-200">
+            <Clock className="h-3.5 w-3.5" />
+            Hourly stays ·{' '}
+            {(property.hourlyStay?.durationsHours ?? [3, 6, 9])
+              .map((h) => `${h}h`)
+              .join(' · ')}
+          </div>
         ) : null}
+        <div className="flex items-center gap-2">
+          {property.primaryPhone ? (
+            <a
+              href={`tel:${property.primaryPhone}`}
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-foreground transition hover:bg-muted"
+              aria-label="Call property"
+            >
+              <Phone className="h-4 w-4" />
+            </a>
+          ) : null}
 
-        <PlaneButton
-          href={
-            couponCode
-              ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
-              : `/book/${property.slug}`
-          }
-          sentLabel="Opening dates"
-          className="h-12 flex-1 rounded-full bg-blue-600 px-5 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-        >
-          <CalendarCheck className="h-4 w-4" />
-          <span className="tracking-[0.02em]">Check availability</span>
-        </PlaneButton>
+          {property.hourlyStayEnabled ? (
+            <>
+              <PlaneButton
+                href={overnightHref}
+                sentLabel="Opening dates"
+                className="h-12 flex-1 rounded-full bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+              >
+                <CalendarCheck className="h-4 w-4" />
+                <span className="tracking-[0.02em]">Overnight</span>
+              </PlaneButton>
+              <PlaneButton
+                href={hourlyHref}
+                sentLabel="Opening hourly"
+                className="h-12 flex-1 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 text-sm font-medium text-amber-950 transition-colors hover:bg-amber-500/25 dark:text-amber-50"
+              >
+                <Clock className="h-4 w-4" />
+                <span className="tracking-[0.02em]">Hourly</span>
+              </PlaneButton>
+            </>
+          ) : (
+            <PlaneButton
+              href={overnightHref}
+              sentLabel="Opening dates"
+              className="h-12 flex-1 rounded-full bg-blue-600 px-5 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+            >
+              <CalendarCheck className="h-4 w-4" />
+              <span className="tracking-[0.02em]">Check availability</span>
+            </PlaneButton>
+          )}
+        </div>
       </div>
     </div>
   )

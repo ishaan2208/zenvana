@@ -4,11 +4,16 @@ import type { FormEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import { usePrefetchBookRooms } from '@/hooks/usePrefetchBookRooms'
-import { buildBookRoomsPath } from '@/lib/book-rooms-url'
+import {
+  buildBookHourlyRoomsPath,
+  buildBookRoomsPath,
+} from '@/lib/book-rooms-url'
+import type { PublicHourlyStaySummary } from '@/lib/api'
 import { differenceInCalendarDays, format } from 'date-fns'
 import {
   BedDouble,
   CalendarCheck,
+  Clock,
   LogIn,
   LogOut,
   Minus,
@@ -19,12 +24,21 @@ import {
 
 import { Button } from '@/components/Button'
 import { Calendar } from '@/components/ui/calendar'
+import { StayModeToggle, type StayMode } from '@/components/StayModeToggle'
 import { track } from '@/lib/analytics/client'
+import { cn } from '@/lib/utils'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 
 import {
@@ -34,6 +48,9 @@ import {
   clampTotalGuests,
   getMaxTotalGuests,
 } from '@/lib/booking-constants'
+
+const HOURLY_MAX_GUESTS = 3
+const DEFAULT_DURATIONS = [3, 6, 9]
 
 function toDateString(d: Date): string {
   const y = d.getFullYear()
@@ -54,11 +71,44 @@ function startOfDay(d: Date): Date {
   return out
 }
 
+function hhMmToMinutes(hhMm: string): number {
+  const [h, m] = hhMm.split(':').map(Number)
+  return h * 60 + m
+}
+
+function buildStartTimeOptions(
+  windowStart: string,
+  windowEnd: string,
+  durationHours: number,
+): string[] {
+  const start = hhMmToMinutes(windowStart)
+  const end = hhMmToMinutes(windowEnd)
+  const needed = durationHours * 60
+  const opts: string[] = []
+  for (let t = start; t + needed <= end; t += 30) {
+    const h = Math.floor(t / 60)
+    const m = t % 60
+    opts.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+  }
+  return opts
+}
+
+function formatStartTimeLabel(hhMm: string): string {
+  const [hRaw, mRaw] = hhMm.split(':').map(Number)
+  const h = hRaw ?? 0
+  const m = mRaw ?? 0
+  const period = h >= 12 ? 'PM' : 'AM'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`
+}
+
 type BookSearchFormProps = {
   slug: string
   propertyName?: string
   location?: string
   initialCouponCode?: string
+  hourlyStay?: PublicHourlyStaySummary | null
+  initialStayKind?: StayMode
 }
 
 const calendarClassNames = {
@@ -90,20 +140,38 @@ export function BookSearchForm({
   propertyName,
   location,
   initialCouponCode,
+  hourlyStay,
+  initialStayKind = 'overnight',
 }: BookSearchFormProps) {
   const router = useAppRouter()
   const today = useMemo(() => startOfDay(new Date()), [])
   const tomorrow = useMemo(() => addDays(today, 1), [today])
 
+  const hourlyEnabled = hourlyStay?.enabled === true
+  const [stayMode, setStayMode] = useState<StayMode>(
+    hourlyEnabled && initialStayKind === 'hourly' ? 'hourly' : 'overnight',
+  )
+
   const [checkIn, setCheckIn] = useState<Date | undefined>(today)
   const [checkOut, setCheckOut] = useState<Date | undefined>(tomorrow)
   const [checkInOpen, setCheckInOpen] = useState(false)
   const [checkOutOpen, setCheckOutOpen] = useState(false)
+  const [hourlyDateOpen, setHourlyDateOpen] = useState(false)
 
   const [rooms, setRooms] = useState(1)
   const [guests, setGuests] = useState(2)
 
-  const useGuestsPerRoomMode = rooms >= ROOMS_FOR_GUESTS_PER_ROOM_MODE
+  const durations =
+    hourlyStay?.durationsHours?.length ? hourlyStay.durationsHours : DEFAULT_DURATIONS
+  const windowStart = hourlyStay?.windowStart ?? '10:00'
+  const windowEnd = hourlyStay?.windowEnd ?? '21:00'
+
+  const [durationHours, setDurationHours] = useState(durations[0] ?? 3)
+  const [startTime, setStartTime] = useState(windowStart)
+
+  const isHourly = stayMode === 'hourly' && hourlyEnabled
+
+  const useGuestsPerRoomMode = !isHourly && rooms >= ROOMS_FOR_GUESTS_PER_ROOM_MODE
   const totalGuests = useGuestsPerRoomMode ? rooms * guests : guests
 
   const nights =
@@ -113,8 +181,46 @@ export function BookSearchForm({
 
   const prevModeRef = useRef(useGuestsPerRoomMode)
   const prevRoomsRef = useRef(rooms)
+  const prevStayModeRef = useRef(stayMode)
 
   useEffect(() => {
+    if (!hourlyEnabled && stayMode === 'hourly') {
+      setStayMode('overnight')
+    }
+  }, [hourlyEnabled, stayMode])
+
+  useEffect(() => {
+    if (!isHourly) return
+    if (!durations.includes(durationHours)) {
+      setDurationHours(durations[0] ?? 3)
+    }
+  }, [isHourly, durations, durationHours])
+
+  const startTimeOptions = useMemo(
+    () => buildStartTimeOptions(windowStart, windowEnd, durationHours),
+    [windowStart, windowEnd, durationHours],
+  )
+
+  useEffect(() => {
+    if (!isHourly) return
+    if (!startTimeOptions.includes(startTime)) {
+      setStartTime(startTimeOptions[0] ?? windowStart)
+    }
+  }, [isHourly, startTimeOptions, startTime, windowStart])
+
+  useEffect(() => {
+    if (prevStayModeRef.current === stayMode) return
+
+    if (stayMode === 'hourly') {
+      setGuests((current) => Math.min(HOURLY_MAX_GUESTS, Math.max(1, current)))
+    }
+
+    prevStayModeRef.current = stayMode
+  }, [stayMode])
+
+  useEffect(() => {
+    if (isHourly) return
+
     if (useGuestsPerRoomMode && !prevModeRef.current) {
       const perRoom = clampGuestsPerRoom(Math.floor(guests / rooms) || 1)
       setGuests(perRoom)
@@ -131,7 +237,7 @@ export function BookSearchForm({
     prevModeRef.current = useGuestsPerRoomMode
     prevRoomsRef.current = rooms
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rooms, useGuestsPerRoomMode])
+  }, [rooms, useGuestsPerRoomMode, isHourly])
 
   const checkOutMin = checkIn ? addDays(checkIn, 1) : tomorrow
   const isCheckOutValid =
@@ -139,12 +245,34 @@ export function BookSearchForm({
     checkOut != null &&
     startOfDay(checkOut) > startOfDay(checkIn)
 
-  const maxGuestsValue = useGuestsPerRoomMode
-    ? MAX_GUESTS_PER_ROOM
-    : getMaxTotalGuests(rooms)
+  const isHourlyValid =
+    checkIn != null &&
+    startTimeOptions.length > 0 &&
+    durations.includes(durationHours) &&
+    startTimeOptions.includes(startTime)
+
+  const canSubmit = isHourly ? isHourlyValid : isCheckOutValid
+
+  const maxGuestsValue = isHourly
+    ? HOURLY_MAX_GUESTS
+    : useGuestsPerRoomMode
+      ? MAX_GUESTS_PER_ROOM
+      : getMaxTotalGuests(rooms)
 
   const roomsUrl = useMemo(() => {
-    if (!isCheckOutValid || !checkIn || !checkOut) return null
+    if (!canSubmit || !checkIn) return null
+
+    if (isHourly) {
+      return buildBookHourlyRoomsPath({
+        slug,
+        date: toDateString(checkIn),
+        startTime,
+        durationHours,
+        guests,
+      })
+    }
+
+    if (!checkOut) return null
     return buildBookRoomsPath({
       slug,
       checkIn: toDateString(checkIn),
@@ -163,7 +291,10 @@ export function BookSearchForm({
     useGuestsPerRoomMode,
     guests,
     initialCouponCode,
-    isCheckOutValid,
+    canSubmit,
+    isHourly,
+    startTime,
+    durationHours,
   ])
 
   const { prefetchRooms } = usePrefetchBookRooms(roomsUrl)
@@ -173,6 +304,7 @@ export function BookSearchForm({
 
     if (date) {
       setCheckInOpen(false)
+      setHourlyDateOpen(false)
 
       if (checkOut && startOfDay(checkOut) <= startOfDay(date)) {
         setCheckOut(addDays(date, 1))
@@ -187,19 +319,36 @@ export function BookSearchForm({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!roomsUrl || !checkIn || !checkOut) return
-    track(
-      'dates_selected',
-      {
-        checkIn: toDateString(checkIn),
-        checkOut: toDateString(checkOut),
-        nights: differenceInCalendarDays(checkOut, checkIn),
-        rooms,
-        totalGuests,
-        guestsPerRoom: useGuestsPerRoomMode ? guests : null,
-      },
-      slug,
-    )
+    if (!roomsUrl || !checkIn) return
+
+    if (isHourly) {
+      track(
+        'dates_selected',
+        {
+          stayKind: 'hourly',
+          checkIn: toDateString(checkIn),
+          startTime,
+          durationHours,
+          guests,
+        },
+        slug,
+      )
+    } else {
+      if (!checkOut) return
+      track(
+        'dates_selected',
+        {
+          checkIn: toDateString(checkIn),
+          checkOut: toDateString(checkOut),
+          nights: differenceInCalendarDays(checkOut, checkIn),
+          rooms,
+          totalGuests,
+          guestsPerRoom: useGuestsPerRoomMode ? guests : null,
+        },
+        slug,
+      )
+    }
+
     prefetchRooms()
     router.push(roomsUrl)
   }
@@ -212,7 +361,7 @@ export function BookSearchForm({
       <div className="border-b border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),transparent)] px-4 py-5 sm:px-6 sm:py-6">
         <div className="min-w-0 max-w-sm">
           <h2 className="font-serif text-2xl tracking-[-0.04em] text-foreground">
-            Select dates and occupancy
+            {isHourly ? 'Select date and duration' : 'Select dates and occupancy'}
           </h2>
 
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
@@ -230,190 +379,379 @@ export function BookSearchForm({
       </div>
 
       <div className="space-y-5 px-4 py-5 sm:space-y-6 sm:px-6 sm:py-6">
-        <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                Stay dates
+        {hourlyEnabled ? (
+          <StayModeToggle
+            value={stayMode}
+            onChange={setStayMode}
+            prominent
+          />
+        ) : null}
+
+        {isHourly ? (
+          <>
+            <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                    Stay date
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    Pick a date, then choose how long you want to stay and when to arrive.
+                  </p>
+                </div>
+
+                <div className="self-start rounded-full border border-border/60 bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground dark:bg-background/40">
+                  {`${durationHours} hour${durationHours === 1 ? '' : 's'}`}
+                </div>
               </div>
+
+              <div className="mt-5">
+                <Field label="Date">
+                  <Popover open={hourlyDateOpen} onOpenChange={setHourlyDateOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex min-h-[4.25rem] w-full min-w-0 items-center gap-3 rounded-[1.15rem] border border-border/70 bg-background/80 px-4 text-left text-foreground shadow-none outline-none transition hover:bg-background focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/40"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/90 dark:bg-background/45">
+                          <LogIn className="h-4 w-4 text-muted-foreground" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Day of stay
+                          </div>
+                          <div className="mt-1 truncate text-sm font-medium text-foreground sm:text-base">
+                            {checkIn ? format(checkIn, 'EEE, MMM d, yyyy') : 'Select date'}
+                          </div>
+                        </div>
+                      </button>
+                    </PopoverTrigger>
+
+                    <PopoverContent
+                      className="w-[calc(100vw-1rem)] max-w-[23rem] rounded-[1.35rem] border border-border/60 bg-popover/95 p-2.5 shadow-[0_24px_60px_rgba(8,17,31,0.16)] backdrop-blur-2xl sm:rounded-[1.5rem] sm:p-3"
+                      align="start"
+                      side="bottom"
+                      sideOffset={10}
+                      collisionPadding={8}
+                    >
+                      <Calendar
+                        mode="single"
+                        defaultMonth={checkIn ?? today}
+                        selected={checkIn}
+                        onSelect={handleCheckInSelect}
+                        disabled={(date) => startOfDay(date) < today}
+                        className="rounded-[1.1rem]"
+                        classNames={calendarClassNames}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </Field>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Duration
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {durations.map((hours) => (
+                    <button
+                      key={hours}
+                      type="button"
+                      onClick={() => setDurationHours(hours)}
+                      className={cn(
+                        'min-h-11 min-w-[4.25rem] rounded-full border px-4 text-sm font-medium transition',
+                        durationHours === hours
+                          ? 'border-primary bg-primary text-primary-foreground shadow-[0_10px_24px_rgba(37,99,235,0.18)]'
+                          : 'border-border/70 bg-background/80 text-foreground hover:bg-background dark:bg-background/40',
+                      )}
+                    >
+                      {hours}h
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <Field label="Start time">
+                  <Select value={startTime} onValueChange={setStartTime}>
+                    <SelectTrigger className="flex h-auto min-h-[4.25rem] w-full items-center gap-3 rounded-[1.15rem] border border-border/70 bg-background/80 px-4 text-left text-foreground shadow-none outline-none transition hover:bg-background focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/40 [&>svg]:ml-auto">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/90 dark:bg-background/45">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Arrival window
+                          </div>
+                          <div className="mt-1 truncate text-sm font-medium text-foreground sm:text-base">
+                            <SelectValue placeholder="Select time">
+                              {startTime
+                                ? formatStartTimeLabel(startTime)
+                                : 'Select time'}
+                            </SelectValue>
+                          </div>
+                        </div>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      sideOffset={8}
+                      collisionPadding={12}
+                      className="max-h-[min(16rem,calc(100dvh-10rem))] rounded-[1.15rem]"
+                    >
+                      {startTimeOptions.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {formatStartTimeLabel(time)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                Guests
+              </div>
+
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Pick check-in and check-out first. The next step will show room types and plans.
+                Hourly stays are limited to {HOURLY_MAX_GUESTS} guests.
               </p>
-            </div>
 
-            <div className="self-start rounded-full border border-border/60 bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground dark:bg-background/40">
-              {nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}` : 'Choose dates'}
-            </div>
-          </div>
+              <div className="mt-5">
+                <CounterCard
+                  icon={<Users className="h-4 w-4" />}
+                  label="Guests"
+                  hint={`Up to ${HOURLY_MAX_GUESTS} guests`}
+                  value={guests}
+                  valueBadge="Total"
+                  min={1}
+                  max={HOURLY_MAX_GUESTS}
+                  onDecrease={() => setGuests((current) => Math.max(1, current - 1))}
+                  onIncrease={() =>
+                    setGuests((current) => Math.min(HOURLY_MAX_GUESTS, current + 1))
+                  }
+                  decreaseLabel="Decrease guests"
+                  increaseLabel="Increase guests"
+                />
+              </div>
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                    Stay dates
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    Pick check-in and check-out first. The next step will show room types and plans.
+                  </p>
+                </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <Field label="Check-in">
-              <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex min-h-[4.25rem] w-full min-w-0 items-center gap-3 rounded-[1.15rem] border border-border/70 bg-background/80 px-4 text-left text-foreground shadow-none outline-none transition hover:bg-background focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/40"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/90 dark:bg-background/45">
-                      <LogIn className="h-4 w-4 text-muted-foreground" />
-                    </div>
+                <div className="self-start rounded-full border border-border/60 bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground dark:bg-background/40">
+                  {nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}` : 'Choose dates'}
+                </div>
+              </div>
 
-                    <div className="min-w-0">
-                      <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Arrival
-                      </div>
-                      <div className="mt-1 truncate text-sm font-medium text-foreground sm:text-base">
-                        {checkIn ? format(checkIn, 'EEE, MMM d, yyyy') : 'Select date'}
-                      </div>
-                    </div>
-                  </button>
-                </PopoverTrigger>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <Field label="Check-in">
+                  <Popover open={checkInOpen} onOpenChange={setCheckInOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex min-h-[4.25rem] w-full min-w-0 items-center gap-3 rounded-[1.15rem] border border-border/70 bg-background/80 px-4 text-left text-foreground shadow-none outline-none transition hover:bg-background focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/40"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/90 dark:bg-background/45">
+                          <LogIn className="h-4 w-4 text-muted-foreground" />
+                        </div>
 
-                <PopoverContent
-                  className="w-[calc(100vw-1rem)] max-w-[23rem] rounded-[1.35rem] border border-border/60 bg-popover/95 p-2.5 shadow-[0_24px_60px_rgba(8,17,31,0.16)] backdrop-blur-2xl sm:rounded-[1.5rem] sm:p-3"
-                  align="start"
-                  side="bottom"
-                  sideOffset={10}
-                  collisionPadding={8}
-                >
-                  <Calendar
-                    mode="single"
-                    defaultMonth={checkIn ?? today}
-                    selected={checkIn}
-                    onSelect={handleCheckInSelect}
-                    disabled={(date) => startOfDay(date) < today}
-                    className="rounded-[1.1rem]"
-                    classNames={calendarClassNames}
-                  />
-                </PopoverContent>
-              </Popover>
-            </Field>
+                        <div className="min-w-0">
+                          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Arrival
+                          </div>
+                          <div className="mt-1 truncate text-sm font-medium text-foreground sm:text-base">
+                            {checkIn ? format(checkIn, 'EEE, MMM d, yyyy') : 'Select date'}
+                          </div>
+                        </div>
+                      </button>
+                    </PopoverTrigger>
 
-            <Field label="Check-out">
-              <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex min-h-[4.25rem] w-full min-w-0 items-center gap-3 rounded-[1.15rem] border border-border/70 bg-background/80 px-4 text-left text-foreground shadow-none outline-none transition hover:bg-background focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/40"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/90 dark:bg-background/45">
-                      <LogOut className="h-4 w-4 text-muted-foreground" />
-                    </div>
+                    <PopoverContent
+                      className="w-[calc(100vw-1rem)] max-w-[23rem] rounded-[1.35rem] border border-border/60 bg-popover/95 p-2.5 shadow-[0_24px_60px_rgba(8,17,31,0.16)] backdrop-blur-2xl sm:rounded-[1.5rem] sm:p-3"
+                      align="start"
+                      side="bottom"
+                      sideOffset={10}
+                      collisionPadding={8}
+                    >
+                      <Calendar
+                        mode="single"
+                        defaultMonth={checkIn ?? today}
+                        selected={checkIn}
+                        onSelect={handleCheckInSelect}
+                        disabled={(date) => startOfDay(date) < today}
+                        className="rounded-[1.1rem]"
+                        classNames={calendarClassNames}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </Field>
 
-                    <div className="min-w-0">
-                      <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Departure
-                      </div>
-                      <div className="mt-1 truncate text-sm font-medium text-foreground sm:text-base">
-                        {checkOut ? format(checkOut, 'EEE, MMM d, yyyy') : 'Select date'}
-                      </div>
-                    </div>
-                  </button>
-                </PopoverTrigger>
+                <Field label="Check-out">
+                  <Popover open={checkOutOpen} onOpenChange={setCheckOutOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex min-h-[4.25rem] w-full min-w-0 items-center gap-3 rounded-[1.15rem] border border-border/70 bg-background/80 px-4 text-left text-foreground shadow-none outline-none transition hover:bg-background focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/40"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/90 dark:bg-background/45">
+                          <LogOut className="h-4 w-4 text-muted-foreground" />
+                        </div>
 
-                <PopoverContent
-                  className="w-[calc(100vw-1rem)] max-w-[23rem] rounded-[1.35rem] border border-border/60 bg-popover/95 p-2.5 shadow-[0_24px_60px_rgba(8,17,31,0.16)] backdrop-blur-2xl sm:rounded-[1.5rem] sm:p-3"
-                  align="start"
-                  side="bottom"
-                  sideOffset={10}
-                  collisionPadding={8}
-                >
-                  <Calendar
-                    mode="single"
-                    defaultMonth={checkOut ?? checkOutMin}
-                    selected={checkOut}
-                    onSelect={handleCheckOutSelect}
-                    disabled={(date) => startOfDay(date) < startOfDay(checkOutMin)}
-                    className="rounded-[1.1rem]"
-                    classNames={calendarClassNames}
-                  />
-                </PopoverContent>
-              </Popover>
+                        <div className="min-w-0">
+                          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Departure
+                          </div>
+                          <div className="mt-1 truncate text-sm font-medium text-foreground sm:text-base">
+                            {checkOut ? format(checkOut, 'EEE, MMM d, yyyy') : 'Select date'}
+                          </div>
+                        </div>
+                      </button>
+                    </PopoverTrigger>
 
-              {!isCheckOutValid && checkIn && checkOut ? (
-                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                  Check-out must be after check-in.
-                </p>
-              ) : null}
-            </Field>
-          </div>
-        </section>
+                    <PopoverContent
+                      className="w-[calc(100vw-1rem)] max-w-[23rem] rounded-[1.35rem] border border-border/60 bg-popover/95 p-2.5 shadow-[0_24px_60px_rgba(8,17,31,0.16)] backdrop-blur-2xl sm:rounded-[1.5rem] sm:p-3"
+                      align="start"
+                      side="bottom"
+                      sideOffset={10}
+                      collisionPadding={8}
+                    >
+                      <Calendar
+                        mode="single"
+                        defaultMonth={checkOut ?? checkOutMin}
+                        selected={checkOut}
+                        onSelect={handleCheckOutSelect}
+                        disabled={(date) => startOfDay(date) < startOfDay(checkOutMin)}
+                        className="rounded-[1.1rem]"
+                        classNames={calendarClassNames}
+                      />
+                    </PopoverContent>
+                  </Popover>
 
-        <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-            Occupancy
-          </div>
+                  {!isCheckOutValid && checkIn && checkOut ? (
+                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                      Check-out must be after check-in.
+                    </p>
+                  ) : null}
+                </Field>
+              </div>
+            </section>
 
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Set rooms and guests now so the next page shows the right availability and pricing.
-          </p>
+            <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                Occupancy
+              </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <CounterCard
-              icon={<BedDouble className="h-4 w-4" />}
-              label="Rooms"
-              hint="How many rooms do you need?"
-              value={rooms}
-              min={1}
-              max={10}
-              onDecrease={() => setRooms((current) => Math.max(1, current - 1))}
-              onIncrease={() => setRooms((current) => Math.min(10, current + 1))}
-              decreaseLabel="Decrease rooms"
-              increaseLabel="Increase rooms"
-            />
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Set rooms and guests now so the next page shows the right availability and pricing.
+              </p>
 
-            <CounterCard
-              icon={<Users className="h-4 w-4" />}
-              label={useGuestsPerRoomMode ? 'Guests per room' : 'Guests'}
-              hint={
-                useGuestsPerRoomMode
-                  ? `Maximum ${MAX_GUESTS_PER_ROOM} guests per room`
-                  : `Up to ${getMaxTotalGuests(rooms)} guests in total`
-              }
-              value={guests}
-              valueBadge={useGuestsPerRoomMode ? 'Per room' : 'Total'}
-              min={1}
-              max={maxGuestsValue}
-              onDecrease={() => setGuests((current) => Math.max(1, current - 1))}
-              onIncrease={() =>
-                setGuests((current) =>
-                  useGuestsPerRoomMode
-                    ? clampGuestsPerRoom(current + 1)
-                    : clampTotalGuests(rooms, current + 1)
-                )
-              }
-              decreaseLabel="Decrease guests"
-              increaseLabel="Increase guests"
-            />
-          </div>
-        </section>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <CounterCard
+                  icon={<BedDouble className="h-4 w-4" />}
+                  label="Rooms"
+                  hint="How many rooms do you need?"
+                  value={rooms}
+                  min={1}
+                  max={10}
+                  onDecrease={() => setRooms((current) => Math.max(1, current - 1))}
+                  onIncrease={() => setRooms((current) => Math.min(10, current + 1))}
+                  decreaseLabel="Decrease rooms"
+                  increaseLabel="Increase rooms"
+                />
+
+                <CounterCard
+                  icon={<Users className="h-4 w-4" />}
+                  label={useGuestsPerRoomMode ? 'Guests per room' : 'Guests'}
+                  hint={
+                    useGuestsPerRoomMode
+                      ? `Maximum ${MAX_GUESTS_PER_ROOM} guests per room`
+                      : `Up to ${getMaxTotalGuests(rooms)} guests in total`
+                  }
+                  value={guests}
+                  valueBadge={useGuestsPerRoomMode ? 'Per room' : 'Total'}
+                  min={1}
+                  max={maxGuestsValue}
+                  onDecrease={() => setGuests((current) => Math.max(1, current - 1))}
+                  onIncrease={() =>
+                    setGuests((current) =>
+                      useGuestsPerRoomMode
+                        ? clampGuestsPerRoom(current + 1)
+                        : clampTotalGuests(rooms, current + 1)
+                    )
+                  }
+                  decreaseLabel="Decrease guests"
+                  increaseLabel="Increase guests"
+                />
+              </div>
+            </section>
+          </>
+        )}
 
         <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.03))] p-4 backdrop-blur-2xl sm:rounded-[1.6rem] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]">
           <div className="flex flex-wrap gap-2">
-            <SummaryPill
-              icon={<MoonStar className="h-3.5 w-3.5" />}
-              text={
-                nights > 0
-                  ? `${nights} night${nights === 1 ? '' : 's'}`
-                  : 'Choose stay length'
-              }
-            />
-            <SummaryPill
-              icon={<BedDouble className="h-3.5 w-3.5" />}
-              text={`${rooms} room${rooms === 1 ? '' : 's'}`}
-            />
-            <SummaryPill
-              icon={<Users className="h-3.5 w-3.5" />}
-              text={`${totalGuests} guest${totalGuests === 1 ? '' : 's'}`}
-            />
+            {isHourly ? (
+              <>
+                <SummaryPill
+                  icon={<Clock className="h-3.5 w-3.5" />}
+                  text={`${durationHours} hour${durationHours === 1 ? '' : 's'}`}
+                />
+                <SummaryPill
+                  icon={<Users className="h-3.5 w-3.5" />}
+                  text={`${guests} guest${guests === 1 ? '' : 's'}`}
+                />
+                <SummaryPill
+                  icon={<Clock className="h-3.5 w-3.5" />}
+                  text={
+                    startTime
+                      ? `Starts ${formatStartTimeLabel(startTime)}`
+                      : 'Choose start time'
+                  }
+                />
+              </>
+            ) : (
+              <>
+                <SummaryPill
+                  icon={<MoonStar className="h-3.5 w-3.5" />}
+                  text={
+                    nights > 0
+                      ? `${nights} night${nights === 1 ? '' : 's'}`
+                      : 'Choose stay length'
+                  }
+                />
+                <SummaryPill
+                  icon={<BedDouble className="h-3.5 w-3.5" />}
+                  text={`${rooms} room${rooms === 1 ? '' : 's'}`}
+                />
+                <SummaryPill
+                  icon={<Users className="h-3.5 w-3.5" />}
+                  text={`${totalGuests} guest${totalGuests === 1 ? '' : 's'}`}
+                />
+              </>
+            )}
           </div>
 
           <Separator className="my-4 bg-border/60" />
 
           <p className="text-sm leading-7 text-muted-foreground">
-            {useGuestsPerRoomMode
-              ? `You have selected ${rooms} rooms with ${guests} guest${guests === 1 ? '' : 's'} per room.`
-              : `You have selected ${rooms} room${rooms === 1 ? '' : 's'} for ${totalGuests} guest${totalGuests === 1 ? '' : 's'}.`}
+            {isHourly
+              ? `You have selected a ${durationHours}-hour stay for ${guests} guest${guests === 1 ? '' : 's'}${startTime ? ` starting at ${formatStartTimeLabel(startTime)}` : ''}.`
+              : useGuestsPerRoomMode
+                ? `You have selected ${rooms} rooms with ${guests} guest${guests === 1 ? '' : 's'} per room.`
+                : `You have selected ${rooms} room${rooms === 1 ? '' : 's'} for ${totalGuests} guest${totalGuests === 1 ? '' : 's'}.`}
           </p>
         </section>
 
@@ -422,7 +760,7 @@ export function BookSearchForm({
             type="submit"
             color="blue"
             className="h-14 w-full rounded-[1.15rem] text-sm font-medium shadow-[0_14px_34px_rgba(37,99,235,0.22)]"
-            disabled={!isCheckOutValid}
+            disabled={!canSubmit}
             onMouseEnter={prefetchRooms}
             onFocus={prefetchRooms}
           >
@@ -431,7 +769,9 @@ export function BookSearchForm({
           </Button>
 
           <p className="px-1 text-center text-xs leading-6 text-muted-foreground">
-            Next, we’ll show available room types and plans for your selected dates.
+            {isHourly
+              ? 'Next, we’ll show available hourly room types and plans for your selected time.'
+              : 'Next, we’ll show available room types and plans for your selected dates.'}
           </p>
         </div>
       </div>

@@ -27,6 +27,15 @@ export type BookRoomsUrlParams = {
   returnTo?: string
 }
 
+export type BookHourlyRoomsUrlParams = {
+  slug: string
+  date: string
+  startTime: string
+  durationHours: number
+  guests?: number
+  returnTo?: string
+}
+
 /** Allow same-origin relative paths only (blocks open redirects). */
 export function sanitizeReturnTo(value: string | undefined | null): string | null {
   if (!value) return null
@@ -64,5 +73,41 @@ export function buildBookRoomsPath({
     params.set('returnTo', safeReturnTo)
   }
 
+  return `/book/${slug}/rooms?${params.toString()}`
+}
+
+/** Next calendar day YYYY-MM-DD from a YYYY-MM-DD string (local arithmetic). */
+export function nextCalendarYmd(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + 1)
+  const yy = dt.getFullYear()
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
+export function buildBookHourlyRoomsPath({
+  slug,
+  date,
+  startTime,
+  durationHours,
+  guests = 2,
+  returnTo,
+}: BookHourlyRoomsUrlParams): string {
+  const params = new URLSearchParams({
+    stayKind: 'hourly',
+    date,
+    startTime,
+    durationHours: String(durationHours),
+    checkIn: date,
+    checkOut: nextCalendarYmd(date),
+    rooms: '1',
+    guests: String(guests),
+  })
+  const safeReturnTo = sanitizeReturnTo(returnTo)
+  if (safeReturnTo) {
+    params.set('returnTo', safeReturnTo)
+  }
   return `/book/${slug}/rooms?${params.toString()}`
 }

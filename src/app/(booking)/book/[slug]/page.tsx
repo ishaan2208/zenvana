@@ -22,7 +22,11 @@ import { TrackOnMount } from '@/components/analytics/TrackOnMount'
 
 type Props = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ couponCode?: string; promoCode?: string }>
+  searchParams: Promise<{
+    couponCode?: string
+    promoCode?: string
+    stayKind?: string
+  }>
 }
 
 export const metadata = {
@@ -33,6 +37,8 @@ export default async function BookPropertyPage({ params, searchParams }: Props) 
   const { slug } = await params
   const q = await searchParams
   const couponCode = promoOrCouponFromSearchParams(q)
+  const initialStayKind =
+    String(q.stayKind ?? '').toLowerCase() === 'hourly' ? 'hourly' : 'overnight'
   const property = await getPublicPropertyBySlug(slug)
   if (!property) notFound()
 
@@ -85,6 +91,8 @@ export default async function BookPropertyPage({ params, searchParams }: Props) 
               propertyName={property.publicName}
               location={location}
               initialCouponCode={couponCode}
+              hourlyStay={property.hourlyStay}
+              initialStayKind={initialStayKind}
             />
           </aside>
 

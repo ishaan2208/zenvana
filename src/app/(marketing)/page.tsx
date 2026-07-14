@@ -144,6 +144,8 @@ export default async function HomePage() {
     publicName: p.publicName,
     heroImageUrl: p.heroImageUrl,
     fullAddress: p.fullAddress,
+    hourlyStayEnabled: p.hourlyStayEnabled,
+    hourlyStay: p.hourlyStay,
   }))
   const groupProperties = properties.map((p) => ({
     slug: p.slug,

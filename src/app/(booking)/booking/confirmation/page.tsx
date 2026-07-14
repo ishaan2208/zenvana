@@ -30,6 +30,9 @@ type Props = {
     roomTypeName?: string
     totalAmount?: string
     bookingReference?: string
+    stayKind?: string
+    startTime?: string
+    durationHours?: string
   }>
 }
 
@@ -130,8 +133,16 @@ export default async function ConfirmationPage({ searchParams }: Props) {
                   <div className={`grid gap-4 ${hasRef ? 'mt-5' : ''} sm:grid-cols-2`}>
                     <SummaryCard
                       icon={<CalendarRange className="h-4.5 w-4.5" />}
-                      label="Stay dates"
-                      value={`${q.checkIn} → ${q.checkOut}`}
+                      label={
+                        String(q.stayKind ?? '').toLowerCase() === 'hourly'
+                          ? 'Hourly slot'
+                          : 'Stay dates'
+                      }
+                      value={
+                        String(q.stayKind ?? '').toLowerCase() === 'hourly'
+                          ? `${q.checkIn} · ${q.startTime ?? ''} · ${q.durationHours ?? ''}h`
+                          : `${q.checkIn} → ${q.checkOut}`
+                      }
                     />
                     <SummaryCard
                       icon={<Receipt className="h-4.5 w-4.5" />}

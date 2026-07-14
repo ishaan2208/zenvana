@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarCheck,
+  Clock,
   MapPin,
   Mountain,
   Phone,
@@ -167,6 +168,17 @@ export default async function HotelsPage({ searchParams }: Props) {
               “From” prices here are the lowest direct stay total for tonight (one night). Each
               hotel page shows meal plans and full rate options.
             </p>
+            {propertiesForGrid.some((p) => p.hourlyStayEnabled) ? (
+              <div className="mt-6 inline-flex max-w-xl items-start gap-3 rounded-[1.25rem] border border-amber-500/25 bg-amber-500/[0.08] px-4 py-3 text-amber-950 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-50">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                <p className="text-sm leading-6">
+                  <span className="font-semibold">New · Hourly stays</span>
+                  {' — '}
+                  select hotels now offer 3h, 6h, and 9h day packages. Look for the hourly badge
+                  on cards below.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           {propertiesForGrid.length === 0 ? (
@@ -218,17 +230,25 @@ export default async function HotelsPage({ searchParams }: Props) {
                         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,17,31,0.03)_0%,rgba(8,17,31,0.14)_42%,rgba(8,17,31,0.78)_100%)]" />
 
                         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                          {p.showValueBadge ? (
-                            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/30 bg-emerald-950/40 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-emerald-50 backdrop-blur-md">
-                              <Tag className="h-3 w-3 shrink-0 text-emerald-200/90" aria-hidden />
-                              Great value
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#dbe64c] backdrop-blur-md dark:text-white/78">
-                              <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#dbe64c]" />
-                              Boutique stays
-                            </div>
-                          )}
+                          <div className="flex flex-wrap gap-2">
+                            {p.hourlyStayEnabled ? (
+                              <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-950/50 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-amber-50 backdrop-blur-md">
+                                <Clock className="h-3 w-3 shrink-0 text-amber-200/90" aria-hidden />
+                                Hourly stays
+                              </div>
+                            ) : null}
+                            {p.showValueBadge ? (
+                              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/30 bg-emerald-950/40 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-emerald-50 backdrop-blur-md">
+                                <Tag className="h-3 w-3 shrink-0 text-emerald-200/90" aria-hidden />
+                                Great value
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#dbe64c] backdrop-blur-md dark:text-white/78">
+                                <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#dbe64c]" />
+                                Boutique stays
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -261,7 +281,9 @@ export default async function HotelsPage({ searchParams }: Props) {
 
                         <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-5">
                           <span className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                            Explore stay
+                            {p.hourlyStayEnabled
+                              ? 'Overnight · Hourly'
+                              : 'Explore stay'}
                           </span>
 
                           <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground transition-transform duration-300 group-hover:translate-x-1">
@@ -269,6 +291,14 @@ export default async function HotelsPage({ searchParams }: Props) {
                             <ArrowRight className="h-4 w-4" />
                           </span>
                         </div>
+                        {p.hourlyStayEnabled ? (
+                          <p className="mt-3 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
+                            Hourly packages:{' '}
+                            {(p.hourlyStay?.durationsHours ?? [3, 6, 9])
+                              .map((h) => `${h}h`)
+                              .join(' · ')}
+                          </p>
+                        ) : null}
                       </CardContent>
                     </Card>
                   </Link>

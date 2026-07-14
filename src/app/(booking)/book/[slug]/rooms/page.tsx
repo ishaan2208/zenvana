@@ -18,6 +18,7 @@ import { Button } from '@/components/Button'
 import { Container } from '@/components/Container'
 import { SoldOutTag } from '@/components/SoldOutTag'
 import { RoomCard } from './RoomCard'
+import { HourlyRoomsView } from './HourlyRoomsView'
 import { isRoomTypePurchasable, sortRoomTypesByLowestRate } from './roomAvailability'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 import { sanitizeReturnTo } from '@/lib/book-rooms-url'
@@ -40,6 +41,10 @@ type Props = {
     couponCode?: string
     promoCode?: string
     returnTo?: string
+    stayKind?: string
+    date?: string
+    startTime?: string
+    durationHours?: string
   }>
 }
 
@@ -65,9 +70,34 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     rooms: roomsParam,
     guests: guestsParam,
     guestsPerRoom: guestsPerRoomParam,
+    stayKind,
+    date: hourlyDate,
+    startTime,
+    durationHours: durationHoursParam,
   } = q
   const couponCode = promoOrCouponFromSearchParams(q)
   const returnTo = sanitizeReturnTo(q.returnTo)
+
+  if (String(stayKind ?? '').toLowerCase() === 'hourly') {
+    const date = hourlyDate || checkIn
+    const durationHours = durationHoursParam
+      ? parseInt(durationHoursParam, 10)
+      : 3
+    const guests = guestsParam ? parseInt(guestsParam, 10) : 2
+    if (!date || !startTime || !Number.isInteger(durationHours)) {
+      redirect(`/book/${slug}`)
+    }
+    return (
+      <HourlyRoomsView
+        slug={slug}
+        date={date}
+        startTime={startTime}
+        durationHours={durationHours}
+        guests={guests}
+        returnTo={returnTo}
+      />
+    )
+  }
 
   if (!checkIn || !checkOut) {
     redirect(`/book/${slug}`)

@@ -11,6 +11,16 @@ function getBackendBase(): string {
 
 const BACKEND_URL = getBackendBase()
 
+export type PublicHourlyStaySummary = {
+  enabled: boolean
+  windowStart: string
+  windowEnd: string
+  durationsHours: number[]
+  basePercentOfNight?: number
+  baseDurationHours?: number
+  floorPrice?: number
+}
+
 export type PublicPropertyListItem = {
   id: number
   slug: string
@@ -26,6 +36,8 @@ export type PublicPropertyListItem = {
   canonicalUrl?: string
   /** Hotels grid: show “Great value” pill when true (from PropertyPublicProfile). */
   showValueBadge?: boolean
+  hourlyStayEnabled?: boolean
+  hourlyStay?: PublicHourlyStaySummary
 }
 
 export type PublicListingPriceEntry = {
@@ -97,6 +109,8 @@ export type PublicPropertyDetail = {
     ceilPrice: number
   }>
   faqs: Array<{ id: number; question: string; answer: string; sortOrder: number }>
+  hourlyStayEnabled?: boolean
+  hourlyStay?: PublicHourlyStaySummary
 }
 
 export async function getPublicProperties(): Promise<PublicPropertyListItem[]> {
@@ -486,6 +500,20 @@ export type CreatePublicBookingPayload = {
   payment?: { paid: boolean; transactionId?: string }
 }
 
+export type CreatePublicHourlyBookingPayload = {
+  stayKind: 'HOURLY'
+  guestName: string
+  guestPhone: string
+  guestEmail?: string
+  date: string
+  startTime: string
+  durationHours: number
+  roomTypeId: number
+  totalAmount: number
+  occupancy?: number
+  payment?: { paid: boolean; transactionId?: string }
+}
+
 export type CreatePublicBookingResponse = {
   bookingId: number
   bookingReference: string
@@ -494,6 +522,12 @@ export type CreatePublicBookingResponse = {
   checkOut: string
   totalAmount: number
   totalPaid: number
+  stayKind?: string
+  date?: string
+  startTime?: string
+  durationHours?: number
+  plannedCheckInAt?: string
+  plannedCheckOutAt?: string
 }
 
 /** Call from client (e.g. CheckoutForm). Creates PMS booking at confirmation (legacy single-room). */
@@ -515,6 +549,96 @@ export async function createPublicBooking(
     throw new Error(json?.error ?? json?.message ?? 'Booking failed')
   }
   return json?.data
+}
+
+export async function createPublicHourlyBooking(
+  slug: string,
+  payload: CreatePublicHourlyBookingPayload
+): Promise<CreatePublicBookingResponse> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    }
+  )
+  const json = await res.json()
+  if (!res.ok) {
+    throw new Error(json?.error ?? json?.message ?? 'Booking failed')
+  }
+  return json?.data
+}
+
+export type PublicHourlyAvailabilityResponse = {
+  date: string
+  startTime: string
+  durationHours: number
+  plannedCheckInAt: string
+  plannedCheckOutAt: string
+  roomTypes: Array<{ roomTypeId: number; name: string; available: number }>
+}
+
+export async function getPublicHourlyAvailability(
+  slug: string,
+  date: string,
+  startTime: string,
+  durationHours: number
+): Promise<PublicHourlyAvailabilityResponse | null> {
+  try {
+    const params = new URLSearchParams({
+      date,
+      startTime,
+      durationHours: String(durationHours),
+    })
+    const res = await fetch(
+      `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/hourly/availability?${params}`,
+      { next: { revalidate: 0 } }
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    return json?.data ?? null
+  } catch {
+    return null
+  }
+}
+
+export type PublicHourlyQuote = {
+  price: number
+  directNightRate: number
+  available: number
+  plannedCheckInAt: string
+  plannedCheckOutAt: string
+  durationHours: number
+}
+
+export async function getPublicHourlyQuote(
+  slug: string,
+  params: {
+    date: string
+    startTime: string
+    durationHours: number
+    roomTypeId: number
+  }
+): Promise<PublicHourlyQuote | null> {
+  try {
+    const qs = new URLSearchParams({
+      date: params.date,
+      startTime: params.startTime,
+      durationHours: String(params.durationHours),
+      roomTypeId: String(params.roomTypeId),
+    })
+    const res = await fetch(
+      `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/hourly/quote?${qs}`,
+      { next: { revalidate: 0 } }
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    return json?.data ?? null
+  } catch {
+    return null
+  }
 }
 
 /** Multi-room: create booking with roomLines (one line per room). Pay now uses Razorpay flow. */

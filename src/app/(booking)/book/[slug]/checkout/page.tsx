@@ -14,6 +14,7 @@ import {
 import { getPublicPropertyBySlug } from '@/lib/api'
 import { Container } from '@/components/Container'
 import CheckoutForm from './CheckoutForm'
+import HourlyCheckoutForm from './HourlyCheckoutForm'
 import MultiRoomCheckoutForm from './MultiRoomCheckoutForm'
 import { BackToRoomsLink } from './BackToRoomsLink'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
@@ -39,6 +40,10 @@ type Props = {
     occupancy?: string
     couponCode?: string
     promoCode?: string
+    stayKind?: string
+    date?: string
+    startTime?: string
+    durationHours?: string
   }>
 }
 
@@ -158,6 +163,62 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
         </Container>
       </main>
       </CheckoutCouponProvider>
+    )
+  }
+
+  if (String(q.stayKind ?? '').toLowerCase() === 'hourly') {
+    const date = q.date || q.checkIn
+    const startTime = q.startTime
+    const durationHours = q.durationHours ? parseInt(q.durationHours, 10) : NaN
+    if (
+      !date ||
+      !startTime ||
+      !Number.isInteger(durationHours) ||
+      !q.roomTypeId ||
+      !q.roomTypeName ||
+      !q.totalAmount
+    ) {
+      redirect(`/book/${slug}`)
+    }
+
+    return (
+      <main className="bg-background text-foreground">
+        <section className="relative overflow-hidden border-b border-border/60 bg-background">
+          <Container className="relative py-6 sm:py-10 lg:py-16">
+            <div className="max-w-xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                <Sparkles className="h-3.5 w-3.5" />
+                Hourly checkout
+              </div>
+              <h1 className="mt-4 font-serif text-3xl tracking-tight sm:text-4xl">
+                Confirm your {durationHours}h stay
+                <span className="block text-muted-foreground">{property.publicName}</span>
+              </h1>
+              <div className="mt-8">
+                <HourlyCheckoutForm
+                  slug={slug}
+                  propertyName={property.publicName}
+                  primaryPhone={property.primaryPhone}
+                  date={date!}
+                  startTime={startTime!}
+                  durationHours={durationHours}
+                  roomTypeId={q.roomTypeId!}
+                  roomTypeName={q.roomTypeName!}
+                  totalAmount={q.totalAmount!}
+                  occupancy={q.occupancy ? parseInt(q.occupancy, 10) : 1}
+                />
+              </div>
+              <Link
+                href={`/hotels/${slug}`}
+                className="mt-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to property
+              </Link>
+            </div>
+          </Container>
+        </section>
+      </main>
     )
   }
 

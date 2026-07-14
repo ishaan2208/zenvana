@@ -5,9 +5,10 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import { usePrefetchBookRooms } from '@/hooks/usePrefetchBookRooms'
-import { buildBookRoomsPath } from '@/lib/book-rooms-url'
+import { buildBookRoomsPath, buildBookHourlyRoomsPath } from '@/lib/book-rooms-url'
+import type { PublicHourlyStaySummary } from '@/lib/api'
 import * as SelectPrimitive from '@radix-ui/react-select'
-import { Calendar as CalendarIcon, Check, ChevronRight, MapPinned, Users } from 'lucide-react'
+import { Calendar as CalendarIcon, Check, ChevronRight, Clock, MapPinned, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -65,6 +66,8 @@ export type HeroBookBarProperty = {
   publicName: string
   heroImageUrl?: string
   fullAddress?: string
+  hourlyStayEnabled?: boolean
+  hourlyStay?: PublicHourlyStaySummary
 }
 
 type HeroBookBarProps = {
@@ -78,6 +81,30 @@ function toDateString(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
+function hhMmToMinutes(hhMm: string): number {
+  const [h, m] = hhMm.split(':').map(Number)
+  return h * 60 + m
+}
+
+function buildStartTimeOptions(
+  windowStart: string,
+  windowEnd: string,
+  durationHours: number
+): string[] {
+  const start = hhMmToMinutes(windowStart)
+  const end = hhMmToMinutes(windowEnd)
+  const needed = durationHours * 60
+  const opts: string[] = []
+  for (let t = start; t + needed <= end; t += 30) {
+    const h = Math.floor(t / 60)
+    const m = t % 60
+    opts.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+  }
+  return opts
+}
+
+type StayMode = 'overnight' | 'hourly'
+
 export function HeroBookBar({ properties }: HeroBookBarProps) {
   const router = useAppRouter()
   const pathname = usePathname()
@@ -88,11 +115,22 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
     return d
   }, [today])
 
+  const hourlyProperties = useMemo(
+    () => properties.filter((p) => p.hourlyStayEnabled === true || p.hourlyStay?.enabled === true),
+    [properties],
+  )
+  const anyHourly = hourlyProperties.length > 0
+
+  const [stayMode, setStayMode] = useState<StayMode>('overnight')
   const [slug, setSlug] = useState('')
   const [checkIn, setCheckIn] = useState<Date | undefined>(today)
   const [checkOut, setCheckOut] = useState<Date | undefined>(tomorrow)
   const [rooms, setRooms] = useState('1')
-  const [guests, setGuests] = useState('2') // total guests when rooms < 6, or guests-per-room when rooms >= 6 (stored as string)
+  const [guests, setGuests] = useState('2')
+  const [durationHours, setDurationHours] = useState(3)
+  const [startTime, setStartTime] = useState('10:00')
+
+  const propertyOptions = stayMode === 'hourly' ? hourlyProperties : properties
 
   const roomsNum = parseInt(rooms, 10) || 1
   const useGuestsPerRoomMode = roomsNum >= ROOMS_FOR_GUESTS_PER_ROOM_MODE
@@ -101,7 +139,6 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
   const prevModeRef = useRef(useGuestsPerRoomMode)
   const prevRoomsRef = useRef(roomsNum)
 
-  // When switching between total-guests and guests-per-room modes, convert the value
   useEffect(() => {
     if (useGuestsPerRoomMode && !prevModeRef.current) {
       const perRoom = clampGuestsPerRoom(Math.floor(guestsNum / roomsNum))
@@ -119,6 +156,44 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
     prevRoomsRef.current = roomsNum
   }, [roomsNum, useGuestsPerRoomMode, totalGuests, guestsNum])
 
+  const selectedProperty = useMemo(
+    () => propertyOptions.find((p) => p.slug === slug),
+    [propertyOptions, slug],
+  )
+
+  const hourlyConfig = selectedProperty?.hourlyStay
+  const durations = hourlyConfig?.durationsHours?.length
+    ? hourlyConfig.durationsHours
+    : [3, 6, 9]
+  const windowStart = hourlyConfig?.windowStart ?? '10:00'
+  const windowEnd = hourlyConfig?.windowEnd ?? '21:00'
+
+  useEffect(() => {
+    if (stayMode !== 'hourly') return
+    if (slug && !propertyOptions.some((p) => p.slug === slug)) {
+      setSlug('')
+    }
+  }, [stayMode, slug, propertyOptions])
+
+  useEffect(() => {
+    if (stayMode !== 'hourly') return
+    if (!durations.includes(durationHours)) {
+      setDurationHours(durations[0] ?? 3)
+    }
+  }, [stayMode, durations, durationHours])
+
+  const startTimeOptions = useMemo(
+    () => buildStartTimeOptions(windowStart, windowEnd, durationHours),
+    [windowStart, windowEnd, durationHours],
+  )
+
+  useEffect(() => {
+    if (stayMode !== 'hourly') return
+    if (!startTimeOptions.includes(startTime)) {
+      setStartTime(startTimeOptions[0] ?? windowStart)
+    }
+  }, [stayMode, startTimeOptions, startTime, windowStart])
+
   const checkInMin = today
   const checkOutMin = useMemo(() => {
     if (!checkIn) return tomorrow
@@ -129,14 +204,28 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
 
   const isCheckOutValid =
     checkIn != null && checkOut != null && checkOut > checkIn
-  const canSubmit = Boolean(slug) && isCheckOutValid
-  const selectedProperty = useMemo(
-    () => properties.find((p) => p.slug === slug),
-    [properties, slug],
-  )
+  const isHourlyValid =
+    Boolean(slug) &&
+    checkIn != null &&
+    startTimeOptions.length > 0 &&
+    durations.includes(durationHours)
+
+  const canSubmit =
+    stayMode === 'hourly' ? isHourlyValid : Boolean(slug) && isCheckOutValid
 
   const roomsUrl = useMemo(() => {
-    if (!canSubmit || !checkIn || !checkOut || !slug) return null
+    if (!canSubmit || !checkIn || !slug) return null
+    if (stayMode === 'hourly') {
+      return buildBookHourlyRoomsPath({
+        slug,
+        date: toDateString(checkIn),
+        startTime,
+        durationHours,
+        guests: guestsNum,
+        returnTo: pathname ?? '/',
+      })
+    }
+    if (!checkOut) return null
     return buildBookRoomsPath({
       slug,
       checkIn: toDateString(checkIn),
@@ -147,9 +236,12 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
       returnTo: pathname ?? '/',
     })
   }, [
+    stayMode,
     slug,
     checkIn,
     checkOut,
+    startTime,
+    durationHours,
     roomsNum,
     totalGuests,
     useGuestsPerRoomMode,
@@ -169,12 +261,48 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
 
   const submitHint = !slug
     ? 'Select a property to continue'
-    : !isCheckOutValid
-      ? 'Choose valid check-in and check-out dates'
-      : null
+    : stayMode === 'hourly'
+      ? !isHourlyValid
+        ? 'Choose a date, duration, and start time'
+        : null
+      : !isCheckOutValid
+        ? 'Choose valid check-in and check-out dates'
+        : null
 
   return (
     <form onSubmit={handleSubmit} className="w-full" aria-label="Book your stay">
+      {anyHourly ? (
+        <div
+          className="mb-2 flex w-full overflow-hidden rounded-lg border border-border bg-muted/40 p-0.5"
+          role="group"
+          aria-label="Stay type"
+        >
+          <button
+            type="button"
+            className={cn(
+              'flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition',
+              stayMode === 'overnight'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+            onClick={() => setStayMode('overnight')}
+          >
+            Overnight
+          </button>
+          <button
+            type="button"
+            className={cn(
+              'flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition',
+              stayMode === 'hourly'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+            onClick={() => setStayMode('hourly')}
+          >
+            Hourly stay
+          </button>
+        </div>
+      ) : null}
       <div
         className={cn(
           'flex flex-col gap-2 rounded-lg border bg-card p-3 text-card-foreground shadow-sm',
@@ -197,7 +325,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                 collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
                 className="max-h-[min(20rem,calc(100dvh-10rem))] w-[max(var(--radix-select-trigger-width),18rem)]"
               >
-                {properties.map((p) => (
+                {propertyOptions.map((p) => (
                   <SelectPrimitive.Item
                     key={p.slug}
                     value={p.slug}
@@ -257,7 +385,13 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                {checkIn ? formatDate(checkIn) : 'Check-in'}
+                {checkIn
+                  ? stayMode === 'hourly'
+                    ? formatDate(checkIn)
+                    : formatDate(checkIn)
+                  : stayMode === 'hourly'
+                    ? 'Date'
+                    : 'Check-in'}
               </Button>
             </PopoverTrigger>
             <PopoverContent
@@ -285,6 +419,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
             </PopoverContent>
           </Popover>
 
+          {stayMode === 'overnight' ? (
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -315,9 +450,49 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
               />
             </PopoverContent>
           </Popover>
+          ) : (
+            <>
+              <div className="flex flex-1 flex-wrap gap-1.5">
+                {durations.map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={() => setDurationHours(h)}
+                    className={cn(
+                      'h-10 min-w-[3.5rem] rounded-md border px-3 text-sm font-medium transition',
+                      durationHours === h
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-input bg-background text-foreground hover:bg-accent',
+                    )}
+                  >
+                    {h}h
+                  </button>
+                ))}
+              </div>
+              <Select value={startTime} onValueChange={setStartTime}>
+                <SelectTrigger className="h-10 w-full border-input bg-background sm:w-[120px]">
+                  <Clock className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <SelectValue placeholder="Start" />
+                </SelectTrigger>
+                <SelectContent
+                  position="popper"
+                  sideOffset={6}
+                  collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+                  className="max-h-[min(16rem,calc(100dvh-10rem))]"
+                >
+                  {startTimeOptions.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {stayMode === 'overnight' ? (
           <Select value={rooms} onValueChange={setRooms}>
             <SelectTrigger className="h-10 w-full border-input bg-background sm:w-[90px]">
               <SelectValue placeholder="Rooms" />
@@ -335,6 +510,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
               ))}
             </SelectContent>
           </Select>
+          ) : null}
 
           <Select value={guests} onValueChange={setGuests}>
             <SelectTrigger className="h-10 w-full border-input bg-background sm:w-[120px]">
@@ -347,16 +523,19 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
               collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
               className="max-h-[min(16rem,calc(100dvh-10rem))]"
             >
-              {useGuestsPerRoomMode ? (
-                [1, 2, 3].map((n) => (
+              {stayMode === 'hourly' || !useGuestsPerRoomMode ? (
+                Array.from(
+                  { length: stayMode === 'hourly' ? 3 : roomsNum * MAX_GUESTS_PER_ROOM },
+                  (_, i) => i + 1,
+                ).map((n) => (
                   <SelectItem key={n} value={String(n)}>
-                    {n} guest{n !== 1 ? 's' : ''} per room
+                    {n} guest{n !== 1 ? 's' : ''}
                   </SelectItem>
                 ))
               ) : (
-                Array.from({ length: roomsNum * MAX_GUESTS_PER_ROOM }, (_, i) => i + 1).map((n) => (
+                [1, 2, 3].map((n) => (
                   <SelectItem key={n} value={String(n)}>
-                    {n} guest{n !== 1 ? 's' : ''}
+                    {n} guest{n !== 1 ? 's' : ''} per room
                   </SelectItem>
                 ))
               )}
