@@ -61,24 +61,3 @@ export function fadeUpVariants(reduced = false): Variants {
   }
 }
 
-/**
- * Per-item layout spring for a nav row's inline clusters (logo, link group,
- * action buttons). Stiffness eases off left→right so each item trails the
- * one before it by a few frames during the bar's condense — a wave
- * (parallax), never a rigid block move. Pass the item's index in the row.
- *
- * Deliberately scoped to normal-flow children, never the sticky bar itself:
- * Framer's `layout` FLIP animates via transform, which fights the browser's
- * own offset recalculation on a `position: sticky` element whenever its size
- * changes — the bar's own height/shadow condense uses a plain CSS transition
- * instead (see Header.tsx).
- */
-export function navItemTransition(index: number, reduced = false): Transition {
-  if (reduced) return { duration: 0 }
-  return {
-    type: 'spring',
-    stiffness: 470 - index * 26,
-    damping: 33,
-    mass: 0.85,
-  }
-}
