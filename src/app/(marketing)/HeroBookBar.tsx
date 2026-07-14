@@ -5,11 +5,21 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAppRouter } from '@/hooks/useAppRouter'
 import { usePrefetchBookRooms } from '@/hooks/usePrefetchBookRooms'
-import { buildBookRoomsPath, buildBookHourlyRoomsPath } from '@/lib/book-rooms-url'
+import {
+  buildBookRoomsPath,
+  buildBookHourlyRoomsPath,
+} from '@/lib/book-rooms-url'
 import type { PublicHourlyStaySummary } from '@/lib/api'
 import { buildHourlyStartTimeOptions, istYmd } from '@/lib/hourly-start-times'
 import * as SelectPrimitive from '@radix-ui/react-select'
-import { Calendar as CalendarIcon, Check, ChevronRight, Clock, MapPinned, Users } from 'lucide-react'
+import {
+  Calendar as CalendarIcon,
+  Check,
+  ChevronRight,
+  Clock,
+  MapPinned,
+  Users,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -95,7 +105,10 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
   }, [today])
 
   const hourlyProperties = useMemo(
-    () => properties.filter((p) => p.hourlyStayEnabled === true || p.hourlyStay?.enabled === true),
+    () =>
+      properties.filter(
+        (p) => p.hourlyStayEnabled === true || p.hourlyStay?.enabled === true,
+      ),
     [properties],
   )
   const anyHourly = hourlyProperties.length > 0
@@ -123,7 +136,9 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
       const perRoom = clampGuestsPerRoom(Math.floor(guestsNum / roomsNum))
       setGuests(String(perRoom))
     } else if (!useGuestsPerRoomMode && prevModeRef.current) {
-      setGuests(String(clampTotalGuests(roomsNum, prevRoomsRef.current * guestsNum)))
+      setGuests(
+        String(clampTotalGuests(roomsNum, prevRoomsRef.current * guestsNum)),
+      )
     } else if (!useGuestsPerRoomMode) {
       if (guestsNum > getMaxTotalGuests(roomsNum) || guestsNum < 1) {
         setGuests(String(clampTotalGuests(roomsNum, guestsNum)))
@@ -254,7 +269,11 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
         : null
 
   return (
-    <form onSubmit={handleSubmit} className="w-full" aria-label="Book your stay">
+    <form
+      onSubmit={handleSubmit}
+      className="w-full"
+      aria-label="Book your stay"
+    >
       {anyHourly ? (
         <div
           className="mb-2 flex w-full overflow-hidden rounded-lg border border-border bg-muted/40 p-0.5"
@@ -290,7 +309,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
       <div
         className={cn(
           'flex flex-col gap-2 rounded-lg border bg-card p-3 text-card-foreground shadow-sm',
-          'sm:flex-row sm:flex-wrap sm:gap-3 sm:items-center'
+          'sm:flex-row sm:flex-wrap sm:items-center sm:gap-3',
         )}
       >
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -365,7 +384,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                 variant="outline"
                 className={cn(
                   'h-10 min-w-0 flex-1 justify-start text-left font-normal',
-                  !checkIn && 'text-muted-foreground'
+                  !checkIn && 'text-muted-foreground',
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -404,36 +423,38 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
           </Popover>
 
           {stayMode === 'overnight' ? (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'h-10 min-w-0 flex-1 justify-start text-left font-normal',
-                  !checkOut && 'text-muted-foreground'
-                )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'h-10 min-w-0 flex-1 justify-start text-left font-normal',
+                    !checkOut && 'text-muted-foreground',
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  {checkOut ? formatDate(checkOut) : 'Check-out'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto p-0"
+                align="start"
+                side="bottom"
+                sideOffset={6}
+                collisionPadding={16}
               >
-                <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                {checkOut ? formatDate(checkOut) : 'Check-out'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-auto p-0"
-              align="start"
-              side="bottom"
-              sideOffset={6}
-              collisionPadding={16}
-            >
-              <Calendar
-                mode="single"
-                selected={checkOut}
-                onSelect={setCheckOut}
-                disabled={(date) => startOfDay(date) < startOfDay(checkOutMin)}
-                className="p-2"
-                classNames={calendarClassNames}
-              />
-            </PopoverContent>
-          </Popover>
+                <Calendar
+                  mode="single"
+                  selected={checkOut}
+                  onSelect={setCheckOut}
+                  disabled={(date) =>
+                    startOfDay(date) < startOfDay(checkOutMin)
+                  }
+                  className="p-2"
+                  classNames={calendarClassNames}
+                />
+              </PopoverContent>
+            </Popover>
           ) : (
             <>
               <div className="flex flex-1 flex-wrap gap-1.5">
@@ -461,12 +482,18 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                 <SelectContent
                   position="popper"
                   sideOffset={6}
-                  collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+                  collisionPadding={{
+                    top: 80,
+                    bottom: 96,
+                    left: 12,
+                    right: 12,
+                  }}
                   className="max-h-[min(16rem,calc(100dvh-10rem))]"
                 >
                   {startTimeOptions.length === 0 ? (
                     <div className="px-3 py-2 text-xs text-muted-foreground">
-                      No starts left today for this duration — pick another date or shorter package
+                      No starts left today for this duration — pick another date
+                      or shorter package
                     </div>
                   ) : (
                     startTimeOptions.map((t) => (
@@ -483,29 +510,33 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {stayMode === 'overnight' ? (
-          <Select value={rooms} onValueChange={setRooms}>
-            <SelectTrigger className="h-10 w-full border-input bg-background sm:w-[90px]">
-              <SelectValue placeholder="Rooms" />
-            </SelectTrigger>
-            <SelectContent
-              position="popper"
-              sideOffset={6}
-              collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
-              className="max-h-[min(16rem,calc(100dvh-10rem))]"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                <SelectItem key={n} value={String(n)}>
-                  {n} room{n !== 1 ? 's' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={rooms} onValueChange={setRooms}>
+              <SelectTrigger className="h-10 w-full border-input bg-background sm:w-[90px]">
+                <SelectValue placeholder="Rooms" />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                sideOffset={6}
+                collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
+                className="max-h-[min(16rem,calc(100dvh-10rem))]"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {n} room{n !== 1 ? 's' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : null}
 
           <Select value={guests} onValueChange={setGuests}>
             <SelectTrigger className="h-10 w-full border-input bg-background sm:w-[120px]">
               <Users className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-              <SelectValue placeholder={useGuestsPerRoomMode ? 'Guests per room' : 'Guests'} />
+              <SelectValue
+                placeholder={
+                  useGuestsPerRoomMode ? 'Guests per room' : 'Guests'
+                }
+              />
             </SelectTrigger>
             <SelectContent
               position="popper"
@@ -513,22 +544,25 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
               collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
               className="max-h-[min(16rem,calc(100dvh-10rem))]"
             >
-              {stayMode === 'hourly' || !useGuestsPerRoomMode ? (
-                Array.from(
-                  { length: stayMode === 'hourly' ? 3 : roomsNum * MAX_GUESTS_PER_ROOM },
-                  (_, i) => i + 1,
-                ).map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {n} guest{n !== 1 ? 's' : ''}
-                  </SelectItem>
-                ))
-              ) : (
-                [1, 2, 3].map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {n} guest{n !== 1 ? 's' : ''} per room
-                  </SelectItem>
-                ))
-              )}
+              {stayMode === 'hourly' || !useGuestsPerRoomMode
+                ? Array.from(
+                    {
+                      length:
+                        stayMode === 'hourly'
+                          ? 3
+                          : roomsNum * MAX_GUESTS_PER_ROOM,
+                    },
+                    (_, i) => i + 1,
+                  ).map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n} guest{n !== 1 ? 's' : ''}
+                    </SelectItem>
+                  ))
+                : [1, 2, 3].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n} guest{n !== 1 ? 's' : ''} per room
+                    </SelectItem>
+                  ))}
             </SelectContent>
           </Select>
 
@@ -546,7 +580,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                     'ring-1 ring-inset ring-white/20',
                     'transition-[transform,background-color,box-shadow] duration-200 ease-editorial',
                     'motion-safe:active:scale-[0.97]',
-                    'motion-reduce:active:scale-100 motion-reduce:transition-none',
+                    'motion-reduce:transition-none motion-reduce:active:scale-100',
                     'hover:bg-gold-200',
                     'focus-visible:ring-gold-400/55',
                     '[@media(hover:hover)_and_(pointer:fine)]:hover:shadow-[0_4px_16px_-4px_rgba(200,168,90,0.5)]',
@@ -554,7 +588,7 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                   ]
                 : [
                     'cursor-not-allowed bg-muted text-muted-foreground/75',
-                    'ring-1 ring-inset ring-border/50 shadow-none',
+                    'shadow-none ring-1 ring-inset ring-border/50',
                     'focus-visible:ring-muted-foreground/25',
                   ],
             )}
@@ -576,7 +610,11 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
       </div>
 
       {submitHint ? (
-        <p id="hero-book-hint" className="mt-2 text-xs text-white/90" role="status">
+        <p
+          id="hero-book-hint"
+          className="mt-2 text-xs text-white/90"
+          role="status"
+        >
           {submitHint}
         </p>
       ) : null}

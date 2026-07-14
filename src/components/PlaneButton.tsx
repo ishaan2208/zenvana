@@ -19,6 +19,12 @@ type PlaneButtonProps = {
   className?: string
   disabled?: boolean
   type?: 'button' | 'submit'
+  /**
+   * Controlled take-off state. When provided, the plane flies only while this
+   * is true (e.g. a form's `submitting` state) instead of latching on click —
+   * so a failed validation never strands the button in its "sent" state.
+   */
+  flying?: boolean
   'aria-label'?: string
 }
 
@@ -38,14 +44,16 @@ export function PlaneButton({
   className,
   disabled,
   type = 'button',
+  flying: flyingProp,
   ...rest
 }: PlaneButtonProps) {
   const router = useAppRouter()
-  const [flying, setFlying] = useState(false)
+  const [flyingState, setFlyingState] = useState(false)
+  const flying = flyingProp ?? flyingState
 
   const activate = () => {
     if (disabled || flying) return
-    setFlying(true)
+    if (flyingProp === undefined) setFlyingState(true)
     void onActivate?.()
     if (href) router.push(href)
   }

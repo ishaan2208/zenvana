@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
@@ -22,8 +21,12 @@ import {
 
 import { Button } from '@/components/Button'
 import { PriceWithMarketRate } from '@/components/PriceWithMarketRate'
-import { BookingTotalDisplay, CouponCelebration } from '@/components/CouponCelebration'
-import { useCheckoutCouponState } from './CheckoutCouponState'
+import {
+  BookingTotalDisplay,
+  CouponCelebration,
+} from '@/components/CouponCelebration'
+import { LiveBookingTotal, useCheckoutCouponState } from './CheckoutCouponState'
+import { CheckoutDockBar } from './CheckoutDockBar'
 import {
   createPublicBookingWithRoomLines,
   createRazorpayOrder,
@@ -45,46 +48,15 @@ import {
   trackPaymentInitiatedAction,
 } from '@/app/actions/analytics'
 
+import {
+  GUEST_REQUIRED_TOAST_ID,
+  InputField,
+  PaymentOptionCard,
+  SummaryCard,
+  loadRazorpayScript,
+} from './checkout-fields'
+
 const MULTI_ROOM_STORAGE_KEY = 'zenvana_multi_room_booking'
-const GUEST_REQUIRED_TOAST_ID = 'zenvana-checkout-guest-required'
-
-async function loadRazorpayScript(): Promise<void> {
-  if (typeof window === 'undefined') return
-  if (window.Razorpay) return
-  await new Promise<void>((resolve, reject) => {
-    const url = 'https://checkout.razorpay.com/v1/checkout.js'
-    const existing = document.querySelector(`script[src="${url}"]`)
-    if (existing) {
-      existing.addEventListener('load', () => resolve())
-      existing.addEventListener('error', () =>
-        reject(new Error('Razorpay script failed to load'))
-      )
-      return
-    }
-    const s = document.createElement('script')
-    s.src = url
-    s.async = true
-    s.onload = () => resolve()
-    s.onerror = () => reject(new Error('Failed to load Razorpay'))
-    document.body.appendChild(s)
-  })
-}
-
-declare global {
-  interface Window {
-    Razorpay: new (options: Record<string, unknown>) => {
-      open: () => void
-      on: (
-        event: string,
-        handler: (res: {
-          razorpay_payment_id: string
-          razorpay_order_id: string
-          razorpay_signature: string
-        }) => void
-      ) => void
-    }
-  }
-}
 
 type StoredPayload = {
   slug: string
@@ -131,12 +103,17 @@ export default function MultiRoomCheckoutForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [paymentMode, setPaymentMode] = useState<'pay_later' | 'pay_now'>('pay_now')
+  const [paymentMode, setPaymentMode] = useState<'pay_later' | 'pay_now'>(
+    'pay_now',
+  )
   const [pointsToRedeem, setPointsToRedeem] = useState(0)
   const [pointsBalance, setPointsBalance] = useState<number | null>(null)
   const [couponCodeInput, setCouponCodeInput] = useState('')
   const couponCtx = useCheckoutCouponState()
-  const [localAppliedCoupon, setLocalAppliedCoupon] = useState<{ code: string; discountAmount: number } | null>(null)
+  const [localAppliedCoupon, setLocalAppliedCoupon] = useState<{
+    code: string
+    discountAmount: number
+  } | null>(null)
   const [localCouponAppliedKey, setLocalCouponAppliedKey] = useState(0)
   const appliedCoupon = couponCtx?.appliedCoupon ?? localAppliedCoupon
   const setAppliedCoupon = couponCtx?.setAppliedCoupon ?? setLocalAppliedCoupon
@@ -210,16 +187,20 @@ export default function MultiRoomCheckoutForm({
   const byOcc = useMemo(() => {
     if (!payload) return {} as Record<number, { count: number; tariff: number }>
 
-    return payload.roomLines.reduce((acc, line) => {
-      const key = line.occupancy
-      if (!acc[key]) acc[key] = { count: 0, tariff: line.tariff }
-      acc[key].count += 1
-      return acc
-    }, {} as Record<number, { count: number; tariff: number }>)
+    return payload.roomLines.reduce(
+      (acc, line) => {
+        const key = line.occupancy
+        if (!acc[key]) acc[key] = { count: 0, tariff: line.tariff }
+        acc[key].count += 1
+        return acc
+      },
+      {} as Record<number, { count: number; tariff: number }>,
+    )
   }, [payload])
 
   const totalRooms = payload?.roomLines.length ?? 0
-  const totalGuests = payload?.roomLines.reduce((sum, line) => sum + line.occupancy, 0) ?? 0
+  const totalGuests =
+    payload?.roomLines.reduce((sum, line) => sum + line.occupancy, 0) ?? 0
 
   const occLabels: Record<number, string> = {
     1: 'Single',
@@ -246,7 +227,8 @@ export default function MultiRoomCheckoutForm({
     return (
       <div className="mt-8 rounded-[2rem] border border-amber-300/60 bg-amber-50/80 p-6 text-center dark:border-amber-700/40 dark:bg-amber-950/20">
         <p className="text-sm leading-7 text-amber-800 dark:text-amber-300">
-          No multi-room booking is currently in progress. Please return to the rooms page and select your room combination again.
+          No multi-room booking is currently in progress. Please return to the
+          rooms page and select your room combination again.
         </p>
         <Link href={`/book/${slug}/rooms`} className="mt-5 inline-block">
           <Button variant="outline" color="slate">
@@ -257,8 +239,19 @@ export default function MultiRoomCheckoutForm({
     )
   }
 
-  const { checkIn, checkOut, nights, roomTypeName, roomLines, totalAmount, marketTotal } = payload
-  const effectiveTotalAmount = Math.max(0, totalAmount - (appliedCoupon?.discountAmount ?? 0))
+  const {
+    checkIn,
+    checkOut,
+    nights,
+    roomTypeName,
+    roomLines,
+    totalAmount,
+    marketTotal,
+  } = payload
+  const effectiveTotalAmount = Math.max(
+    0,
+    totalAmount - (appliedCoupon?.discountAmount ?? 0),
+  )
 
   function handleGuestNameChange(value: string) {
     setGuestName(value)
@@ -343,35 +336,61 @@ export default function MultiRoomCheckoutForm({
           result.reason === 'COUPON_IDENTITY_REQUIRED' ||
           result.reason === 'COUPON_PHONE_MISMATCH'
         if (needsAuth) {
-          setAppliedCoupon({ code: result.code ?? code, discountAmount: result.discountAmount ?? 0 })
+          setAppliedCoupon({
+            code: result.code ?? code,
+            discountAmount: result.discountAmount ?? 0,
+          })
           setCouponCodeInput(result.code ?? code)
           bumpCouponAppliedKey()
-          track('coupon_failed', { code, reason: result.reason ?? 'AUTH_REQUIRED' }, slug)
+          track(
+            'coupon_failed',
+            { code, reason: result.reason ?? 'AUTH_REQUIRED' },
+            slug,
+          )
           await new Promise((resolve) => setTimeout(resolve, 1400))
-          toast.info('Sign in or verify your phone to use this coupon. Redirecting...')
-          const redirect = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : `/book/${slug}/checkout`
+          toast.info(
+            'Sign in or verify your phone to use this coupon. Redirecting...',
+          )
+          const redirect =
+            typeof window !== 'undefined'
+              ? `${window.location.pathname}${window.location.search}`
+              : `/book/${slug}/checkout`
           const existing = await checkGuestAccountExists(guestPhone)
           const nextAuthPath = existing === false ? '/guest/signup' : '/login'
           setTimeout(() => {
-            router.push(`${nextAuthPath}?redirect=${encodeURIComponent(redirect)}`)
+            router.push(
+              `${nextAuthPath}?redirect=${encodeURIComponent(redirect)}`,
+            )
           }, 900)
           return
         }
         setCouponError(couponErrorMessage(result.reason, result.message))
         setAppliedCoupon(null)
-        track('coupon_failed', { code, reason: result.reason ?? 'INVALID' }, slug)
+        track(
+          'coupon_failed',
+          { code, reason: result.reason ?? 'INVALID' },
+          slug,
+        )
         return
       }
-      setAppliedCoupon({ code: result.code ?? code, discountAmount: result.discountAmount ?? 0 })
+      setAppliedCoupon({
+        code: result.code ?? code,
+        discountAmount: result.discountAmount ?? 0,
+      })
       setCouponCodeInput(result.code ?? code)
       bumpCouponAppliedKey()
       track(
         'coupon_applied',
-        { code: result.code ?? code, discountAmount: result.discountAmount ?? 0 },
+        {
+          code: result.code ?? code,
+          discountAmount: result.discountAmount ?? 0,
+        },
         slug,
       )
     } catch (err) {
-      setCouponError(err instanceof Error ? err.message : 'Coupon validation failed')
+      setCouponError(
+        err instanceof Error ? err.message : 'Coupon validation failed',
+      )
       setAppliedCoupon(null)
       track('coupon_failed', { code, reason: 'EXCEPTION' }, slug)
     } finally {
@@ -389,16 +408,16 @@ export default function MultiRoomCheckoutForm({
     }
     router.push(
       `/booking/confirmation?` +
-      new URLSearchParams({
-        slug,
-        propertyName,
-        propertyPhone: primaryPhone ?? '',
-        checkIn,
-        checkOut,
-        roomTypeName,
-        totalAmount: String(effectiveTotalAmount),
-        bookingReference,
-      })
+        new URLSearchParams({
+          slug,
+          propertyName,
+          propertyPhone: primaryPhone ?? '',
+          checkIn,
+          checkOut,
+          roomTypeName,
+          totalAmount: String(effectiveTotalAmount),
+          bookingReference,
+        }),
     )
   }
 
@@ -425,7 +444,9 @@ export default function MultiRoomCheckoutForm({
         })),
         paymentIntent: 'pay_later',
         couponCode: appliedCoupon?.code,
-        pointsToRedeem: appliedCoupon ? 0 : Math.floor(pointsToRedeem / 10) * 10,
+        pointsToRedeem: appliedCoupon
+          ? 0
+          : Math.floor(pointsToRedeem / 10) * 10,
       })
 
       trackBookingCompletedAction({
@@ -463,7 +484,9 @@ export default function MultiRoomCheckoutForm({
       await loadRazorpayScript()
       const RazorpayCtor = window.Razorpay
       if (!RazorpayCtor) {
-        throw new Error('Payment script did not load. Please refresh and try again.')
+        throw new Error(
+          'Payment script did not load. Please refresh and try again.',
+        )
       }
 
       const bookingPayload = buildBookingPayload()
@@ -496,7 +519,7 @@ export default function MultiRoomCheckoutForm({
               response.razorpay_order_id,
               response.razorpay_payment_id,
               response.razorpay_signature,
-              bookingPayload
+              bookingPayload,
             )
             trackBookingCompletedAction({
               bookingReference: data.bookingReference,
@@ -533,7 +556,11 @@ export default function MultiRoomCheckoutForm({
         }).catch(() => {})
         track(
           'payment_failed',
-          { amount: effectiveTotalAmount, orderId, couponCode: appliedCoupon?.code ?? null },
+          {
+            amount: effectiveTotalAmount,
+            orderId,
+            couponCode: appliedCoupon?.code ?? null,
+          },
           slug,
         )
       })
@@ -583,7 +610,8 @@ export default function MultiRoomCheckoutForm({
               </h2>
 
               <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                This flow keeps the room split, guest details, and final total clear before confirmation.
+                This flow keeps the room split, guest details, and final total
+                clear before confirmation.
               </p>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -617,10 +645,13 @@ export default function MultiRoomCheckoutForm({
                 />
               </div>
 
-              <div className="mt-5 rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
+              <div className="bg-background/72 mt-5 rounded-[1.5rem] border border-border/60 p-4 backdrop-blur-xl dark:bg-background/35">
                 <div className="space-y-3">
                   {Object.entries(byOcc).map(([occ, { count }]) => (
-                    <div key={occ} className="flex items-start justify-between gap-4">
+                    <div
+                      key={occ}
+                      className="flex items-start justify-between gap-4"
+                    >
                       <span className="text-sm text-muted-foreground">
                         {occLabels[Number(occ)] ?? `${occ}-share`} share
                       </span>
@@ -633,15 +664,19 @@ export default function MultiRoomCheckoutForm({
                   <div className="border-t border-border/60 pt-3" />
 
                   <div className="flex items-start justify-between gap-4">
-                    <span className="text-sm text-muted-foreground">Nights</span>
-                    <span className="text-sm font-medium text-foreground">{nights}</span>
+                    <span className="text-sm text-muted-foreground">
+                      Nights
+                    </span>
+                    <span className="text-sm font-medium text-foreground">
+                      {nights}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="border-t border-border/60 p-5 sm:p-6 lg:border-l lg:border-t-0 lg:p-7">
-              <div className="rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
+              <div className="bg-background/72 rounded-[1.5rem] border border-border/60 p-4 backdrop-blur-xl dark:bg-background/35">
                 <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                   Payment
                 </div>
@@ -649,12 +684,13 @@ export default function MultiRoomCheckoutForm({
                   Pay now or pay at property
                 </div>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  Online payment uses Razorpay for the cash portion; signed-in guests can redeem points the same way as single-room checkout.
+                  Online payment uses Razorpay for the cash portion; signed-in
+                  guests can redeem points the same way as single-room checkout.
                 </p>
               </div>
 
               {primaryPhone && (
-                <div className="mt-4 rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
+                <div className="bg-background/72 mt-4 rounded-[1.5rem] border border-border/60 p-4 backdrop-blur-xl dark:bg-background/35">
                   <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                     Need help?
                   </div>
@@ -673,7 +709,7 @@ export default function MultiRoomCheckoutForm({
 
         <form
           onSubmit={paymentMode === 'pay_now' ? handlePayNow : handlePayLater}
-          className="space-y-6"
+          className="space-y-6 pb-28 xl:pb-0"
         >
           <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_18px_45px_rgba(8,17,31,0.05)] backdrop-blur-2xl dark:bg-background/30">
             <div className="border-b border-border/60 px-5 py-5 sm:px-6">
@@ -767,44 +803,57 @@ export default function MultiRoomCheckoutForm({
                 />
               </div>
 
-              {pointsBalance != null && pointsBalance >= 10 && paymentMode === 'pay_now' && (
-                <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
-                  <label className="block text-sm font-medium text-foreground" htmlFor="mrPointsRedeem">
-                    Redeem points (balance {pointsBalance}; 10 pts = ₹1)
-                  </label>
-                  <input
-                    id="mrPointsRedeem"
-                    type="number"
-                    min={0}
-                    max={pointsBalance}
-                    step={10}
-                    value={pointsToRedeem}
-                    disabled={Boolean(appliedCoupon)}
-                    onChange={(e) => {
-                      const raw = parseInt(e.target.value, 10)
-                      if (Number.isNaN(raw)) {
-                        setPointsToRedeem(0)
-                        return
-                      }
-                      const v = Math.min(Math.max(0, Math.floor(raw / 10) * 10), pointsBalance)
-                      setPointsToRedeem(v)
-                    }}
-                    className="mt-2 w-full max-w-xs rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  />
-                  {appliedCoupon && (
-                    <p className="mt-2 text-xs text-muted-foreground">Remove coupon to redeem points.</p>
-                  )}
-                </div>
-              )}
+              {pointsBalance != null &&
+                pointsBalance >= 10 &&
+                paymentMode === 'pay_now' && (
+                  <div className="bg-background/72 mt-5 rounded-[1.35rem] border border-border/60 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
+                    <label
+                      className="block text-sm font-medium text-foreground"
+                      htmlFor="mrPointsRedeem"
+                    >
+                      Redeem points (balance {pointsBalance}; 10 pts = ₹1)
+                    </label>
+                    <input
+                      id="mrPointsRedeem"
+                      type="number"
+                      min={0}
+                      max={pointsBalance}
+                      step={10}
+                      value={pointsToRedeem}
+                      disabled={Boolean(appliedCoupon)}
+                      onChange={(e) => {
+                        const raw = parseInt(e.target.value, 10)
+                        if (Number.isNaN(raw)) {
+                          setPointsToRedeem(0)
+                          return
+                        }
+                        const v = Math.min(
+                          Math.max(0, Math.floor(raw / 10) * 10),
+                          pointsBalance,
+                        )
+                        setPointsToRedeem(v)
+                      }}
+                      className="mt-2 w-full max-w-xs rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                    />
+                    {appliedCoupon && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Remove coupon to redeem points.
+                      </p>
+                    )}
+                  </div>
+                )}
 
-              <div className="mt-5 rounded-[1.35rem] border border-border/60 bg-background/72 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
-                <label className="block text-sm font-medium text-foreground" htmlFor="mrCouponCode">
+              <div className="bg-background/72 mt-5 rounded-[1.35rem] border border-border/60 px-4 py-4 backdrop-blur-xl dark:bg-background/35">
+                <label
+                  className="block text-sm font-medium text-foreground"
+                  htmlFor="mrCouponCode"
+                >
                   Offer code
                 </label>
                 {!appliedCoupon &&
                   initialCouponCode &&
                   couponCodeInput.trim().toUpperCase() ===
-                  initialCouponCode.trim().toUpperCase() && (
+                    initialCouponCode.trim().toUpperCase() && (
                     <p className="mt-1 text-xs font-medium text-primary">
                       Code ready — click Apply to unlock your discount.
                     </p>
@@ -826,24 +875,37 @@ export default function MultiRoomCheckoutForm({
                     ref={applyButtonRef}
                     type="button"
                     onClick={handleApplyCoupon}
-                    disabled={pointsToRedeem > 0 || couponBusy || !couponCodeInput.trim() || Boolean(appliedCoupon)}
+                    disabled={
+                      pointsToRedeem > 0 ||
+                      couponBusy ||
+                      !couponCodeInput.trim() ||
+                      Boolean(appliedCoupon)
+                    }
                     whileTap={
                       !reduceMotion &&
-                      !appliedCoupon && !couponBusy && couponCodeInput.trim() && pointsToRedeem === 0
+                      !appliedCoupon &&
+                      !couponBusy &&
+                      couponCodeInput.trim() &&
+                      pointsToRedeem === 0
                         ? { scale: 0.96 }
                         : undefined
                     }
-                    className={`relative inline-flex h-12 min-w-[120px] items-center justify-center overflow-hidden rounded-[1rem] px-5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${appliedCoupon
+                    className={`relative inline-flex h-12 min-w-[120px] items-center justify-center overflow-hidden rounded-[1rem] px-5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                      appliedCoupon
                         ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-8px_rgba(16,185,129,0.55)] dark:bg-emerald-400 dark:text-emerald-950'
                         : 'bg-primary text-primary-foreground'
-                      }`}
+                    }`}
                   >
                     {couponBusy && !reduceMotion && (
                       <motion.span
                         aria-hidden
                         initial={{ x: '-130%' }}
                         animate={{ x: '160%' }}
-                        transition={{ duration: 1.1, ease: 'linear', repeat: Infinity }}
+                        transition={{
+                          duration: 1.1,
+                          ease: 'linear',
+                          repeat: Infinity,
+                        }}
                         className="pointer-events-none absolute inset-0 -skew-x-12 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.42),transparent)]"
                       />
                     )}
@@ -897,7 +959,11 @@ export default function MultiRoomCheckoutForm({
                     setCouponError(null)
                   }}
                 />
-                {couponError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{couponError}</p>}
+                {couponError && (
+                  <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                    {couponError}
+                  </p>
+                )}
                 {pointsToRedeem > 0 && (
                   <p className="mt-2 text-xs text-muted-foreground">
                     Set points to 0 before applying a coupon.
@@ -917,18 +983,20 @@ export default function MultiRoomCheckoutForm({
           )}
 
           <div className="space-y-4">
-            <Button
-              type="submit"
-              color="blue"
-              className="h-14 w-full rounded-[1.1rem] text-sm font-medium shadow-[0_14px_34px_rgba(37,99,235,0.22)]"
-              disabled={submitting}
-            >
-              {submitting
-                ? 'Processing…'
-                : paymentMode === 'pay_now'
-                  ? 'Pay & confirm booking'
-                  : 'Confirm booking'}
-            </Button>
+            <div className="hidden xl:block">
+              <Button
+                type="submit"
+                color="blue"
+                className="h-14 w-full rounded-[1.1rem] text-sm font-medium shadow-[0_14px_34px_rgba(37,99,235,0.22)]"
+                disabled={submitting}
+              >
+                {submitting
+                  ? 'Processing…'
+                  : paymentMode === 'pay_now'
+                    ? 'Pay & confirm booking'
+                    : 'Confirm booking'}
+              </Button>
+            </div>
 
             {primaryPhone && (
               <div className="rounded-[1.35rem] border border-border/60 bg-background/55 px-4 py-4 text-center backdrop-blur-xl dark:bg-background/30">
@@ -945,174 +1013,29 @@ export default function MultiRoomCheckoutForm({
               </div>
             )}
           </div>
+
+          <CheckoutDockBar
+            ctaLabel={
+              paymentMode === 'pay_now' ? 'Pay & confirm' : 'Confirm booking'
+            }
+            sentLabel={
+              paymentMode === 'pay_now' ? 'Opening payment…' : 'Confirming…'
+            }
+            submitting={submitting}
+            microline={
+              paymentMode === 'pay_now'
+                ? 'Secure payment via Razorpay'
+                : 'No payment needed now — pay at the hotel'
+            }
+          >
+            <LiveBookingTotal
+              baseTotal={totalAmount}
+              marketAmount={marketTotal}
+              variant="mobile-bar"
+            />
+          </CheckoutDockBar>
         </form>
       </div>
     </>
   )
 }
-
-function PaymentOptionCard({
-  checked,
-  onSelect,
-  title,
-  description,
-  icon,
-  tone,
-  badge,
-}: {
-  checked: boolean
-  onSelect: () => void
-  title: string
-  description: ReactNode
-  icon: ReactNode
-  tone: 'primary' | 'neutral'
-  badge?: string
-}) {
-  const activePrimary =
-    checked && tone === 'primary'
-      ? 'border-primary bg-primary/7 ring-1 ring-primary'
-      : ''
-
-  const activeNeutral =
-    checked && tone === 'neutral'
-      ? 'border-foreground/20 bg-foreground/[0.03] ring-1 ring-foreground/10'
-      : ''
-
-  return (
-    <label
-      className={`cursor-pointer rounded-[1.45rem] border p-4 transition-all ${checked
-        ? `${activePrimary} ${activeNeutral}`
-        : 'border-border/60 bg-background/72 hover:border-foreground/15 dark:bg-background/35'
-        }`}
-    >
-      <input
-        type="radio"
-        name="mrPaymentMode"
-        checked={checked}
-        onChange={onSelect}
-        className="sr-only"
-      />
-
-      <div className="flex items-start gap-4">
-        <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone === 'primary'
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-foreground text-background'
-            }`}
-        >
-          {icon}
-        </div>
-
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-base font-medium tracking-tight text-foreground">
-              {title}
-            </p>
-
-            {badge && (
-              <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-primary">
-                {badge}
-              </span>
-            )}
-
-            {checked && !badge && (
-              <span className="rounded-full border border-foreground/15 bg-foreground/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-foreground/80">
-                Selected
-              </span>
-            )}
-          </div>
-
-          <div className="mt-2 text-sm leading-7 text-muted-foreground">
-            {description}
-          </div>
-        </div>
-      </div>
-    </label>
-  )
-}
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode
-  label: string
-  value: ReactNode
-}) {
-  return (
-    <div className="rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground dark:bg-background/45">
-          {icon}
-        </div>
-        <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            {label}
-          </div>
-          <div className="mt-2 text-sm font-medium leading-7 text-foreground">
-            {value}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function InputField({
-  id,
-  label,
-  type,
-  value,
-  onChange,
-  required,
-  autoComplete,
-  icon,
-  error,
-}: {
-  id: string
-  label: string
-  type: string
-  value: string
-  onChange: (value: string) => void
-  required?: boolean
-  autoComplete?: string
-  icon?: ReactNode
-  error?: string
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={id}
-        className="mb-2 block text-[11px] uppercase tracking-[0.22em] text-muted-foreground"
-      >
-        {label}
-      </label>
-
-      <div className="relative">
-        {icon && (
-          <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-muted-foreground">
-            {icon}
-          </div>
-        )}
-
-        <input
-          id={id}
-          type={type}
-          required={required}
-          value={value}
-          autoComplete={autoComplete}
-          onChange={(e) => onChange(e.target.value)}
-          aria-invalid={Boolean(error)}
-          className={`block h-14 w-full rounded-[1.1rem] border bg-background/70 text-foreground shadow-none outline-none transition placeholder:text-muted-foreground focus:ring-2 dark:bg-background/50 ${error
-            ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-            : 'border-border/70 focus:border-primary focus:ring-primary/15'
-            } ${icon ? 'pl-11 pr-4' : 'px-4'
-            }`}
-        />
-      </div>
-      {error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{error}</p>}
-    </div>
-  )
-}
-

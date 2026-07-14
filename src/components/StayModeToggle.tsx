@@ -92,7 +92,11 @@ export function HourlyStayCallout({
             Hourly stays available
           </p>
           <p className="mt-1 text-sm leading-6 text-amber-950/80 dark:text-amber-50/85">
-            {durationLabel} packages · bookable {windowStart}–{windowEnd}
+            A private room for a few hours — change before a wedding or rest
+            during a long layover.
+          </p>
+          <p className="mt-1 text-sm leading-6 text-amber-950/80 dark:text-amber-50/85">
+            {durationLabel} · book between {windowStart}–{windowEnd}
           </p>
         </div>
       </div>

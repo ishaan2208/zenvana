@@ -1,11 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import {
-  ArrowLeft,
-  Hotel,
-  MapPin,
-  Sparkles,
-} from 'lucide-react'
+import { ArrowLeft, Hotel, MapPin, Sparkles } from 'lucide-react'
 
 import {
   getPublicAvailability,
@@ -19,9 +14,14 @@ import { Container } from '@/components/Container'
 import { SoldOutTag } from '@/components/SoldOutTag'
 import { RoomCard } from './RoomCard'
 import { HourlyRoomsView } from './HourlyRoomsView'
-import { isRoomTypePurchasable, sortRoomTypesByLowestRate } from './roomAvailability'
+import {
+  isRoomTypePurchasable,
+  sortRoomTypesByLowestRate,
+} from './roomAvailability'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 import { sanitizeReturnTo } from '@/lib/book-rooms-url'
+import { isDayUseParam } from '@/lib/stay-kind'
+import { BookingSteps } from '@/components/booking/BookingSteps'
 import { TrackOnMount } from '@/components/analytics/TrackOnMount'
 import {
   filterPreferDoubleSharing,
@@ -78,7 +78,7 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
   const couponCode = promoOrCouponFromSearchParams(q)
   const returnTo = sanitizeReturnTo(q.returnTo)
 
-  if (String(stayKind ?? '').toLowerCase() === 'hourly') {
+  if (isDayUseParam(stayKind)) {
     const date = hourlyDate || checkIn
     const durationHours = durationHoursParam
       ? parseInt(durationHoursParam, 10)
@@ -105,8 +105,11 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
 
   const rooms = roomsParam ? parseInt(roomsParam, 10) : 1
   const guests = guestsParam ? parseInt(guestsParam, 10) : undefined
-  const occupancy = guests ?? (occupancyParam ? parseInt(occupancyParam, 10) : undefined)
-  const guestsPerRoom = guestsPerRoomParam ? parseInt(guestsPerRoomParam, 10) : undefined
+  const occupancy =
+    guests ?? (occupancyParam ? parseInt(occupancyParam, 10) : undefined)
+  const guestsPerRoom = guestsPerRoomParam
+    ? parseInt(guestsPerRoomParam, 10)
+    : undefined
 
   const [property, availability, ratesBulk] = await Promise.all([
     getPublicPropertyBySlug(slug),
@@ -121,7 +124,9 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     occupancy: occupancy ?? null,
     nights: availability?.nights ?? null,
     roomTypeCount: availability?.roomTypes?.length ?? 0,
-    anyAvailable: (availability?.roomTypes ?? []).some((rt) => rt.availableRooms > 0),
+    anyAvailable: (availability?.roomTypes ?? []).some(
+      (rt) => rt.availableRooms > 0,
+    ),
   }
 
   if (!property) notFound()
@@ -155,11 +160,17 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
                 </h1>
 
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                  Live availability was not returned for your selected stay. Change the dates and try again.
+                  Live availability was not returned for your selected stay.
+                  Change the dates and try again.
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <Button href={`/book/${slug}`} variant="outline" color="slate" className="dark:text-white">
+                  <Button
+                    href={`/book/${slug}`}
+                    variant="outline"
+                    color="slate"
+                    className="dark:text-white"
+                  >
                     Change dates
                   </Button>
 
@@ -185,14 +196,21 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
                 {(property.city || property.state) && (
                   <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4 shrink-0" />
-                    <span>{[property.city, property.state].filter(Boolean).join(', ')}</span>
+                    <span>
+                      {[property.city, property.state]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </span>
                   </div>
                 )}
 
                 <div className="mt-5 space-y-3 border-t border-border/60 pt-5">
                   <SummaryRow label="Check-in" value={checkIn} />
                   <SummaryRow label="Check-out" value={checkOut} />
-                  <SummaryRow label="Rooms requested" value={`${rooms} room${rooms !== 1 ? 's' : ''}`} />
+                  <SummaryRow
+                    label="Rooms requested"
+                    value={`${rooms} room${rooms !== 1 ? 's' : ''}`}
+                  />
                   {occupancy != null && (
                     <SummaryRow
                       label="Guests"
@@ -214,12 +232,14 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
 
   const nights = availability.nights
   const ratesByRoomTypeId = new Map(
-    ratesBulk?.roomTypes?.map((r) => [r.roomTypeId, r]) ?? []
+    ratesBulk?.roomTypes?.map((r) => [r.roomTypeId, r]) ?? [],
   )
 
   const isMultiRoomWithGuests = rooms > 1 && occupancy != null
   const shareCombinations = isMultiRoomWithGuests
-    ? filterPreferDoubleSharing(filterPreferNoTriple(getShareCombinations(rooms, occupancy!)))
+    ? filterPreferDoubleSharing(
+        filterPreferNoTriple(getShareCombinations(rooms, occupancy!)),
+      )
     : []
 
   const hasConfiguredPropertyRooms = property.roomTypes.length > 0
@@ -233,22 +253,24 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     inventoryEligible.map((av) =>
       isMultiRoomWithGuests
         ? Promise.all([
-          getPublicRatesWithPlans(slug, av.roomTypeId, checkIn, checkOut, 1),
-          getPublicRatesWithPlans(slug, av.roomTypeId, checkIn, checkOut, 2),
-          getPublicRatesWithPlans(slug, av.roomTypeId, checkIn, checkOut, 3),
-        ])
+            getPublicRatesWithPlans(slug, av.roomTypeId, checkIn, checkOut, 1),
+            getPublicRatesWithPlans(slug, av.roomTypeId, checkIn, checkOut, 2),
+            getPublicRatesWithPlans(slug, av.roomTypeId, checkIn, checkOut, 3),
+          ])
         : getPublicRatesWithPlans(
-          slug,
-          av.roomTypeId,
-          checkIn,
-          checkOut,
-          occupancy ?? undefined
-        )
-    )
+            slug,
+            av.roomTypeId,
+            checkIn,
+            checkOut,
+            occupancy ?? undefined,
+          ),
+    ),
   )
 
   const propertyRoomTypeById = new Map(
-    property.roomTypes.map((roomType) => [String(roomType.id), roomType] as const)
+    property.roomTypes.map(
+      (roomType) => [String(roomType.id), roomType] as const,
+    ),
   )
 
   const roomTypesWithRates = inventoryEligible.map((av, i) => {
@@ -287,7 +309,9 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
       }
     }
 
-    const single = plansData as Awaited<ReturnType<typeof getPublicRatesWithPlans>>
+    const single = plansData as Awaited<
+      ReturnType<typeof getPublicRatesWithPlans>
+    >
 
     return {
       ...av,
@@ -316,7 +340,9 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
   const guestSummary =
     occupancy != null
       ? guestsPerRoom != null && rooms >= 6
-        ? `${guestsPerRoom} guest${guestsPerRoom !== 1 ? 's' : ''} per room (${occupancy} total)`
+        ? `${guestsPerRoom} guest${
+            guestsPerRoom !== 1 ? 's' : ''
+          } per room (${occupancy} total)`
         : `${occupancy} guest${occupancy !== 1 ? 's' : ''}`
       : null
 
@@ -345,7 +371,9 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
         name="availability_checked"
         propertySlug={slug}
         properties={availabilityProperties}
-        dedupeKey={`availability_checked:${slug}:${checkIn}:${checkOut}:${rooms}:${occupancy ?? 0}`}
+        dedupeKey={`availability_checked:${slug}:${checkIn}:${checkOut}:${rooms}:${
+          occupancy ?? 0
+        }`}
       />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,198,0.10),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.08),transparent_28%)]" />
 
@@ -358,7 +386,12 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
           {backLabel}
         </Link>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-8">
+        <BookingSteps current={2} className="mt-4" />
+        <p className="mt-1 text-xs leading-6 text-muted-foreground">
+          You won’t be charged yet — you confirm on the next step.
+        </p>
+
+        <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-8">
           <div className="min-w-0 space-y-5">
             {!hasConfiguredPropertyRooms ? (
               <div className="rounded-[2rem] border border-border/60 bg-background/55 p-6 shadow-[0_18px_45px_rgba(8,17,31,0.04)] backdrop-blur-2xl dark:bg-background/30 sm:p-7">
@@ -385,7 +418,10 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
 
                 <div className="relative p-6 sm:p-8 lg:p-10">
                   <div className="inline-flex flex-wrap items-center gap-3">
-                    <SoldOutTag className="px-4 py-2 text-xs tracking-[0.18em]" label="Fully booked" />
+                    <SoldOutTag
+                      className="px-4 py-2 text-xs tracking-[0.18em]"
+                      label="Fully booked"
+                    />
                     <span className="text-[11px] uppercase tracking-[0.24em] text-rose-800/80 dark:text-rose-200/80">
                       {property.publicName}
                     </span>
@@ -396,9 +432,10 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
                   </h1>
 
                   <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
-                    Every room type at this hotel is unavailable for your stay — not enough inventory
-                    or no matching rate plans for your guest count. Browse other Zenvana properties or
-                    change your dates and room configuration.
+                    Every room type at this hotel is unavailable for your stay —
+                    not enough inventory or no matching rate plans for your
+                    guest count. Browse other Zenvana properties or change your
+                    dates and room configuration.
                   </p>
 
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -480,15 +517,22 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
               {(property.city || property.state) && (
                 <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0" />
-                  <span>{[property.city, property.state].filter(Boolean).join(', ')}</span>
+                  <span>
+                    {[property.city, property.state].filter(Boolean).join(', ')}
+                  </span>
                 </div>
               )}
 
               <div className="mt-5 space-y-3 border-t border-border/60 pt-5">
                 <SummaryRow label="Check-in" value={checkIn} />
                 <SummaryRow label="Check-out" value={checkOut} />
-                <SummaryRow label="Rooms" value={`${rooms} room${rooms !== 1 ? 's' : ''}`} />
-                {guestSummary && <SummaryRow label="Guests" value={guestSummary} />}
+                <SummaryRow
+                  label="Rooms"
+                  value={`${rooms} room${rooms !== 1 ? 's' : ''}`}
+                />
+                {guestSummary && (
+                  <SummaryRow label="Guests" value={guestSummary} />
+                )}
               </div>
             </div>
           </aside>
@@ -498,21 +542,13 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
   )
 }
 
-function SummaryRow({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
+function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4">
       <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
         {label}
       </span>
-      <span className="text-right text-sm text-foreground">
-        {value}
-      </span>
+      <span className="text-right text-sm text-foreground">{value}</span>
     </div>
   )
 }

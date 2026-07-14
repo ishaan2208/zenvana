@@ -6,6 +6,7 @@ import { rankedProperties } from '@/lib/pyramid-cards'
 
 const exploreLinks = [
   { href: '/hotels', label: 'All hotels' },
+  { href: '/hourly-stays', label: 'Hourly stays' },
   { href: '/offers', label: 'Offers' },
   { href: '/restaurant', label: 'Feasta restaurant' },
   { href: '/weddings', label: 'Weddings & events' },
@@ -38,7 +39,9 @@ function FooterLink({ href, label }: { href: string; label: string }) {
 
 function ColumnLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[11px] font-medium uppercase tracking-[0.3em] text-gold-300/80">{children}</div>
+    <div className="text-[11px] font-medium uppercase tracking-[0.3em] text-gold-300/80">
+      {children}
+    </div>
   )
 }
 
@@ -55,7 +58,8 @@ export function Footer() {
         <div
           className="absolute inset-0 opacity-[0.04] mix-blend-overlay"
           style={{
-            backgroundImage: 'radial-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)',
+            backgroundImage:
+              'radial-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)',
             backgroundSize: '3px 3px',
           }}
         />
@@ -77,8 +81,9 @@ export function Footer() {
               <span className="gold-text italic">Book directly.</span>
             </h2>
             <p className="mt-6 max-w-md text-[15px] leading-[1.85] text-white/65">
-              An owner-operated collection of boutique hotels on Rajpur Road, Dehradun, shaped by the
-              foothills, long mornings, and the calm of staying somewhere considered.
+              An owner-operated collection of boutique hotels on Rajpur Road,
+              Dehradun, shaped by the foothills, long mornings, and the calm of
+              staying somewhere considered.
             </p>
             <div className="mt-7 inline-flex items-center gap-2.5 text-[12.5px] text-white/55">
               <span className="h-1.5 w-1.5 rounded-full bg-gold-300 shadow-[0_0_8px_rgba(216,192,117,0.7)]" />
@@ -102,7 +107,7 @@ export function Footer() {
                 className="pressable group inline-flex items-center gap-2 rounded-full bg-gold-300 px-5 py-3 text-sm font-medium text-ink-900 transition hover:bg-gold-200"
               >
                 Explore the collection
-                <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </Link>
               <a
                 href="https://wa.me/919084051774"
@@ -155,7 +160,10 @@ export function Footer() {
           <div>
             <ColumnLabel>Find us</ColumnLabel>
             <div className="mt-5 space-y-3.5 text-[15px] text-white/65">
-              <a href="tel:+919084051774" className="flex items-center gap-3 transition hover:text-sand-50">
+              <a
+                href="tel:+919084051774"
+                className="flex items-center gap-3 transition hover:text-sand-50"
+              >
                 <Phone className="h-4 w-4 shrink-0 text-gold-300/80" />
                 +91 90840 51774
               </a>
@@ -168,8 +176,11 @@ export function Footer() {
               </a>
               <div className="flex items-start gap-3">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold-300/80" />
-                <span>Rajpur Road, Dehradun,
-                  <br />Uttarakhand 248001</span>
+                <span>
+                  Rajpur Road, Dehradun,
+                  <br />
+                  Uttarakhand 248001
+                </span>
               </div>
               <a
                 href="https://www.instagram.com/zenvanahotels"
@@ -193,12 +204,20 @@ export function Footer() {
             Zenvana
           </div>
           <div className="mt-6 flex flex-col gap-3 pb-8 text-[13px] text-white/45 sm:flex-row sm:items-center sm:justify-between">
-            <p>© {year} Zenvana Hotels · Owner-operated on Rajpur Road, Dehradun</p>
+            <p>
+              © {year} Zenvana Hotels · Owner-operated on Rajpur Road, Dehradun
+            </p>
             <div className="flex items-center gap-6">
-              <Link href="/privacypolicy" className="transition hover:text-white/80">
+              <Link
+                href="/privacypolicy"
+                className="transition hover:text-white/80"
+              >
                 Privacy
               </Link>
-              <Link href="/stay-direct" className="transition hover:text-gold-200">
+              <Link
+                href="/stay-direct"
+                className="transition hover:text-gold-200"
+              >
                 Best rate, booked direct
               </Link>
             </div>
@@ -211,7 +230,12 @@ export function Footer() {
 
 function WhatsAppGlyph({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+      className={className}
+    >
       <path d="M19.05 4.91A9.82 9.82 0 0 0 12.03 2C6.62 2 2.2 6.4 2.2 11.83c0 1.74.45 3.43 1.31 4.93L2 22l5.39-1.42a9.85 9.85 0 0 0 4.64 1.18h.01c5.41 0 9.83-4.4 9.83-9.83A9.77 9.77 0 0 0 19.05 4.9Zm-7.02 15.2h-.01a8.2 8.2 0 0 1-4.17-1.14l-.3-.18-3.2.84.85-3.12-.2-.32a8.08 8.08 0 0 1-1.25-4.36c0-4.46 3.63-8.09 8.1-8.09 2.16 0 4.18.84 5.7 2.36a7.99 7.99 0 0 1 2.37 5.73c0 4.47-3.63 8.1-8.09 8.1Zm4.44-6.06c-.24-.12-1.42-.7-1.64-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.01-.37-1.93-1.18-.71-.63-1.19-1.4-1.33-1.64-.14-.24-.02-.37.1-.49.1-.1.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.48-.4-.42-.54-.42h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.31.98 2.47c.12.16 1.68 2.56 4.08 3.6.57.24 1.01.38 1.36.49.57.18 1.08.16 1.48.1.45-.06 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28Z" />
     </svg>
   )

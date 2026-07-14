@@ -12,6 +12,8 @@ import { Button } from '@/components/Button'
 import { PriceWithTax } from '@/components/PriceWithTax'
 import { DownloadConfirmationVoucherButton } from './DownloadConfirmationVoucherButton'
 import { getPublicBookingVoucherDetailsByReference } from '@/lib/api'
+import { isDayUseParam } from '@/lib/stay-kind'
+import { BookingSteps } from '@/components/booking/BookingSteps'
 import { BookingConfirmedConversion } from '@/components/analytics/BookingConfirmedConversion'
 
 export const metadata = {
@@ -38,11 +40,20 @@ type Props = {
 
 export default async function ConfirmationPage({ searchParams }: Props) {
   const q = await searchParams
-  const booking =
-    q.bookingReference ? await getPublicBookingVoucherDetailsByReference(q.bookingReference).catch(() => null) : null
+  const booking = q.bookingReference
+    ? await getPublicBookingVoucherDetailsByReference(q.bookingReference).catch(
+        () => null,
+      )
+    : null
 
   const uniquePlans = booking
-    ? [...new Set((booking.BookingRoom ?? []).map((r) => (r.roomPlan ?? 'EP') as 'EP' | 'CP' | 'MAP' | 'AP'))]
+    ? [
+        ...new Set(
+          (booking.BookingRoom ?? []).map(
+            (r) => (r.roomPlan ?? 'EP') as 'EP' | 'CP' | 'MAP' | 'AP',
+          ),
+        ),
+      ]
     : []
   const ratePlanLabelMap: Record<'EP' | 'CP' | 'MAP' | 'AP', string> = {
     EP: 'Room only',
@@ -56,11 +67,7 @@ export default async function ConfirmationPage({ searchParams }: Props) {
       : null
 
   const hasDetails =
-    q.propertyName &&
-    q.checkIn &&
-    q.checkOut &&
-    q.roomTypeName &&
-    q.totalAmount
+    q.propertyName && q.checkIn && q.checkOut && q.roomTypeName && q.totalAmount
 
   const hasRef = !!q.bookingReference
 
@@ -80,9 +87,10 @@ export default async function ConfirmationPage({ searchParams }: Props) {
 
         <Container className="relative py-16 sm:py-20 lg:py-24">
           <div className="mx-auto max-w-4xl text-center">
-
-
-            <div className="mt-6 border-green-500 text-green-500 inline-flex h-20 w-20 items-center justify-center rounded-full border border-border/60 bg-card text-foreground shadow-[0_18px_45px_rgba(8,17,31,0.06)] dark:bg-card/70">
+            <div className="flex justify-center">
+              <BookingSteps current={4} />
+            </div>
+            <div className="mt-6 inline-flex h-20 w-20 items-center justify-center rounded-full border border-border/60 border-green-500 bg-card text-foreground text-green-500 shadow-[0_18px_45px_rgba(8,17,31,0.06)] dark:bg-card/70">
               <BadgeCheck className="h-9 w-9" />
             </div>
 
@@ -97,7 +105,8 @@ export default async function ConfirmationPage({ searchParams }: Props) {
             </p>
             {hasRef && (
               <p className="mx-auto mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
-                Confirmation email has been sent if you provided your email address while booking.
+                Confirmation email has been sent if you provided your email
+                address while booking.
               </p>
             )}
           </div>
@@ -127,27 +136,40 @@ export default async function ConfirmationPage({ searchParams }: Props) {
                       <p className="mt-2 font-mono text-lg text-foreground">
                         {q.bookingReference}
                       </p>
+                      <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                        Save this reference — the hotel will ask for it at
+                        check-in.
+                      </p>
                     </div>
                   )}
 
-                  <div className={`grid gap-4 ${hasRef ? 'mt-5' : ''} sm:grid-cols-2`}>
+                  <div
+                    className={`grid gap-4 ${
+                      hasRef ? 'mt-5' : ''
+                    } sm:grid-cols-2`}
+                  >
                     <SummaryCard
                       icon={<CalendarRange className="h-4.5 w-4.5" />}
                       label={
-                        String(q.stayKind ?? '').toLowerCase() === 'hourly'
-                          ? 'Hourly slot'
-                          : 'Stay dates'
+                        isDayUseParam(q.stayKind) ? 'Hourly slot' : 'Stay dates'
                       }
                       value={
-                        String(q.stayKind ?? '').toLowerCase() === 'hourly'
-                          ? `${q.checkIn} · ${q.startTime ?? ''} · ${q.durationHours ?? ''}h`
+                        isDayUseParam(q.stayKind)
+                          ? `${q.checkIn} · ${q.startTime ?? ''} · ${
+                              q.durationHours ?? ''
+                            }h`
                           : `${q.checkIn} → ${q.checkOut}`
                       }
                     />
                     <SummaryCard
                       icon={<Receipt className="h-4.5 w-4.5" />}
                       label="Total"
-                      value={<PriceWithTax amount={Number(q.totalAmount)} size="default" />}
+                      value={
+                        <PriceWithTax
+                          amount={Number(q.totalAmount)}
+                          size="default"
+                        />
+                      }
                     />
                   </div>
 
@@ -164,7 +186,9 @@ export default async function ConfirmationPage({ searchParams }: Props) {
                       <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                         Rate plan
                       </div>
-                      <p className="mt-2 text-base font-medium text-foreground">{ratePlanText}</p>
+                      <p className="mt-2 text-base font-medium text-foreground">
+                        {ratePlanText}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -176,8 +200,8 @@ export default async function ConfirmationPage({ searchParams }: Props) {
                     Thank you
                   </div>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                    Your booking message has been received. We will share the final stay
-                    details shortly.
+                    Your booking message has been received. We will share the
+                    final stay details shortly.
                   </p>
                 </div>
               </section>
@@ -192,19 +216,24 @@ export default async function ConfirmationPage({ searchParams }: Props) {
 
               <div className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
                 <p>
-                  Keep your booking reference handy for any changes or assistance.
+                  Keep your booking reference handy for any changes or
+                  assistance.
                 </p>
                 {q.propertyPhone ? (
                   <p>
                     Need help? Call the property directly on{' '}
-                    <a className="font-medium text-foreground hover:underline" href={`tel:${q.propertyPhone}`}>
+                    <a
+                      className="font-medium text-foreground hover:underline"
+                      href={`tel:${q.propertyPhone}`}
+                    >
                       {q.propertyPhone}
                     </a>
                     .
                   </p>
                 ) : (
                   <p>
-                    For anything urgent, contact the property team directly from the hotel page.
+                    For anything urgent, contact the property team directly from
+                    the hotel page.
                   </p>
                 )}
               </div>
@@ -217,7 +246,11 @@ export default async function ConfirmationPage({ searchParams }: Props) {
                   />
                 )}
 
-                <Button href="/hotels" color="blue" className="h-12 rounded-[1rem]">
+                <Button
+                  href="/hotels"
+                  color="blue"
+                  className="h-12 rounded-[1rem]"
+                >
                   Browse hotels
                 </Button>
 
@@ -256,7 +289,9 @@ function SummaryCard({
           <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
             {label}
           </div>
-          <p className="mt-2 text-sm font-medium leading-7 text-foreground">{value}</p>
+          <p className="mt-2 text-sm font-medium leading-7 text-foreground">
+            {value}
+          </p>
         </div>
       </div>
     </div>

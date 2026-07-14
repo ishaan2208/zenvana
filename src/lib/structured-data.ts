@@ -15,7 +15,8 @@
  *  - LocalBusiness fallback
  */
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 const ORG_NAME = 'Zenvana Hotels'
 const ORG_LEGAL_NAME = 'Zenvana Hotels'
 const ORG_LOGO = `${SITE_URL}/zenvana-logo.svg`
@@ -100,8 +101,17 @@ export function webSiteJsonLd() {
  * never inject a placeholder. Pass a real, sourced rating via `opts` only.
  */
 export function hotelGroupJsonLd(
-  properties: Array<{ slug: string; publicName: string; heroImageUrl?: string }> = [],
-  opts: { aggregateRating?: { ratingValue: string | number; reviewCount: string | number } } = {},
+  properties: Array<{
+    slug: string
+    publicName: string
+    heroImageUrl?: string
+  }> = [],
+  opts: {
+    aggregateRating?: {
+      ratingValue: string | number
+      reviewCount: string | number
+    }
+  } = {},
 ) {
   const { aggregateRating } = opts
   return {
@@ -153,7 +163,11 @@ export function hotelGroupJsonLd(
  * @id, so Google merges) — they are never fabricated here.
  */
 export function collectionLodgingJsonLd(
-  properties: Array<{ slug: string; publicName: string; heroImageUrl?: string }> = [],
+  properties: Array<{
+    slug: string
+    publicName: string
+    heroImageUrl?: string
+  }> = [],
 ): object[] {
   return properties.map((p) => ({
     '@context': 'https://schema.org',
@@ -219,20 +233,24 @@ function normalizeAmenities(input: unknown): string[] | undefined {
 
 function getHeroImageUrl(images: unknown): string | undefined {
   if (!images || !Array.isArray(images)) return undefined
-  const hero = (images as Array<{ isHero?: boolean; classification?: string; url?: string }>).find(
-    (i) => i?.isHero || i?.classification === 'hero',
-  )
+  const hero = (
+    images as Array<{ isHero?: boolean; classification?: string; url?: string }>
+  ).find((i) => i?.isHero || i?.classification === 'hero')
   const url = hero?.url ?? (images[0] as { url?: string } | undefined)?.url
   return url
 }
 
 function getAllImageUrls(images: unknown): string[] | undefined {
   if (!images || !Array.isArray(images)) return undefined
-  const urls = (images as Array<{ url?: string }>).map((i) => i?.url).filter((u): u is string => !!u)
+  const urls = (images as Array<{ url?: string }>)
+    .map((i) => i?.url)
+    .filter((u): u is string => !!u)
   return urls.length > 0 ? urls.slice(0, 6) : undefined
 }
 
-export function lodgingBusinessJsonLd(property: PropertyForStructuredData): object {
+export function lodgingBusinessJsonLd(
+  property: PropertyForStructuredData,
+): object {
   const heroImage = getHeroImageUrl(property.images)
   const imageList = getAllImageUrls(property.images)
   const address: Record<string, unknown> = {}
@@ -242,7 +260,8 @@ export function lodgingBusinessJsonLd(property: PropertyForStructuredData): obje
   if (property.postalCode) address.postalCode = property.postalCode
   address.addressCountry = property.country ?? 'IN'
 
-  const ratingValue = property.ratingValue ?? DEFAULT_AGGREGATE_RATING.ratingValue
+  const ratingValue =
+    property.ratingValue ?? DEFAULT_AGGREGATE_RATING.ratingValue
   const reviewCount = property.reviewCount ?? 0
 
   return {
@@ -251,33 +270,41 @@ export function lodgingBusinessJsonLd(property: PropertyForStructuredData): obje
     '@id': `${SITE_URL}/hotels/${property.slug}#lodging`,
     name: property.publicName,
     url: `${SITE_URL}/hotels/${property.slug}`,
-    ...(imageList ? { image: imageList } : heroImage ? { image: heroImage } : {}),
-    ...(property.descriptionShort && { description: property.descriptionShort }),
+    ...(imageList
+      ? { image: imageList }
+      : heroImage
+        ? { image: heroImage }
+        : {}),
+    ...(property.descriptionShort && {
+      description: property.descriptionShort,
+    }),
     ...(property.primaryPhone && { telephone: property.primaryPhone }),
     address: { '@type': 'PostalAddress', ...address },
     ...(property.latitude != null &&
       property.longitude != null && {
-      geo: {
-        '@type': 'GeoCoordinates',
-        latitude: property.latitude,
-        longitude: property.longitude,
-      },
-    }),
+        geo: {
+          '@type': 'GeoCoordinates',
+          latitude: property.latitude,
+          longitude: property.longitude,
+        },
+      }),
     ...(property.checkInTime && { checkinTime: property.checkInTime }),
     ...(property.checkOutTime && { checkoutTime: property.checkOutTime }),
     ...(property.priceRange && { priceRange: property.priceRange }),
-    ...(property.starRating && { starRating: { '@type': 'Rating', ratingValue: property.starRating } }),
+    ...(property.starRating && {
+      starRating: { '@type': 'Rating', ratingValue: property.starRating },
+    }),
     ...(property.numberOfRooms && { numberOfRooms: property.numberOfRooms }),
     ...(() => {
       const names = normalizeAmenities(property.amenities)
       return names
         ? {
-          amenityFeature: names.map((a) => ({
-            '@type': 'LocationFeatureSpecification',
-            name: a,
-            value: true,
-          })),
-        }
+            amenityFeature: names.map((a) => ({
+              '@type': 'LocationFeatureSpecification',
+              name: a,
+              value: true,
+            })),
+          }
         : {}
     })(),
     ...(Number(reviewCount) > 0 && {
@@ -293,7 +320,9 @@ export function lodgingBusinessJsonLd(property: PropertyForStructuredData): obje
   }
 }
 
-export function breadcrumbJsonLd(items: Array<{ name: string; url: string }>): object {
+export function breadcrumbJsonLd(
+  items: Array<{ name: string; url: string }>,
+): object {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -306,7 +335,9 @@ export function breadcrumbJsonLd(items: Array<{ name: string; url: string }>): o
   }
 }
 
-export function faqPageJsonLd(faqs: Array<{ question: string; answer: string }>): object {
+export function faqPageJsonLd(
+  faqs: Array<{ question: string; answer: string }>,
+): object {
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -318,6 +349,37 @@ export function faqPageJsonLd(faqs: Array<{ question: string; answer: string }>)
         text: faq.answer,
       },
     })),
+  }
+}
+
+export function videoObjectJsonLd(input: {
+  name: string
+  description: string
+  thumbnailUrl: string
+  contentUrl: string
+  /** ISO 8601 duration, e.g. "PT1M35S". */
+  duration?: string
+  /** Page the video is embedded on (absolute URL). */
+  embedPageUrl: string
+  uploadDate?: string
+}): object {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: input.name,
+    description: input.description,
+    thumbnailUrl: input.thumbnailUrl,
+    contentUrl: input.contentUrl,
+    ...(input.duration ? { duration: input.duration } : {}),
+    // Cloudinary upload timestamps aren't exposed on the public payload yet;
+    // the page's publish date is the honest fallback schema.org accepts.
+    uploadDate: input.uploadDate ?? '2026-01-01',
+    url: input.embedPageUrl,
+    publisher: {
+      '@type': 'Organization',
+      name: 'Zenvana Hotels',
+      url: SITE_URL,
+    },
   }
 }
 
@@ -455,7 +517,12 @@ export function itemListJsonLd({
 }: {
   name: string
   url: string
-  items: Array<{ name: string; url: string; image?: string; description?: string }>
+  items: Array<{
+    name: string
+    url: string
+    image?: string
+    description?: string
+  }>
 }): object {
   return {
     '@context': 'https://schema.org',

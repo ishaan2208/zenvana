@@ -161,8 +161,9 @@ export function BookSearchForm({
   const [rooms, setRooms] = useState(1)
   const [guests, setGuests] = useState(2)
 
-  const durations =
-    hourlyStay?.durationsHours?.length ? hourlyStay.durationsHours : DEFAULT_DURATIONS
+  const durations = hourlyStay?.durationsHours?.length
+    ? hourlyStay.durationsHours
+    : DEFAULT_DURATIONS
   const windowStart = hourlyStay?.windowStart ?? '10:00'
   const windowEnd = hourlyStay?.windowEnd ?? '21:00'
 
@@ -171,7 +172,8 @@ export function BookSearchForm({
 
   const isHourly = stayMode === 'hourly' && hourlyEnabled
 
-  const useGuestsPerRoomMode = !isHourly && rooms >= ROOMS_FOR_GUESTS_PER_ROOM_MODE
+  const useGuestsPerRoomMode =
+    !isHourly && rooms >= ROOMS_FOR_GUESTS_PER_ROOM_MODE
   const totalGuests = useGuestsPerRoomMode ? rooms * guests : guests
 
   const nights =
@@ -356,12 +358,14 @@ export function BookSearchForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-full overflow-hidden rounded-[1.5rem] border border-border/60 bg-background/60 text-card-foreground shadow-[0_28px_80px_rgba(8,17,31,0.10)] backdrop-blur-2xl sm:rounded-[2rem] dark:bg-background/30"
+      className="w-full max-w-full overflow-hidden rounded-[1.5rem] border border-border/60 bg-background/60 text-card-foreground shadow-[0_28px_80px_rgba(8,17,31,0.10)] backdrop-blur-2xl dark:bg-background/30 sm:rounded-[2rem]"
     >
       <div className="border-b border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),transparent)] px-4 py-5 sm:px-6 sm:py-6">
         <div className="min-w-0 max-w-sm">
           <h2 className="font-serif text-2xl tracking-[-0.04em] text-foreground">
-            {isHourly ? 'Select date and duration' : 'Select dates and occupancy'}
+            {isHourly
+              ? 'Select date and duration'
+              : 'Select dates and occupancy'}
           </h2>
 
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
@@ -380,23 +384,20 @@ export function BookSearchForm({
 
       <div className="space-y-5 px-4 py-5 sm:space-y-6 sm:px-6 sm:py-6">
         {hourlyEnabled ? (
-          <StayModeToggle
-            value={stayMode}
-            onChange={setStayMode}
-            prominent
-          />
+          <StayModeToggle value={stayMode} onChange={setStayMode} prominent />
         ) : null}
 
         {isHourly ? (
           <>
-            <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
+            <section className="bg-background/72 overflow-hidden rounded-[1.35rem] border border-border/60 p-4 backdrop-blur-xl dark:bg-background/35 sm:rounded-[1.6rem] sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                     Stay date
                   </div>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Pick a date, then choose how long you want to stay and when to arrive.
+                    Pick a date, then choose how long you want to stay and when
+                    to arrive.
                   </p>
                 </div>
 
@@ -407,7 +408,10 @@ export function BookSearchForm({
 
               <div className="mt-5">
                 <Field label="Date">
-                  <Popover open={hourlyDateOpen} onOpenChange={setHourlyDateOpen}>
+                  <Popover
+                    open={hourlyDateOpen}
+                    onOpenChange={setHourlyDateOpen}
+                  >
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -422,7 +426,9 @@ export function BookSearchForm({
                             Day of stay
                           </div>
                           <div className="mt-1 truncate text-sm font-medium text-foreground sm:text-base">
-                            {checkIn ? format(checkIn, 'EEE, MMM d, yyyy') : 'Select date'}
+                            {checkIn
+                              ? format(checkIn, 'EEE, MMM d, yyyy')
+                              : 'Select date'}
                           </div>
                         </div>
                       </button>
@@ -511,13 +517,13 @@ export function BookSearchForm({
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
+            <section className="bg-background/72 overflow-hidden rounded-[1.35rem] border border-border/60 p-4 backdrop-blur-xl dark:bg-background/35 sm:rounded-[1.6rem] sm:p-5">
               <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                 Guests
               </div>
 
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Hourly stays are limited to {HOURLY_MAX_GUESTS} guests.
+                Hourly stays are for up to {HOURLY_MAX_GUESTS} guests.
               </p>
 
               <div className="mt-5">
@@ -529,9 +535,13 @@ export function BookSearchForm({
                   valueBadge="Total"
                   min={1}
                   max={HOURLY_MAX_GUESTS}
-                  onDecrease={() => setGuests((current) => Math.max(1, current - 1))}
+                  onDecrease={() =>
+                    setGuests((current) => Math.max(1, current - 1))
+                  }
                   onIncrease={() =>
-                    setGuests((current) => Math.min(HOURLY_MAX_GUESTS, current + 1))
+                    setGuests((current) =>
+                      Math.min(HOURLY_MAX_GUESTS, current + 1),
+                    )
                   }
                   decreaseLabel="Decrease guests"
                   increaseLabel="Increase guests"
@@ -541,19 +551,22 @@ export function BookSearchForm({
           </>
         ) : (
           <>
-            <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
+            <section className="bg-background/72 overflow-hidden rounded-[1.35rem] border border-border/60 p-4 backdrop-blur-xl dark:bg-background/35 sm:rounded-[1.6rem] sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                     Stay dates
                   </div>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Pick check-in and check-out first. The next step will show room types and plans.
+                    Pick check-in and check-out first. The next step will show
+                    room types and plans.
                   </p>
                 </div>
 
                 <div className="self-start rounded-full border border-border/60 bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground dark:bg-background/40">
-                  {nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}` : 'Choose dates'}
+                  {nights > 0
+                    ? `${nights} night${nights === 1 ? '' : 's'}`
+                    : 'Choose dates'}
                 </div>
               </div>
 
@@ -574,7 +587,9 @@ export function BookSearchForm({
                             Arrival
                           </div>
                           <div className="mt-1 truncate text-sm font-medium text-foreground sm:text-base">
-                            {checkIn ? format(checkIn, 'EEE, MMM d, yyyy') : 'Select date'}
+                            {checkIn
+                              ? format(checkIn, 'EEE, MMM d, yyyy')
+                              : 'Select date'}
                           </div>
                         </div>
                       </button>
@@ -616,7 +631,9 @@ export function BookSearchForm({
                             Departure
                           </div>
                           <div className="mt-1 truncate text-sm font-medium text-foreground sm:text-base">
-                            {checkOut ? format(checkOut, 'EEE, MMM d, yyyy') : 'Select date'}
+                            {checkOut
+                              ? format(checkOut, 'EEE, MMM d, yyyy')
+                              : 'Select date'}
                           </div>
                         </div>
                       </button>
@@ -634,7 +651,9 @@ export function BookSearchForm({
                         defaultMonth={checkOut ?? checkOutMin}
                         selected={checkOut}
                         onSelect={handleCheckOutSelect}
-                        disabled={(date) => startOfDay(date) < startOfDay(checkOutMin)}
+                        disabled={(date) =>
+                          startOfDay(date) < startOfDay(checkOutMin)
+                        }
                         className="rounded-[1.1rem]"
                         classNames={calendarClassNames}
                       />
@@ -650,13 +669,14 @@ export function BookSearchForm({
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl sm:rounded-[1.6rem] sm:p-5 dark:bg-background/35">
+            <section className="bg-background/72 overflow-hidden rounded-[1.35rem] border border-border/60 p-4 backdrop-blur-xl dark:bg-background/35 sm:rounded-[1.6rem] sm:p-5">
               <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                 Occupancy
               </div>
 
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Set rooms and guests now so the next page shows the right availability and pricing.
+                Set rooms and guests now so the next page shows the right
+                availability and pricing.
               </p>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -667,8 +687,12 @@ export function BookSearchForm({
                   value={rooms}
                   min={1}
                   max={10}
-                  onDecrease={() => setRooms((current) => Math.max(1, current - 1))}
-                  onIncrease={() => setRooms((current) => Math.min(10, current + 1))}
+                  onDecrease={() =>
+                    setRooms((current) => Math.max(1, current - 1))
+                  }
+                  onIncrease={() =>
+                    setRooms((current) => Math.min(10, current + 1))
+                  }
                   decreaseLabel="Decrease rooms"
                   increaseLabel="Increase rooms"
                 />
@@ -685,12 +709,14 @@ export function BookSearchForm({
                   valueBadge={useGuestsPerRoomMode ? 'Per room' : 'Total'}
                   min={1}
                   max={maxGuestsValue}
-                  onDecrease={() => setGuests((current) => Math.max(1, current - 1))}
+                  onDecrease={() =>
+                    setGuests((current) => Math.max(1, current - 1))
+                  }
                   onIncrease={() =>
                     setGuests((current) =>
                       useGuestsPerRoomMode
                         ? clampGuestsPerRoom(current + 1)
-                        : clampTotalGuests(rooms, current + 1)
+                        : clampTotalGuests(rooms, current + 1),
                     )
                   }
                   decreaseLabel="Decrease guests"
@@ -701,13 +727,15 @@ export function BookSearchForm({
           </>
         )}
 
-        <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.03))] p-4 backdrop-blur-2xl sm:rounded-[1.6rem] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]">
+        <section className="overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.03))] p-4 backdrop-blur-2xl dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] sm:rounded-[1.6rem]">
           <div className="flex flex-wrap gap-2">
             {isHourly ? (
               <>
                 <SummaryPill
                   icon={<Clock className="h-3.5 w-3.5" />}
-                  text={`${durationHours} hour${durationHours === 1 ? '' : 's'}`}
+                  text={`${durationHours} hour${
+                    durationHours === 1 ? '' : 's'
+                  }`}
                 />
                 <SummaryPill
                   icon={<Users className="h-3.5 w-3.5" />}
@@ -748,10 +776,20 @@ export function BookSearchForm({
 
           <p className="text-sm leading-7 text-muted-foreground">
             {isHourly
-              ? `You have selected a ${durationHours}-hour stay for ${guests} guest${guests === 1 ? '' : 's'}${startTime ? ` starting at ${formatStartTimeLabel(startTime)}` : ''}.`
+              ? `You have selected a ${durationHours}-hour stay for ${guests} guest${
+                  guests === 1 ? '' : 's'
+                }${
+                  startTime
+                    ? ` starting at ${formatStartTimeLabel(startTime)}`
+                    : ''
+                }.`
               : useGuestsPerRoomMode
-                ? `You have selected ${rooms} rooms with ${guests} guest${guests === 1 ? '' : 's'} per room.`
-                : `You have selected ${rooms} room${rooms === 1 ? '' : 's'} for ${totalGuests} guest${totalGuests === 1 ? '' : 's'}.`}
+                ? `You have selected ${rooms} rooms with ${guests} guest${
+                    guests === 1 ? '' : 's'
+                  } per room.`
+                : `You have selected ${rooms} room${
+                    rooms === 1 ? '' : 's'
+                  } for ${totalGuests} guest${totalGuests === 1 ? '' : 's'}.`}
           </p>
         </section>
 
@@ -770,8 +808,8 @@ export function BookSearchForm({
 
           <p className="px-1 text-center text-xs leading-6 text-muted-foreground">
             {isHourly
-              ? 'Next, we’ll show available hourly room types and plans for your selected time.'
-              : 'Next, we’ll show available room types and plans for your selected dates.'}
+              ? 'Nothing is booked yet — next, we’ll show rooms available for your time slot.'
+              : 'Nothing is booked yet — next, we’ll show rooms and prices for your dates.'}
           </p>
         </div>
       </div>
@@ -779,13 +817,7 @@ export function BookSearchForm({
   )
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: ReactNode
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
       <label className="mb-2 block text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
@@ -873,15 +905,9 @@ function CounterCard({
   )
 }
 
-function SummaryPill({
-  icon,
-  text,
-}: {
-  icon: ReactNode
-  text: string
-}) {
+function SummaryPill({ icon, text }: { icon: ReactNode; text: string }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-border/70 bg-background/72 px-3 py-1.5 text-xs font-medium text-foreground backdrop-blur-xl dark:bg-background/35">
+    <span className="bg-background/72 inline-flex max-w-full items-center gap-2 rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-foreground backdrop-blur-xl dark:bg-background/35">
       {icon}
       <span className="truncate">{text}</span>
     </span>

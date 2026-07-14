@@ -50,19 +50,19 @@
     --radius: 1rem;
 
     /* ── Motion system (single source of truth) ───────────── */
-    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);     /* default UI entrances */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* default UI entrances */
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
     --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* iOS/Vaul-style sheets */
-    --ease-elegant: ease;                          /* slower, Sonner-like */
+    --ease-elegant: ease; /* slower, Sonner-like */
     --duration-instant: 100ms;
     --duration-fast: 150ms;
     --duration-base: 200ms;
     --duration-slow: 300ms;
 
     /* Tier accents (light) */
-    --tier-essential: 110 38% 48%;   /* mantis green — entry, fresh */
-    --tier-refined: 218 65% 38%;     /* sapphire — confident */
-    --tier-signature: 38 50% 56%;    /* gold — premium */
+    --tier-essential: 110 38% 48%; /* mantis green — entry, fresh */
+    --tier-refined: 218 65% 38%; /* sapphire — confident */
+    --tier-signature: 38 50% 56%; /* gold — premium */
 
     /* Editorial palette (light) */
     --ink: 222 24% 6%;
@@ -147,7 +147,10 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1,
+      'ss01' 1;
     text-rendering: optimizeLegibility;
   }
 
@@ -226,14 +229,13 @@
   }
 
   .hero-overlay {
-    background:
-      linear-gradient(
-        180deg,
-        rgba(0, 0, 0, 0.12) 0%,
-        rgba(0, 0, 0, 0.16) 24%,
-        rgba(0, 0, 0, 0.42) 72%,
-        rgba(0, 0, 0, 0.58) 100%
-      );
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.12) 0%,
+      rgba(0, 0, 0, 0.16) 24%,
+      rgba(0, 0, 0, 0.42) 72%,
+      rgba(0, 0, 0, 0.58) 100%
+    );
   }
 
   .book-bar {
@@ -253,7 +255,7 @@
   }
 
   .book-bar > * {
-    @apply flex-1 min-w-[160px];
+    @apply min-w-[160px] flex-1;
   }
 
   .book-bar > button {
@@ -285,7 +287,11 @@
   /* ── Editorial typography ─────────────────────────────── */
   .editorial-display {
     @apply font-serif tracking-[-0.045em];
-    font-feature-settings: "ss01" 1, "ss02" 1, "calt" 1, "kern" 1;
+    font-feature-settings:
+      'ss01' 1,
+      'ss02' 1,
+      'calt' 1,
+      'kern' 1;
     font-optical-sizing: auto;
   }
 
@@ -298,7 +304,11 @@
   }
 
   .underline-gold {
-    background-image: linear-gradient(to right, hsl(var(--gold)), hsl(var(--gold)));
+    background-image: linear-gradient(
+      to right,
+      hsl(var(--gold)),
+      hsl(var(--gold))
+    );
     background-position: 0 100%;
     background-repeat: no-repeat;
     background-size: 100% 1px;
@@ -327,9 +337,14 @@
 
   /* ── Mobile-first sticky booking CTA ──────────────────── */
   .mobile-cta-bar {
+    /* Keep bar opacity ON the default Tailwind scale (multiples of 5):
+       off-scale modifiers like /92 compile to no CSS and the bar goes
+       transparent over dark heroes. */
     @apply fixed inset-x-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-xl;
     bottom: 0;
-    padding: 10px max(env(safe-area-inset-left), 12px) calc(10px + env(safe-area-inset-bottom)) max(env(safe-area-inset-right), 12px);
+    padding: 10px max(env(safe-area-inset-left), 12px)
+      calc(10px + env(safe-area-inset-bottom))
+      max(env(safe-area-inset-right), 12px);
     box-shadow: 0 -10px 30px -12px rgba(8, 17, 31, 0.35);
   }
 
@@ -348,7 +363,9 @@
     @apply flex items-center gap-8 whitespace-nowrap;
     animation: marquee 32s linear infinite;
   }
-  .trust-rail:hover { animation-play-state: paused; }
+  .trust-rail:hover {
+    animation-play-state: paused;
+  }
 
   /* ── Guest reviews marquee (homepage) ─────────────────── */
   .guest-reviews-marquee {
@@ -367,7 +384,8 @@
   }
 
   .guest-reviews-marquee[data-active='true'] .guest-reviews-track {
-    animation: marquee var(--guest-reviews-marquee-duration, 55s) linear infinite;
+    animation: marquee var(--guest-reviews-marquee-duration, 55s) linear
+      infinite;
   }
 
   @media (hover: hover) and (pointer: fine) {
@@ -398,41 +416,61 @@
   /* ── Gold rule (thin section divider) ─────────────────── */
   .rule-gold {
     @apply mx-auto h-px w-12 origin-center;
-    background: linear-gradient(to right, transparent, hsl(var(--gold)), transparent);
+    background: linear-gradient(
+      to right,
+      transparent,
+      hsl(var(--gold)),
+      transparent
+    );
   }
 
   /* ── Editorial blog prose (mobile-first, longform reading) ─ */
   .blog-prose {
     @apply text-foreground/90;
-    font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
-    font-size: 1.0625rem;       /* 17px — comfortable on mobile */
+    font-family: var(--font-fraunces), Georgia, 'Times New Roman', serif;
+    font-size: 1.0625rem; /* 17px — comfortable on mobile */
     line-height: 1.75;
     letter-spacing: -0.005em;
-    font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "onum" 1;
+    font-feature-settings:
+      'kern' 1,
+      'liga' 1,
+      'calt' 1,
+      'onum' 1;
   }
   @screen sm {
     .blog-prose {
-      font-size: 1.125rem;      /* 18px */
+      font-size: 1.125rem; /* 18px */
     }
   }
   @screen lg {
     .blog-prose {
-      font-size: 1.1875rem;     /* 19px */
+      font-size: 1.1875rem; /* 19px */
       line-height: 1.8;
     }
   }
-  .blog-prose > * + * { @apply mt-6; }
-  .blog-prose p { @apply text-foreground/85; text-wrap: pretty; }
-  .blog-prose strong { @apply font-semibold text-foreground; }
-  .blog-prose em { @apply italic; }
+  .blog-prose > * + * {
+    @apply mt-6;
+  }
+  .blog-prose p {
+    @apply text-foreground/85;
+    text-wrap: pretty;
+  }
+  .blog-prose strong {
+    @apply font-semibold text-foreground;
+  }
+  .blog-prose em {
+    @apply italic;
+  }
   .blog-prose a {
     @apply font-medium text-foreground underline decoration-foreground/30 underline-offset-[5px] transition;
     text-decoration-thickness: 1px;
   }
-  .blog-prose a:hover { @apply decoration-foreground; }
+  .blog-prose a:hover {
+    @apply decoration-foreground;
+  }
   .blog-prose h2 {
-    @apply font-serif text-foreground tracking-[-0.025em];
-    font-size: 1.75rem;          /* 28px mobile */
+    @apply font-serif tracking-[-0.025em] text-foreground;
+    font-size: 1.75rem; /* 28px mobile */
     line-height: 1.2;
     margin-top: 2.25rem;
     margin-bottom: 0.5rem;
@@ -440,13 +478,18 @@
     text-wrap: balance;
   }
   @screen sm {
-    .blog-prose h2 { font-size: 2rem; }
+    .blog-prose h2 {
+      font-size: 2rem;
+    }
   }
   @screen lg {
-    .blog-prose h2 { font-size: 2.25rem; margin-top: 3rem; }
+    .blog-prose h2 {
+      font-size: 2.25rem;
+      margin-top: 3rem;
+    }
   }
   .blog-prose h3 {
-    @apply font-serif text-foreground tracking-[-0.02em];
+    @apply font-serif tracking-[-0.02em] text-foreground;
     font-size: 1.375rem;
     line-height: 1.3;
     margin-top: 1.75rem;
@@ -455,14 +498,28 @@
     text-wrap: balance;
   }
   @screen lg {
-    .blog-prose h3 { font-size: 1.5rem; margin-top: 2rem; }
+    .blog-prose h3 {
+      font-size: 1.5rem;
+      margin-top: 2rem;
+    }
   }
   .blog-prose ul,
-  .blog-prose ol { @apply pl-6; }
-  .blog-prose ul { list-style: disc; }
-  .blog-prose ol { list-style: decimal; }
-  .blog-prose li { @apply pl-1; margin-top: 0.5rem; }
-  .blog-prose li::marker { color: hsl(var(--gold)); }
+  .blog-prose ol {
+    @apply pl-6;
+  }
+  .blog-prose ul {
+    list-style: disc;
+  }
+  .blog-prose ol {
+    list-style: decimal;
+  }
+  .blog-prose li {
+    @apply pl-1;
+    margin-top: 0.5rem;
+  }
+  .blog-prose li::marker {
+    color: hsl(var(--gold));
+  }
   .blog-prose blockquote {
     @apply relative font-serif italic text-foreground/90;
     border-left: 3px solid hsl(var(--gold));
@@ -472,12 +529,22 @@
     margin: 1.75rem 0;
   }
   @screen lg {
-    .blog-prose blockquote { font-size: 1.25rem; padding-left: 1.5rem; }
+    .blog-prose blockquote {
+      font-size: 1.25rem;
+      padding-left: 1.5rem;
+    }
   }
-  .blog-prose blockquote p { @apply text-foreground/90; }
+  .blog-prose blockquote p {
+    @apply text-foreground/90;
+  }
   .blog-prose hr {
     @apply mx-auto my-10 h-px w-16 border-0;
-    background: linear-gradient(to right, transparent, hsl(var(--gold)), transparent);
+    background: linear-gradient(
+      to right,
+      transparent,
+      hsl(var(--gold)),
+      transparent
+    );
   }
   .blog-prose code {
     @apply rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-[0.9em] text-foreground;
@@ -491,7 +558,9 @@
   .blog-prose img {
     @apply mx-auto my-8 w-full rounded-2xl shadow-[0_10px_30px_rgba(0,31,63,0.10)];
   }
-  .blog-prose figure { @apply my-8; }
+  .blog-prose figure {
+    @apply my-8;
+  }
   .blog-prose figcaption {
     @apply mt-3 text-center text-xs uppercase tracking-[0.18em] text-muted-foreground;
   }
@@ -502,7 +571,9 @@
   .blog-prose td {
     @apply border-b border-border/60 px-3 py-2 text-left align-top;
   }
-  .blog-prose th { @apply font-semibold text-foreground; }
+  .blog-prose th {
+    @apply font-semibold text-foreground;
+  }
 
   /* Lead paragraph — first <p> after the hero block */
   .blog-prose .lead,
@@ -547,7 +618,9 @@
   .blog-card-media img {
     @apply h-full w-full object-cover transition duration-700 ease-out;
   }
-  .blog-card:hover .blog-card-media img { @apply scale-[1.04]; }
+  .blog-card:hover .blog-card-media img {
+    @apply scale-[1.04];
+  }
   .blog-chip {
     @apply inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/80 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-foreground/70 transition;
   }
@@ -560,14 +633,18 @@
     @apply flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:text-sm;
   }
   .blog-meta-dot::before {
-    content: "·";
+    content: '·';
     @apply mr-2 text-muted-foreground;
   }
 
   /* Reading progress bar */
   .reading-progress {
     @apply pointer-events-none fixed left-0 right-0 top-0 z-50 h-[3px] origin-left scale-x-0;
-    background: linear-gradient(90deg, hsl(var(--gold)) 0%, hsl(var(--accent)) 100%);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--gold)) 0%,
+      hsl(var(--accent)) 100%
+    );
     transition: transform 0.1s linear;
   }
 
@@ -578,7 +655,9 @@
     box-shadow: 0 -10px 30px -12px rgba(8, 17, 31, 0.25);
   }
   @screen lg {
-    .blog-share-dock { @apply hidden; }
+    .blog-share-dock {
+      @apply hidden;
+    }
   }
 }
 
@@ -625,7 +704,9 @@
 
 /* Reduced motion: kill marquee + heavy entrance animations */
 @media (prefers-reduced-motion: reduce) {
-  .trust-rail { animation: none; }
+  .trust-rail {
+    animation: none;
+  }
   .guest-reviews-marquee {
     overflow-x: auto;
     mask-image: none;
@@ -636,7 +717,9 @@
     animation: none;
     will-change: auto;
   }
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
@@ -676,11 +759,21 @@
 /* One-shot page-open entrance — pure CSS, never JS-gated, always resolves to
    visible (safe for conversion/SEO pages). */
 @keyframes page-enter {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .page-enter {
-  animation: page-enter var(--duration-slow) var(--ease-out) both;
+  /* `backwards`, never `both`/`forwards`: a retained fill keeps a transform on
+     the element after the animation, which creates a containing block and
+     silently re-anchors every `position: fixed` descendant (docked booking
+     bars) to the page instead of the viewport. */
+  animation: page-enter var(--duration-slow) var(--ease-out) backwards;
 }
 
 /* Reduced motion: keep a gentle opacity fade, drop movement/scale.
@@ -745,21 +838,46 @@
 }
 
 @keyframes plane-takeoff {
-  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-  22%  { transform: translate(1px, 2px) rotate(6deg); }
-  100% { transform: translate(34px, -30px) rotate(-22deg); opacity: 0; }
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  22% {
+    transform: translate(1px, 2px) rotate(6deg);
+  }
+  100% {
+    transform: translate(34px, -30px) rotate(-22deg);
+    opacity: 0;
+  }
 }
 @keyframes plane-label-out {
-  to { transform: translateY(-120%); opacity: 0; }
+  to {
+    transform: translateY(-120%);
+    opacity: 0;
+  }
 }
 @keyframes plane-sent-in {
-  from { transform: translateY(120%); opacity: 0; }
-  to   { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 @keyframes plane-trail {
-  0%   { width: 0; opacity: 0; }
-  35%  { opacity: 0.7; }
-  100% { width: 70%; opacity: 0; }
+  0% {
+    width: 0;
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.7;
+  }
+  100% {
+    width: 70%;
+    opacity: 0;
+  }
 }
 
 /* The "Taking you there" line is stacked under the label; only revealed on takeoff. */
@@ -775,10 +893,30 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .plane-button[data-flying='true'] .plane-button__plane { animation: none; opacity: 0.6; }
-  .plane-button[data-flying='true'] .plane-button__label { animation: none; opacity: 0; }
-  .plane-button[data-flying='true'] .plane-button__sent { animation: plane-fade-in 160ms ease both; }
-  .plane-button[data-flying='true'] .plane-button__trail { animation: none; opacity: 0; }
-  .plane-button:not([data-flying='true']):hover .plane-button__plane { transform: none; }
+  .plane-button[data-flying='true'] .plane-button__plane {
+    animation: none;
+    opacity: 0.6;
+  }
+  .plane-button[data-flying='true'] .plane-button__label {
+    animation: none;
+    opacity: 0;
+  }
+  .plane-button[data-flying='true'] .plane-button__sent {
+    animation: plane-fade-in 160ms ease both;
+  }
+  .plane-button[data-flying='true'] .plane-button__trail {
+    animation: none;
+    opacity: 0;
+  }
+  .plane-button:not([data-flying='true']):hover .plane-button__plane {
+    transform: none;
+  }
 }
-@keyframes plane-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes plane-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

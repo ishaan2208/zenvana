@@ -16,6 +16,8 @@ import { Container } from '@/components/Container'
 import { EmblaImageGallery } from '@/components/EmblaImageGallery'
 import { pickHeroAndGallery } from '@/lib/media'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
+import { isDayUseParam } from '@/lib/stay-kind'
+import { BookingSteps } from '@/components/booking/BookingSteps'
 import { BookSearchForm } from './BookSearchForm'
 import { Badge } from '@/components/ui/badge'
 import { TrackOnMount } from '@/components/analytics/TrackOnMount'
@@ -33,19 +35,25 @@ export const metadata = {
   robots: { index: false, follow: true },
 }
 
-export default async function BookPropertyPage({ params, searchParams }: Props) {
+export default async function BookPropertyPage({
+  params,
+  searchParams,
+}: Props) {
   const { slug } = await params
   const q = await searchParams
   const couponCode = promoOrCouponFromSearchParams(q)
-  const initialStayKind =
-    String(q.stayKind ?? '').toLowerCase() === 'hourly' ? 'hourly' : 'overnight'
+  const initialStayKind = isDayUseParam(q.stayKind) ? 'hourly' : 'overnight'
   const property = await getPublicPropertyBySlug(slug)
   if (!property) notFound()
 
   const { heroUrl, gallery } = pickHeroAndGallery(property.images)
 
   const imageUrls = Array.from(
-    new Set([heroUrl, ...gallery.map((image) => image.url)].filter(Boolean) as string[])
+    new Set(
+      [heroUrl, ...gallery.map((image) => image.url)].filter(
+        Boolean,
+      ) as string[],
+    ),
   )
 
   const bookingGallery = imageUrls.slice(0, 8).map((url, index) => ({
@@ -97,7 +105,7 @@ export default async function BookPropertyPage({ params, searchParams }: Props) 
           </aside>
 
           <div className="order-2 min-w-0 space-y-6">
-            <section className="overflow-hidden rounded-[1.5rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl sm:rounded-[2rem] dark:bg-background/30">
+            <section className="overflow-hidden rounded-[1.5rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl dark:bg-background/30 sm:rounded-[2rem]">
               <div className="p-4 sm:p-5 lg:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 max-w-2xl">
@@ -111,14 +119,18 @@ export default async function BookPropertyPage({ params, searchParams }: Props) 
                     </h2>
 
                     <p className="mt-3 hidden max-w-xl text-sm leading-7 text-muted-foreground sm:block sm:text-base">
-                      The booking flow stays simple, but the imagery still does the trust-building.
-                      Browse the property, then lock in your dates and occupancy in one clean step.
+                      The booking flow stays simple, but the imagery still does
+                      the trust-building. Browse the property, then lock in your
+                      dates and occupancy in one clean step.
                     </p>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     {location ? (
-                      <GlassPill icon={<MapPin className="h-3.5 w-3.5 shrink-0" />} text={location} />
+                      <GlassPill
+                        icon={<MapPin className="h-3.5 w-3.5 shrink-0" />}
+                        text={location}
+                      />
                     ) : null}
 
                     <div className="hidden sm:block">
@@ -174,14 +186,16 @@ function PropertyBookingHeader({
   roomCount: number
 }) {
   return (
-    <section className="mt-4 overflow-hidden rounded-[1.5rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl sm:rounded-[2rem] dark:bg-background/30">
+    <section className="mt-4 overflow-hidden rounded-[1.5rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl dark:bg-background/30 sm:rounded-[2rem]">
       <div className="grid min-w-0 gap-0 lg:grid-cols-[minmax(0,1.08fr)_minmax(280px,360px)]">
         <div className="min-w-0 p-5 sm:p-6 lg:p-7">
           <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground sm:text-[11px]">
             Direct booking
           </div>
 
-          <h1 className="mt-4 text-balance font-serif text-[clamp(2rem,5vw,3.5rem)] leading-[0.96] tracking-[-0.05em] text-foreground">
+          <BookingSteps current={1} className="mt-2" />
+
+          <h1 className="mt-3 text-balance font-serif text-[clamp(2rem,5vw,3.5rem)] leading-[0.96] tracking-[-0.05em] text-foreground">
             Choose your dates at {propertyName}
           </h1>
 
@@ -193,7 +207,10 @@ function PropertyBookingHeader({
 
           <div className="mt-5 flex flex-wrap gap-2">
             {location ? (
-              <GlassPill icon={<MapPin className="h-3.5 w-3.5 shrink-0" />} text={location} />
+              <GlassPill
+                icon={<MapPin className="h-3.5 w-3.5 shrink-0" />}
+                text={location}
+              />
             ) : null}
 
             {roomCount > 0 ? (
@@ -229,21 +246,13 @@ function PropertyBookingHeader({
           )}
 
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,12,22,0.10)_0%,rgba(6,12,22,0.55)_100%)]" />
-
-
         </div>
       </div>
     </section>
   )
 }
 
-function GlassPill({
-  icon,
-  text,
-}: {
-  icon: ReactNode
-  text: string
-}) {
+function GlassPill({ icon, text }: { icon: ReactNode; text: string }) {
   return (
     <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-border/70 bg-background/65 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur-xl dark:bg-background/35">
       {icon}

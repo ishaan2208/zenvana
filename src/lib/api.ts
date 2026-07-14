@@ -38,6 +38,8 @@ export type PublicPropertyListItem = {
   showValueBadge?: boolean
   hourlyStayEnabled?: boolean
   hourlyStay?: PublicHourlyStaySummary
+  /** Walkthrough video, when uploaded — powers listing-card dwell previews. */
+  walkthroughVideo?: PublicPropertyVideo
 }
 
 export type PublicListingPriceEntry = {
@@ -51,6 +53,22 @@ export type PublicPropertiesListingResponse = {
   currency: string
   properties: PublicPropertyListItem[]
   listingPriceBySlug: Record<string, PublicListingPriceEntry>
+}
+
+/** Admin-uploaded marketing video (walkthrough / drone) for a property page. */
+export type PublicPropertyVideo = {
+  kind: 'walkthrough' | 'drone'
+  cloudinaryPublicId: string
+  /** Backend-built mp4 delivery URL (f_auto:video, q_auto, 720p cap). */
+  playbackUrl: string
+  /** Backend-built poster frame (so_auto jpg). */
+  posterUrl: string
+  /** Backend-built adaptive HLS manifest (sp_auto). */
+  hlsUrl?: string
+  title?: string
+  durationSec?: number
+  width?: number
+  height?: number
 }
 
 export type PublicPropertyDetail = {
@@ -108,9 +126,16 @@ export type PublicPropertyDetail = {
     floorPrice: number
     ceilPrice: number
   }>
-  faqs: Array<{ id: number; question: string; answer: string; sortOrder: number }>
+  faqs: Array<{
+    id: number
+    question: string
+    answer: string
+    sortOrder: number
+  }>
   hourlyStayEnabled?: boolean
   hourlyStay?: PublicHourlyStaySummary
+  /** Absent until the property has admin-uploaded videos. */
+  videos?: PublicPropertyVideo[]
 }
 
 export async function getPublicProperties(): Promise<PublicPropertyListItem[]> {
@@ -134,13 +159,17 @@ export async function getPublicPropertiesListing(
   try {
     const params = new URLSearchParams({ checkIn, checkOut })
     if (occupancy != null) params.set('occupancy', String(occupancy))
-    const res = await fetch(`${BACKEND_URL}/public/properties/listing?${params}`, {
-      next: { revalidate: 300 },
-    })
+    const res = await fetch(
+      `${BACKEND_URL}/public/properties/listing?${params}`,
+      {
+        next: { revalidate: 300 },
+      },
+    )
     if (!res.ok) return null
     const json = await res.json()
     const data = json?.data
-    if (!data?.properties || typeof data.listingPriceBySlug !== 'object') return null
+    if (!data?.properties || typeof data.listingPriceBySlug !== 'object')
+      return null
     return data as PublicPropertiesListingResponse
   } catch {
     return null
@@ -148,13 +177,16 @@ export async function getPublicPropertiesListing(
 }
 
 export async function getPublicPropertyBySlug(
-  slug: string
+  slug: string,
 ): Promise<PublicPropertyDetail | null> {
   try {
-    const res = await fetch(`${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}`, {
-      // Keep in sync with listing (getPublicProperties) so new public fields (e.g. badges) aren’t stale for 60s.
-      next: { revalidate: 10 },
-    })
+    const res = await fetch(
+      `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}`,
+      {
+        // Keep in sync with listing (getPublicProperties) so new public fields (e.g. badges) aren’t stale for 60s.
+        next: { revalidate: 10 },
+      },
+    )
     if (!res.ok) return null
     const json = await res.json()
     return json?.data ?? null
@@ -178,7 +210,9 @@ export async function getPublicBookingsCount(
   options: { revalidate?: number } = {},
 ): Promise<number | null> {
   try {
-    const url = `${BACKEND_URL}/public/stats/bookings?userId=${encodeURIComponent(userId)}`
+    const url = `${BACKEND_URL}/public/stats/bookings?userId=${encodeURIComponent(
+      userId,
+    )}`
     const res = await fetch(url, {
       next: { revalidate: options.revalidate ?? 60 },
     })
@@ -229,7 +263,9 @@ export type PublicOffer = {
 
 export async function getPublicOffers(): Promise<PublicOffer[]> {
   try {
-    const res = await fetch(`${BACKEND_URL}/public/offers`, { cache: 'no-store' })
+    const res = await fetch(`${BACKEND_URL}/public/offers`, {
+      cache: 'no-store',
+    })
     if (!res.ok) return []
     const json = await res.json()
     return json?.data ?? []
@@ -253,13 +289,22 @@ export async function submitPublicContact(payload: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+    const json = (await res.json().catch(() => ({}))) as {
+      ok?: boolean
+      error?: string
+    }
     if (!res.ok || !json.ok) {
-      return { ok: false, error: json?.error ?? 'Something went wrong. Please try again.' }
+      return {
+        ok: false,
+        error: json?.error ?? 'Something went wrong. Please try again.',
+      }
     }
     return { ok: true }
   } catch {
-    return { ok: false, error: 'Network error. Please check your connection and try again.' }
+    return {
+      ok: false,
+      error: 'Network error. Please check your connection and try again.',
+    }
   }
 }
 
@@ -283,11 +328,13 @@ export type PublicAvailabilityResponse = {
 export async function getPublicAvailability(
   slug: string,
   checkIn: string,
-  checkOut: string
+  checkOut: string,
 ): Promise<PublicAvailabilityResponse | null> {
   const params = new URLSearchParams({ checkIn, checkOut })
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/availability?${params}`
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/availability?${params}`,
   )
   if (!res.ok) return null
   const json = await res.json()
@@ -300,7 +347,11 @@ export type PublicRatesResponse = {
   checkIn: string
   checkOut: string
   nights: number
-  perNightRates?: Array<{ date: string; directRate: number; marketRate: number }>
+  perNightRates?: Array<{
+    date: string
+    directRate: number
+    marketRate: number
+  }>
   averagePricePerNight: number
   averageMarketRatePerNight?: number
   totalAmount: number
@@ -312,7 +363,7 @@ export async function getPublicRates(
   slug: string,
   roomTypeId: number,
   checkIn: string,
-  checkOut: string
+  checkOut: string,
 ): Promise<PublicRatesResponse | null> {
   const params = new URLSearchParams({
     roomTypeId: String(roomTypeId),
@@ -320,7 +371,9 @@ export async function getPublicRates(
     checkOut,
   })
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/rates?${params}`
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/rates?${params}`,
   )
   if (!res.ok) return null
   const json = await res.json()
@@ -351,13 +404,15 @@ export async function getPublicRatesBulk(
   checkIn: string,
   checkOut: string,
   occupancy?: number,
-  fetchInit?: { next?: { revalidate?: number | false } }
+  fetchInit?: { next?: { revalidate?: number | false } },
 ): Promise<PublicRatesBulkResponse | null> {
   const params = new URLSearchParams({ checkIn, checkOut })
   if (occupancy != null) params.set('occupancy', String(occupancy))
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/rates/bulk?${params}`,
-    fetchInit?.next ? { next: fetchInit.next } : undefined
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/rates/bulk?${params}`,
+    fetchInit?.next ? { next: fetchInit.next } : undefined,
   )
   if (!res.ok) return null
   const json = await res.json()
@@ -365,7 +420,9 @@ export async function getPublicRatesBulk(
 }
 
 /** Lowest average direct rate per night across room types (for listing “from” labels). */
-export function minAverageNightFromBulk(data: PublicRatesBulkResponse | null): number | null {
+export function minAverageNightFromBulk(
+  data: PublicRatesBulkResponse | null,
+): number | null {
   if (!data?.roomTypes?.length) return null
   let min = Infinity
   for (const rt of data.roomTypes) {
@@ -380,7 +437,7 @@ export function minAverageNightFromBulk(data: PublicRatesBulkResponse | null): n
  * Matches book flow totals: plan.totalAmount / plan.marketTotalAmount with occupancy as fetched.
  */
 export function cheapestPlanAcrossRoomTypes(
-  perRoomType: Array<PublicRatesWithPlansResponse | null>
+  perRoomType: Array<PublicRatesWithPlansResponse | null>,
 ): PublicRatesWithPlansPlan | null {
   let best: PublicRatesWithPlansPlan | null = null
   let bestTotal = Infinity
@@ -400,7 +457,7 @@ export function cheapestPlanAcrossRoomTypes(
 
 /** Fallback when no plan rows: lowest direct stay total from bulk engine (same dates). */
 export function cheapestStayFromBulk(
-  data: PublicRatesBulkResponse | null
+  data: PublicRatesBulkResponse | null,
 ): { totalAmount: number; totalMarketAmount?: number } | null {
   if (!data?.roomTypes?.length) return null
   let best: { totalAmount: number; totalMarketAmount?: number } | null = null
@@ -452,7 +509,7 @@ export async function getPublicRatesWithPlans(
   checkIn: string,
   checkOut: string,
   occupancy?: number,
-  fetchInit?: { next?: { revalidate?: number | false } }
+  fetchInit?: { next?: { revalidate?: number | false } },
 ): Promise<PublicRatesWithPlansResponse | null> {
   const params = new URLSearchParams({
     roomTypeId: String(roomTypeId),
@@ -460,8 +517,13 @@ export async function getPublicRatesWithPlans(
     checkOut,
   })
   if (occupancy != null) params.set('occupancy', String(occupancy))
-  const url = `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/rates/plans?${params}`
-  const res = await fetch(url, fetchInit?.next ? { next: fetchInit.next } : undefined)
+  const url = `${BACKEND_URL}/public/properties/${encodeURIComponent(
+    slug,
+  )}/rates/plans?${params}`
+  const res = await fetch(
+    url,
+    fetchInit?.next ? { next: fetchInit.next } : undefined,
+  )
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     console.log('[zenvana/api] getPublicRatesWithPlans failed', {
@@ -474,7 +536,10 @@ export async function getPublicRatesWithPlans(
   }
   const data = json?.data ?? null
   if (data == null) {
-    console.log('[zenvana/api] getPublicRatesWithPlans empty data', { url, json: json?.data })
+    console.log('[zenvana/api] getPublicRatesWithPlans empty data', {
+      url,
+      json: json?.data,
+    })
   }
   return data
 }
@@ -511,7 +576,19 @@ export type CreatePublicHourlyBookingPayload = {
   roomTypeId: number
   totalAmount: number
   occupancy?: number
-  payment?: { paid: boolean; transactionId?: string }
+}
+
+/** Hourly (day-use) booking body for the Razorpay order/verify endpoints. */
+export type PublicHourlyRazorpayBookingPayload = {
+  stayKind: 'HOURLY'
+  guest: { name: string; phone: string; email?: string }
+  /** YYYY-MM-DD */
+  date: string
+  /** HH:mm */
+  startTime: string
+  durationHours: number
+  roomTypeId: number
+  occupancy?: number
 }
 
 export type CreatePublicBookingResponse = {
@@ -533,7 +610,7 @@ export type CreatePublicBookingResponse = {
 /** Call from client (e.g. CheckoutForm). Creates PMS booking at confirmation (legacy single-room). */
 export async function createPublicBooking(
   slug: string,
-  payload: CreatePublicBookingPayload
+  payload: CreatePublicBookingPayload,
 ): Promise<CreatePublicBookingResponse> {
   const res = await fetch(
     `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking`,
@@ -542,7 +619,7 @@ export async function createPublicBooking(
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(payload),
-    }
+    },
   )
   const json = await res.json()
   if (!res.ok) {
@@ -553,7 +630,7 @@ export async function createPublicBooking(
 
 export async function createPublicHourlyBooking(
   slug: string,
-  payload: CreatePublicHourlyBookingPayload
+  payload: CreatePublicHourlyBookingPayload,
 ): Promise<CreatePublicBookingResponse> {
   const res = await fetch(
     `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking`,
@@ -562,7 +639,7 @@ export async function createPublicHourlyBooking(
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(payload),
-    }
+    },
   )
   const json = await res.json()
   if (!res.ok) {
@@ -584,7 +661,7 @@ export async function getPublicHourlyAvailability(
   slug: string,
   date: string,
   startTime: string,
-  durationHours: number
+  durationHours: number,
 ): Promise<PublicHourlyAvailabilityResponse | null> {
   try {
     const params = new URLSearchParams({
@@ -593,8 +670,10 @@ export async function getPublicHourlyAvailability(
       durationHours: String(durationHours),
     })
     const res = await fetch(
-      `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/hourly/availability?${params}`,
-      { next: { revalidate: 0 } }
+      `${BACKEND_URL}/public/properties/${encodeURIComponent(
+        slug,
+      )}/hourly/availability?${params}`,
+      { next: { revalidate: 0 } },
     )
     if (!res.ok) return null
     const json = await res.json()
@@ -620,7 +699,7 @@ export async function getPublicHourlyQuote(
     startTime: string
     durationHours: number
     roomTypeId: number
-  }
+  },
 ): Promise<PublicHourlyQuote | null> {
   try {
     const qs = new URLSearchParams({
@@ -630,8 +709,10 @@ export async function getPublicHourlyQuote(
       roomTypeId: String(params.roomTypeId),
     })
     const res = await fetch(
-      `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/hourly/quote?${qs}`,
-      { next: { revalidate: 0 } }
+      `${BACKEND_URL}/public/properties/${encodeURIComponent(
+        slug,
+      )}/hourly/quote?${qs}`,
+      { next: { revalidate: 0 } },
     )
     if (!res.ok) return null
     const json = await res.json()
@@ -648,11 +729,16 @@ export async function createPublicBookingWithRoomLines(
     guest: { name: string; phone: string; email?: string }
     checkIn: string
     checkOut: string
-    roomLines: Array<{ roomTypeId: number; ratePlanId?: number; occupancy: number; tariff: number }>
+    roomLines: Array<{
+      roomTypeId: number
+      ratePlanId?: number
+      occupancy: number
+      tariff: number
+    }>
     paymentIntent: 'pay_later' | 'pay_now'
     couponCode?: string
     pointsToRedeem?: number
-  }
+  },
 ): Promise<CreatePublicBookingResponse> {
   const res = await fetch(
     `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking`,
@@ -661,7 +747,7 @@ export async function createPublicBookingWithRoomLines(
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(payload),
-    }
+    },
   )
   const json = await res.json()
   if (!res.ok) {
@@ -693,13 +779,15 @@ export type PublicBookingPayload = {
 export async function createRazorpayOrder(
   slug: string,
   booking: PublicBookingPayload,
-  opts?: { currency?: string; receipt?: string; pointsToRedeem?: number }
+  opts?: { currency?: string; receipt?: string; pointsToRedeem?: number },
 ): Promise<{ orderId: string; cashPaise: number; pointsRedeemed: number }> {
   const currency = opts?.currency ?? 'INR'
   const receipt = opts?.receipt
   const pointsToRedeem = opts?.pointsToRedeem ?? 0
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/razorpay-order`,
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/booking/razorpay-order`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -710,16 +798,81 @@ export async function createRazorpayOrder(
         receipt,
         pointsToRedeem,
       }),
-    }
+    },
   )
   const json = await res.json()
-  if (!res.ok) throw new Error(json?.error ?? json?.message ?? 'Could not create payment order')
+  if (!res.ok)
+    throw new Error(
+      json?.error ?? json?.message ?? 'Could not create payment order',
+    )
+  return json?.data
+}
+
+/**
+ * Day-use pay-now: same razorpay-order endpoint, hourly-shaped booking (the
+ * literal stayKind discriminates server-side). No coupons/points in v1.
+ */
+export async function createPublicHourlyRazorpayOrder(
+  slug: string,
+  booking: PublicHourlyRazorpayBookingPayload,
+  opts?: { currency?: string; receipt?: string },
+): Promise<{ orderId: string; cashPaise: number; pointsRedeemed: number }> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/booking/razorpay-order`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        booking,
+        currency: opts?.currency ?? 'INR',
+        receipt: opts?.receipt,
+      }),
+    },
+  )
+  const json = await res.json()
+  if (!res.ok)
+    throw new Error(
+      json?.error ?? json?.message ?? 'Could not create payment order',
+    )
+  return json?.data
+}
+
+/** Day-use pay-now verification — the pending row is the source of truth server-side. */
+export async function verifyPublicHourlyRazorpay(
+  slug: string,
+  razorpay_order_id: string,
+  razorpay_payment_id: string,
+  razorpay_signature: string,
+  booking: PublicHourlyRazorpayBookingPayload,
+): Promise<CreatePublicBookingResponse> {
+  const res = await fetch(
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/booking/razorpay-verify`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+        booking,
+      }),
+    },
+  )
+  const json = await res.json()
+  if (!res.ok)
+    throw new Error(json?.error ?? 'Payment verification or booking failed')
   return json?.data
 }
 
 export async function validatePublicBookingCoupon(
   slug: string,
-  booking: PublicBookingPayload
+  booking: PublicBookingPayload,
 ): Promise<{
   valid: boolean
   code?: string
@@ -730,16 +883,19 @@ export async function validatePublicBookingCoupon(
   message?: string
 }> {
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/coupon/validate`,
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/booking/coupon/validate`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(booking),
-    }
+    },
   )
   const json = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(json?.message ?? json?.error ?? 'Coupon validation failed')
+  if (!res.ok)
+    throw new Error(json?.message ?? json?.error ?? 'Coupon validation failed')
   return json?.data
 }
 
@@ -787,29 +943,37 @@ export type PublicVoucherBookingDetails = {
 
 export async function getPublicBookingVoucherDetails(
   slug: string,
-  bookingReference: string
+  bookingReference: string,
 ): Promise<PublicVoucherBookingDetails> {
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/by-reference/${encodeURIComponent(bookingReference)}`,
-    { method: 'GET', credentials: 'include' }
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/booking/by-reference/${encodeURIComponent(bookingReference)}`,
+    { method: 'GET', credentials: 'include' },
   )
   const json = await res.json()
   if (!res.ok) {
-    throw new Error(json?.error ?? json?.message ?? 'Failed to fetch booking voucher details')
+    throw new Error(
+      json?.error ?? json?.message ?? 'Failed to fetch booking voucher details',
+    )
   }
   return json?.data
 }
 
 export async function getPublicBookingVoucherDetailsByReference(
-  bookingReference: string
+  bookingReference: string,
 ): Promise<PublicVoucherBookingDetails> {
   const res = await fetch(
-    `${BACKEND_URL}/public/booking/by-reference/${encodeURIComponent(bookingReference)}`,
-    { method: 'GET', credentials: 'include' }
+    `${BACKEND_URL}/public/booking/by-reference/${encodeURIComponent(
+      bookingReference,
+    )}`,
+    { method: 'GET', credentials: 'include' },
   )
   const json = await res.json()
   if (!res.ok) {
-    throw new Error(json?.error ?? json?.message ?? 'Failed to fetch booking voucher details')
+    throw new Error(
+      json?.error ?? json?.message ?? 'Failed to fetch booking voucher details',
+    )
   }
   return json?.data
 }
@@ -819,10 +983,12 @@ export async function verifyRazorpayAndCreateBooking(
   razorpay_order_id: string,
   razorpay_payment_id: string,
   razorpay_signature: string,
-  booking: PublicBookingPayload
+  booking: PublicBookingPayload,
 ): Promise<CreatePublicBookingResponse> {
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/razorpay-verify`,
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/booking/razorpay-verify`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -833,25 +999,28 @@ export async function verifyRazorpayAndCreateBooking(
         razorpay_signature,
         booking,
       }),
-    }
+    },
   )
   const json = await res.json()
-  if (!res.ok) throw new Error(json?.error ?? 'Payment verification or booking failed')
+  if (!res.ok)
+    throw new Error(json?.error ?? 'Payment verification or booking failed')
   return json?.data
 }
 
 export async function sendPublicBookingOtp(
   slug: string,
-  phone: string
+  phone: string,
 ): Promise<{ expiresAt: string; maskedPhone?: string }> {
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/otp/send`,
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/booking/otp/send`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ phone }),
-    }
+    },
   )
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
@@ -866,21 +1035,28 @@ export async function sendPublicBookingOtp(
 export async function verifyPublicBookingOtp(
   slug: string,
   phone: string,
-  otp: string
+  otp: string,
 ): Promise<{ verifiedAt: string }> {
   const res = await fetch(
-    `${BACKEND_URL}/public/properties/${encodeURIComponent(slug)}/booking/otp/verify`,
+    `${BACKEND_URL}/public/properties/${encodeURIComponent(
+      slug,
+    )}/booking/otp/verify`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ phone, otp }),
-    }
+    },
   )
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
-    if (json?.error === 'INVALID_OTP' && typeof json?.attemptsRemaining === 'number') {
-      throw new Error(`Invalid OTP. ${json.attemptsRemaining} attempts remaining.`)
+    if (
+      json?.error === 'INVALID_OTP' &&
+      typeof json?.attemptsRemaining === 'number'
+    ) {
+      throw new Error(
+        `Invalid OTP. ${json.attemptsRemaining} attempts remaining.`,
+      )
     }
     throw new Error(json?.message ?? json?.error ?? 'OTP verification failed')
   }

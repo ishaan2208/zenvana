@@ -12,6 +12,7 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
+  Clock3,
   Home,
   Info,
   LogIn,
@@ -32,7 +33,11 @@ import clsx from 'clsx'
 
 import { Logo } from '@/components/Logo'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   formatZenvanaGuestProfileName,
   formatZenvanaGuestSalutationName,
@@ -50,22 +55,56 @@ type NavItem = {
 
 const nav: NavItem[] = [
   { href: '/', label: 'Home', icon: Home, blurb: 'Start here' },
-  { href: '/hotels', label: 'Hotels', icon: Building2, blurb: 'Find your stay' },
-  { href: '/restaurant', label: 'Restaurant', icon: UtensilsCrossed, blurb: 'Dining & café' },
-  { href: '/weddings', label: 'Weddings', icon: PartyPopper, blurb: 'Events & celebrations' },
-  { href: '/blog', label: 'Blog', icon: NotebookPen, blurb: 'Stories & guides' },
+  {
+    href: '/hotels',
+    label: 'Hotels',
+    icon: Building2,
+    blurb: 'Find your stay',
+  },
+  {
+    href: '/hourly-stays',
+    label: 'Hourly stays',
+    icon: Clock3,
+    blurb: 'Rooms by the hour',
+  },
+  {
+    href: '/restaurant',
+    label: 'Restaurant',
+    icon: UtensilsCrossed,
+    blurb: 'Dining & café',
+  },
+  {
+    href: '/weddings',
+    label: 'Weddings',
+    icon: PartyPopper,
+    blurb: 'Events & celebrations',
+  },
+  {
+    href: '/blog',
+    label: 'Blog',
+    icon: NotebookPen,
+    blurb: 'Stories & guides',
+  },
   { href: '/contact', label: 'Contact', icon: Phone, blurb: 'Get in touch' },
   { href: '/about', label: 'About', icon: Info, blurb: 'Our philosophy' },
-  { href: '/offers', label: 'Offers', icon: BadgePercent, blurb: 'Best current deals' },
+  {
+    href: '/offers',
+    label: 'Offers',
+    icon: BadgePercent,
+    blurb: 'Best current deals',
+  },
 ]
 
+// Kept to 7 items so the pill row never wraps or collides with the actions at
+// the lg breakpoint (1024px). "About" is intentionally not here — it lives in
+// the mobile menu and footer; the top row favours booking-intent links.
 const desktopNav: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/hotels', label: 'Hotels', icon: Building2 },
+  { href: '/hourly-stays', label: 'Hourly stays', icon: Clock3 },
   { href: '/restaurant', label: 'Restaurant', icon: UtensilsCrossed },
   { href: '/weddings', label: 'Weddings', icon: PartyPopper },
   { href: '/offers', label: 'Offers', icon: BadgePercent },
   { href: '/blog', label: 'Blog', icon: NotebookPen },
-  { href: '/about', label: 'About', icon: Info },
   { href: '/contact', label: 'Contact', icon: Phone },
 ]
 
@@ -155,7 +194,7 @@ export function Header() {
                       aria-current={active ? 'page' : undefined}
                       title={item.label}
                       className={clsx(
-                        'group/link relative inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-[0.875rem] font-medium tracking-tight transition-colors duration-200 xl:px-4',
+                        'group/link relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-[0.875rem] font-medium tracking-tight transition-colors duration-200 xl:px-3.5',
                         active
                           ? 'text-foreground'
                           : 'text-muted-foreground hover:text-foreground',
@@ -165,10 +204,17 @@ export function Header() {
                         <motion.span
                           layoutId="desktop-nav-pill"
                           className="absolute inset-0 -z-10 rounded-full bg-background shadow-sm dark:bg-muted/80"
-                          transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                          transition={{
+                            type: 'spring',
+                            stiffness: 420,
+                            damping: 34,
+                          }}
                         />
                       )}
-                      <Icon aria-hidden className="h-[1.05rem] w-[1.05rem] shrink-0" />
+                      <Icon
+                        aria-hidden
+                        className="h-[1.05rem] w-[1.05rem] shrink-0"
+                      />
                       <span>{item.label}</span>
                     </Link>
                   )
@@ -182,7 +228,10 @@ export function Header() {
               </div>
 
               {guest ? (
-                <DesktopGuestMenu guest={guest} onLogout={() => setGuest(null)} />
+                <DesktopGuestMenu
+                  guest={guest}
+                  onLogout={() => setGuest(null)}
+                />
               ) : (
                 <Link
                   href="/login"
@@ -221,7 +270,11 @@ export function Header() {
                   mobileOpen && 'bg-primary text-primary-foreground',
                 )}
               >
-                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {mobileOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
               </button>
             </div>
           </div>
@@ -253,11 +306,13 @@ function DesktopGuestMenu({
   const salutation = formatZenvanaGuestSalutationName(guest) || 'Guest'
   const legal = formatZenvanaGuestProfileName(guest)
   const initial =
-    (guest.lastName?.trim()?.charAt(0) ||
+    (
+      guest.lastName?.trim()?.charAt(0) ||
       guest.firstName?.trim()?.charAt(0) ||
       legal?.charAt(0) ||
       guest.phoneE164 ||
-      'Z')
+      'Z'
+    )
       .replace(/[^A-Za-z0-9]/g, '')
       .charAt(0)
       .toUpperCase() || 'Z'
@@ -276,10 +331,7 @@ function DesktopGuestMenu({
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-serif text-sm font-semibold text-primary">
             {initial}
           </span>
-          <span
-            className="max-w-[8rem] truncate"
-            title={legal || undefined}
-          >
+          <span className="max-w-[8rem] truncate" title={legal || undefined}>
             {salutation}
           </span>
           <ChevronDown
@@ -328,7 +380,9 @@ function DesktopGuestMenu({
             <UserCircle2 className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
             <div className="min-w-0 flex-1">
               <div className="font-medium">Account</div>
-              <div className="text-[11px] text-muted-foreground">Profile & email</div>
+              <div className="text-[11px] text-muted-foreground">
+                Profile & email
+              </div>
             </div>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           </Link>
@@ -384,7 +438,7 @@ function MobileMenu({
         type="button"
         aria-label="Close menu overlay"
         onClick={onClose}
-        className="fixed inset-0 z-40 bg-black/38 backdrop-blur-md lg:hidden"
+        className="bg-black/38 fixed inset-0 z-40 backdrop-blur-md lg:hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -393,16 +447,20 @@ function MobileMenu({
       <motion.div
         role="dialog"
         aria-modal="true"
-        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.985 }}
+        initial={
+          reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.985 }
+        }
         animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.985 }}
+        exit={
+          reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.985 }
+        }
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 mx-auto w-[calc(100%-1.5rem)] max-w-md lg:hidden"
         style={{
           maxHeight: 'calc(100dvh - env(safe-area-inset-top) - 1.5rem)',
         }}
       >
-        <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-background/96 shadow-2xl backdrop-blur-2xl">
+        <div className="bg-background/96 overflow-hidden rounded-[2rem] border border-border/70 shadow-2xl backdrop-blur-2xl">
           <div className="max-h-[calc(100dvh-env(safe-area-inset-top)-1.5rem)] overflow-y-auto overscroll-contain p-3">
             <div className="rounded-[1.6rem] border border-border/60 bg-card/80 p-3.5">
               <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
@@ -569,8 +627,12 @@ function MobileNavCard({
         </div>
 
         <div className="mt-3">
-          <div className="text-sm font-semibold tracking-tight">{item.label}</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">{item.blurb}</div>
+          <div className="text-sm font-semibold tracking-tight">
+            {item.label}
+          </div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            {item.blurb}
+          </div>
         </div>
       </Link>
     </motion.div>
@@ -596,11 +658,13 @@ function MobileIdentityCard({
   const salutation = formatZenvanaGuestSalutationName(guest)
   const legal = formatZenvanaGuestProfileName(guest)
   const initial =
-    (guest.lastName?.trim()?.charAt(0) ||
+    (
+      guest.lastName?.trim()?.charAt(0) ||
       guest.firstName?.trim()?.charAt(0) ||
       legal?.charAt(0) ||
       guest.phoneE164 ||
-      'Z')
+      'Z'
+    )
       .replace(/[^A-Za-z0-9]/g, '')
       .charAt(0)
       .toUpperCase() || 'Z'
@@ -616,7 +680,7 @@ function MobileIdentityCard({
     >
       <div className="brand-gradient absolute inset-0 opacity-95" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(219,230,76,0.22),_transparent_60%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.18] mix-blend-soft-light bg-[repeating-linear-gradient(135deg,_rgba(255,255,255,0.09),_rgba(255,255,255,0.09)_1px,_transparent_1px,_transparent_10px)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(135deg,_rgba(255,255,255,0.09),_rgba(255,255,255,0.09)_1px,_transparent_1px,_transparent_10px)] opacity-[0.18] mix-blend-soft-light" />
 
       <div className="relative z-10 flex items-center gap-3 text-white">
         <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/10 font-serif text-xl font-semibold backdrop-blur-md">
@@ -628,7 +692,9 @@ function MobileIdentityCard({
             Signed in
           </div>
           <div className="mt-0.5 truncate text-sm font-semibold">{primary}</div>
-          <div className="mt-0.5 truncate text-xs text-white/75">{secondary}</div>
+          <div className="mt-0.5 truncate text-xs text-white/75">
+            {secondary}
+          </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-white backdrop-blur-md">

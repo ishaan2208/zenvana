@@ -1,3 +1,5 @@
+import { DAY_USE_STAY_KIND_PARAM } from './stay-kind'
+
 /** True when path is `/book/<slug>/rooms` (with or without query). */
 export function isBookRoomsPath(path: string): boolean {
   const pathname = path.split('?')[0] ?? path
@@ -37,7 +39,9 @@ export type BookHourlyRoomsUrlParams = {
 }
 
 /** Allow same-origin relative paths only (blocks open redirects). */
-export function sanitizeReturnTo(value: string | undefined | null): string | null {
+export function sanitizeReturnTo(
+  value: string | undefined | null,
+): string | null {
   if (!value) return null
   if (!value.startsWith('/')) return null
   if (value.startsWith('//')) return null
@@ -96,7 +100,7 @@ export function buildBookHourlyRoomsPath({
   returnTo,
 }: BookHourlyRoomsUrlParams): string {
   const params = new URLSearchParams({
-    stayKind: 'hourly',
+    stayKind: DAY_USE_STAY_KIND_PARAM,
     date,
     startTime,
     durationHours: String(durationHours),

@@ -1,13 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import {
-  ArrowLeft,
-  Clock,
-  Hotel,
-  MapPin,
-  Sparkles,
-  Users,
-} from 'lucide-react'
+import { ArrowLeft, Clock, Hotel, MapPin, Sparkles, Users } from 'lucide-react'
 
 import {
   getPublicHourlyAvailability,
@@ -20,6 +13,8 @@ import { Container } from '@/components/Container'
 import { SoldOutTag } from '@/components/SoldOutTag'
 import { PriceWithTax } from '@/components/PriceWithTax'
 import { sanitizeReturnTo } from '@/lib/book-rooms-url'
+import { DAY_USE_STAY_KIND_PARAM } from '@/lib/stay-kind'
+import { BookingSteps } from '@/components/booking/BookingSteps'
 import { TrackOnMount } from '@/components/analytics/TrackOnMount'
 
 function roomsBackLabel(returnTo: string | null): string {
@@ -72,14 +67,19 @@ export async function HourlyRoomsView({
                 Hourly stay
               </div>
               <h1 className="mt-4 font-serif text-[clamp(2rem,5vw,3.5rem)] leading-[0.95] tracking-[-0.05em] text-foreground">
-                Hourly stay is not available
+                Hourly stays aren’t available here yet
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                This property is not offering hourly stays right now. Try an overnight booking
-                or pick another hotel.
+                This property doesn’t offer hourly stays right now. Try an
+                overnight booking or pick another hotel.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Button href={backHref} variant="outline" color="slate" className="dark:text-white">
+                <Button
+                  href={backHref}
+                  variant="outline"
+                  color="slate"
+                  className="dark:text-white"
+                >
                   Go back
                 </Button>
                 <Button href="/hotels" color="blue">
@@ -97,14 +97,14 @@ export async function HourlyRoomsView({
     slug,
     date,
     startTime,
-    durationHours
+    durationHours,
   )
 
   const roomTypesWithQuotes = await Promise.all(
     (property.roomTypes ?? []).map(async (rt) => {
       const avail =
-        availability?.roomTypes.find((a) => a.roomTypeId === rt.id)?.available ??
-        0
+        availability?.roomTypes.find((a) => a.roomTypeId === rt.id)
+          ?.available ?? 0
       const quote =
         avail > 0
           ? await getPublicHourlyQuote(slug, {
@@ -115,11 +115,11 @@ export async function HourlyRoomsView({
             })
           : null
       return { rt, avail, quote }
-    })
+    }),
   )
 
   const bookable = roomTypesWithQuotes.filter(
-    (r) => r.avail > 0 && r.quote?.price != null
+    (r) => r.avail > 0 && r.quote?.price != null,
   )
   const allSoldOut =
     (property.roomTypes?.length ?? 0) > 0 && bookable.length === 0
@@ -151,7 +151,12 @@ export async function HourlyRoomsView({
           {backLabel}
         </Link>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-8">
+        <BookingSteps current={2} className="mt-4" />
+        <p className="mt-1 text-xs leading-6 text-muted-foreground">
+          You won’t be charged yet — you confirm on the next step.
+        </p>
+
+        <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-8">
           <div className="min-w-0 space-y-5">
             {allSoldOut ? (
               <section className="relative overflow-hidden rounded-[2rem] border border-rose-200/70 bg-gradient-to-br from-rose-50/95 via-background/85 to-background/60 shadow-[0_28px_80px_rgba(190,18,60,0.12)] backdrop-blur-2xl dark:border-rose-900/50 dark:from-rose-950/40 dark:via-background/40 dark:to-background/25">
@@ -166,13 +171,19 @@ export async function HourlyRoomsView({
                     </span>
                   </div>
                   <h1 className="mt-5 max-w-xl font-serif text-[clamp(1.75rem,4.5vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-foreground">
-                    No rooms free for this hourly slot
+                    No rooms free for this time
                   </h1>
                   <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
-                    Try another start time or duration, or book overnight instead.
+                    Try another start time or duration, or book overnight
+                    instead.
                   </p>
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                    <Button href={backHref} variant="outline" color="slate" className="dark:text-white">
+                    <Button
+                      href={backHref}
+                      variant="outline"
+                      color="slate"
+                      className="dark:text-white"
+                    >
                       Change slot
                     </Button>
                     <Button href="/hotels" color="blue">
@@ -211,7 +222,9 @@ export async function HourlyRoomsView({
               {(property.city || property.state) && (
                 <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0" />
-                  <span>{[property.city, property.state].filter(Boolean).join(', ')}</span>
+                  <span>
+                    {[property.city, property.state].filter(Boolean).join(', ')}
+                  </span>
                 </div>
               )}
               <div className="mt-5 space-y-3 border-t border-border/60 pt-5">
@@ -265,7 +278,7 @@ function HourlyRoomRow(props: {
   const soldOut = available < 1 || price == null
 
   const checkoutParams = new URLSearchParams({
-    stayKind: 'hourly',
+    stayKind: DAY_USE_STAY_KIND_PARAM,
     date,
     startTime,
     durationHours: String(durationHours),
@@ -290,7 +303,7 @@ function HourlyRoomRow(props: {
             {soldOut ? <SoldOutTag /> : null}
           </div>
           {roomType.shortDescription ? (
-            <p className="mt-2 text-sm leading-6 text-muted-foreground line-clamp-2">
+            <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
               {roomType.shortDescription}
             </p>
           ) : null}
@@ -314,15 +327,24 @@ function HourlyRoomRow(props: {
           {!soldOut && price != null ? (
             <div className="text-right">
               <PriceWithTax amount={price} size="default" />
-              <p className="mt-0.5 text-xs text-muted-foreground">for {durationHours} hours</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                for {durationHours} hours
+              </p>
             </div>
           ) : null}
           {soldOut ? (
-            <Button disabled variant="outline" color="slate" className="dark:text-white">
+            <Button
+              disabled
+              variant="outline"
+              color="slate"
+              className="dark:text-white"
+            >
               Unavailable
             </Button>
           ) : (
-            <Button href={`/book/${slug}/checkout?${checkoutParams.toString()}`}>
+            <Button
+              href={`/book/${slug}/checkout?${checkoutParams.toString()}`}
+            >
               Continue to checkout
             </Button>
           )}

@@ -5,7 +5,6 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarCheck,
-  Clock,
   MapPin,
   Mountain,
   Phone,
@@ -14,10 +13,9 @@ import {
   Trees,
 } from 'lucide-react'
 
-import {
-  getPublicPropertiesListing,
-  getPublicPropertyBySlug,
-} from '@/lib/api'
+import { getPublicPropertiesListing, getPublicPropertyBySlug } from '@/lib/api'
+import { PropertyCardVideoPreview } from '@/components/PropertyCardVideoPreview'
+import { deriveVideoPreviewUrl } from '@/lib/cloudinary-video'
 import { Container } from '@/components/Container'
 import { HotelListingPlanPrice } from '@/components/HotelListingPlanPrice'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -27,7 +25,8 @@ import { JsonLd } from '@/components/JsonLd'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/structured-data'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
 export const revalidate = 3600
 
@@ -45,7 +44,8 @@ export const metadata = {
   alternates: { canonical: '/hotels' },
   openGraph: {
     title: 'All Hotels in Dehradun · Zenvana Collection',
-    description: 'Browse every Zenvana boutique hotel on Rajpur Road, Dehradun.',
+    description:
+      'Browse every Zenvana boutique hotel on Rajpur Road, Dehradun.',
     url: `${SITE_URL}/hotels`,
     type: 'website',
   },
@@ -87,8 +87,10 @@ export default async function HotelsPage({ searchParams }: Props) {
 
   const fullDetails = await Promise.all(
     properties.map((p, i) =>
-      needsDetailFetch[i] ? getPublicPropertyBySlug(p.slug) : Promise.resolve(null)
-    )
+      needsDetailFetch[i]
+        ? getPublicPropertyBySlug(p.slug)
+        : Promise.resolve(null),
+    ),
   )
 
   const propertiesWithImages = properties.map((p, i) => {
@@ -162,23 +164,14 @@ export default async function HotelsPage({ searchParams }: Props) {
               <span className="block">its most inviting.</span>
             </h2>
             <p className="mt-5 max-w-2xl text-base leading-8 text-muted-foreground">
-              Explore the Zenvana collection through location, atmosphere, and ease of stay.
+              Explore the Zenvana collection through location, atmosphere, and
+              ease of stay.
             </p>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground/90">
-              “From” prices here are the lowest direct stay total for tonight (one night). Each
-              hotel page shows meal plans and full rate options.
+              “From” prices here are the lowest direct stay total for tonight
+              (one night). Each hotel page shows meal plans and full rate
+              options.
             </p>
-            {propertiesForGrid.some((p) => p.hourlyStayEnabled) ? (
-              <div className="mt-6 inline-flex max-w-xl items-start gap-3 rounded-[1.25rem] border border-amber-500/25 bg-amber-500/[0.08] px-4 py-3 text-amber-950 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-50">
-                <Clock className="mt-0.5 h-4 w-4 shrink-0" />
-                <p className="text-sm leading-6">
-                  <span className="font-semibold">New · Hourly stays</span>
-                  {' — '}
-                  select hotels now offer 3h, 6h, and 9h day packages. Look for the hourly badge
-                  on cards below.
-                </p>
-              </div>
-            ) : null}
           </div>
 
           {propertiesForGrid.length === 0 ? (
@@ -188,120 +181,125 @@ export default async function HotelsPage({ searchParams }: Props) {
               {propertiesForGrid.map((p, i) => (
                 <li key={p.id}>
                   <Reveal delay={i * 70} className="h-full">
-                  <Link
-                    href={
-                      couponCode
-                        ? `/hotels/${p.slug}?${new URLSearchParams({ couponCode }).toString()}`
-                        : `/hotels/${p.slug}`
-                    }
-                    className="group block h-full"
-                  >
-                    <Card className="h-full overflow-hidden rounded-[2rem] border-border/60 bg-card/70 text-card-foreground shadow-[0_18px_45px_rgba(8,17,31,0.05)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_26px_80px_rgba(8,17,31,0.1)] dark:bg-card/50">
-                      {p.listingPrice != null ? (
-                        <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/35 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
-                          <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                            From · 1 night (direct)
-                          </span>
-                          <HotelListingPlanPrice
-                            amount={p.listingPrice.amount}
-                            marketAmount={p.listingPrice.marketAmount}
-                          />
-                        </div>
-                      ) : null}
-                      <div className="relative overflow-hidden">
-                        {p.heroImageUrl ? (
-                          <CloudinaryImage
-                            src={p.heroImageUrl}
-                            alt={p.publicName}
-                            width={1200}
-                            height={800}
-                            className="h-[320px] w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                          />
-                        ) : (
-                          <div className="flex h-[320px] w-full items-center justify-center bg-muted">
-                            <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                              <Mountain className="h-8 w-8" />
-                              <span className="text-sm">Image coming soon</span>
+                    <Link
+                      href={
+                        couponCode
+                          ? `/hotels/${p.slug}?${new URLSearchParams({
+                              couponCode,
+                            }).toString()}`
+                          : `/hotels/${p.slug}`
+                      }
+                      className="group block h-full"
+                    >
+                      <Card className="h-full overflow-hidden rounded-[2rem] border-border/60 bg-card/70 text-card-foreground shadow-[0_18px_45px_rgba(8,17,31,0.05)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_26px_80px_rgba(8,17,31,0.1)] dark:bg-card/50">
+                        {p.listingPrice != null ? (
+                          <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/35 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
+                            <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                              From · 1 night (direct)
+                            </span>
+                            <HotelListingPlanPrice
+                              amount={p.listingPrice.amount}
+                              marketAmount={p.listingPrice.marketAmount}
+                            />
+                          </div>
+                        ) : null}
+                        <div className="relative overflow-hidden">
+                          {p.heroImageUrl ? (
+                            <CloudinaryImage
+                              src={p.heroImageUrl}
+                              alt={p.publicName}
+                              width={1200}
+                              height={800}
+                              className="h-[320px] w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                            />
+                          ) : (
+                            <div className="flex h-[320px] w-full items-center justify-center bg-muted">
+                              <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                                <Mountain className="h-8 w-8" />
+                                <span className="text-sm">
+                                  Image coming soon
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {p.walkthroughVideo ? (
+                            <PropertyCardVideoPreview
+                              src={deriveVideoPreviewUrl(
+                                p.walkthroughVideo.playbackUrl,
+                                { maxHeight: 360, maxDurationSec: 10 },
+                              )}
+                            />
+                          ) : null}
+
+                          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,17,31,0.03)_0%,rgba(8,17,31,0.14)_42%,rgba(8,17,31,0.78)_100%)]" />
+
+                          <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+                            <div className="flex flex-wrap gap-2">
+                              {p.showValueBadge ? (
+                                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/30 bg-emerald-950/40 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-emerald-50 backdrop-blur-md">
+                                  <Tag
+                                    className="h-3 w-3 shrink-0 text-emerald-200/90"
+                                    aria-hidden
+                                  />
+                                  Great value
+                                </div>
+                              ) : (
+                                <div className="dark:text-white/78 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#dbe64c] backdrop-blur-md">
+                                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#dbe64c]" />
+                                  Boutique stays
+                                </div>
+                              )}
                             </div>
                           </div>
-                        )}
+                        </div>
 
-                        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,17,31,0.03)_0%,rgba(8,17,31,0.14)_42%,rgba(8,17,31,0.78)_100%)]" />
+                        <CardContent className="p-6 sm:p-7">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h3 className="font-serif text-2xl leading-tight tracking-[-0.03em] text-foreground transition-colors group-hover:text-primary">
+                                {p.publicName}
+                              </h3>
 
-                        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                          <div className="flex flex-wrap gap-2">
-                            {p.hourlyStayEnabled ? (
-                              <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-950/50 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-amber-50 backdrop-blur-md">
-                                <Clock className="h-3 w-3 shrink-0 text-amber-200/90" aria-hidden />
-                                Hourly stays
-                              </div>
-                            ) : null}
-                            {p.showValueBadge ? (
-                              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/30 bg-emerald-950/40 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-emerald-50 backdrop-blur-md">
-                                <Tag className="h-3 w-3 shrink-0 text-emerald-200/90" aria-hidden />
-                                Great value
-                              </div>
-                            ) : (
-                              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.24em] text-[#dbe64c] backdrop-blur-md dark:text-white/78">
-                                <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#dbe64c]" />
-                                Boutique stays
-                              </div>
-                            )}
+                              {(p.city || p.state) && (
+                                <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                                  <MapPin className="h-4 w-4 shrink-0" />
+                                  <span>
+                                    {[p.city, p.state]
+                                      .filter(Boolean)
+                                      .join(', ')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </div>
 
-                      <CardContent className="p-6 sm:p-7">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <h3 className="font-serif text-2xl leading-tight tracking-[-0.03em] text-foreground transition-colors group-hover:text-primary">
-                              {p.publicName}
-                            </h3>
+                          {p.shortDescription ? (
+                            <p className="mt-5 line-clamp-3 text-sm leading-7 text-muted-foreground">
+                              {p.shortDescription}
+                            </p>
+                          ) : (
+                            <p className="mt-5 text-sm leading-7 text-muted-foreground">
+                              A thoughtfully located Zenvana stay shaped by
+                              warmth, comfort, and a more relaxed experience of
+                              the city.
+                            </p>
+                          )}
 
-                            {(p.city || p.state) && (
-                              <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                                <MapPin className="h-4 w-4 shrink-0" />
-                                <span>{[p.city, p.state].filter(Boolean).join(', ')}</span>
-                              </div>
-                            )}
+                          <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-5">
+                            <span className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                              Explore stay
+                            </span>
+
+                            <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground transition-transform duration-300 group-hover:translate-x-1">
+                              View details
+                              <ArrowRight className="h-4 w-4" />
+                            </span>
                           </div>
-                        </div>
-
-                        {p.shortDescription ? (
-                          <p className="mt-5 line-clamp-3 text-sm leading-7 text-muted-foreground">
-                            {p.shortDescription}
-                          </p>
-                        ) : (
-                          <p className="mt-5 text-sm leading-7 text-muted-foreground">
-                            A thoughtfully located Zenvana stay shaped by warmth, comfort, and a
-                            more relaxed experience of the city.
-                          </p>
-                        )}
-
-                        <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-5">
-                          <span className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                            {p.hourlyStayEnabled
-                              ? 'Overnight · Hourly'
-                              : 'Explore stay'}
-                          </span>
-
-                          <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground transition-transform duration-300 group-hover:translate-x-1">
-                            View details
-                            <ArrowRight className="h-4 w-4" />
-                          </span>
-                        </div>
-                        {p.hourlyStayEnabled ? (
-                          <p className="mt-3 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
-                            Hourly packages:{' '}
-                            {(p.hourlyStay?.durationsHours ?? [3, 6, 9])
-                              .map((h) => `${h}h`)
-                              .join(' · ')}
-                          </p>
-                        ) : null}
-                      </CardContent>
-                    </Card>
-                  </Link>
+                        </CardContent>
+                      </Card>
+                    </Link>
                   </Reveal>
                 </li>
               ))}
@@ -347,8 +345,8 @@ function HotelsHero() {
           </h1>
 
           <p className="mt-6 max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg">
-            Discover thoughtfully located stays across Dehradun, from the familiar movement of
-            Rajpur Road to calmer foothill surrounds.
+            Discover thoughtfully located stays across Dehradun, from the
+            familiar movement of Rajpur Road to calmer foothill surrounds.
           </p>
         </div>
       </Container>
@@ -376,7 +374,9 @@ function HighlightsStrip() {
                     <h2 className="text-base font-medium tracking-tight text-foreground">
                       {item.title}
                     </h2>
-                    <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.text}</p>
+                    <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                      {item.text}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -407,11 +407,19 @@ function EmptyState() {
         {process.env.NODE_ENV === 'development' ? (
           <ol className="space-y-3 text-sm leading-7 text-muted-foreground">
             <li>
-              Start the backend in the <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">backend</code>{' '}
+              Start the backend in the{' '}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">
+                backend
+              </code>{' '}
               folder with{' '}
-              <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">pnpm dev</code>{' '}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">
+                pnpm dev
+              </code>{' '}
               or{' '}
-              <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">npm run dev</code>.
+              <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">
+                npm run dev
+              </code>
+              .
             </li>
             <li>
               Set{' '}
@@ -425,11 +433,15 @@ function EmptyState() {
               and restart the Next.js dev server.
             </li>
             <li>
-              Seed the database from the <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">backend</code>{' '}
+              Seed the database from the{' '}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">
+                backend
+              </code>{' '}
               folder using{' '}
               <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">
                 npx ts-node ts/scripts/seed-zenvana-public.ts
-              </code>.
+              </code>
+              .
             </li>
           </ol>
         ) : (

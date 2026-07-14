@@ -7,6 +7,7 @@ import {
   BedDouble,
   CalendarCheck,
   Camera,
+  Clapperboard,
   Clock,
   MapPin,
   Navigation,
@@ -18,23 +19,38 @@ import {
 } from 'lucide-react'
 
 import { getPublicPropertyBySlug, getPublicProperties } from '@/lib/api'
+import type { PublicPropertyVideo } from '@/lib/api'
+import { PropertyVideoCard } from '@/components/PropertyVideoCard'
+import { AmbientVideo } from '@/components/AmbientVideo'
+import { ReadMoreText } from '@/components/ReadMoreText'
+import {
+  deriveVideoPreviewUrl,
+  resizeVideoPosterUrl,
+  secondsToIsoDuration,
+} from '@/lib/cloudinary-video'
 import { Container } from '@/components/Container'
 import { Button } from '@/components/Button'
 import { PlaneButton } from '@/components/PlaneButton'
-import { HourlyStayCallout } from '@/components/StayModeToggle'
 import { EmblaImageGallery } from '@/components/EmblaImageGallery'
 import { FilterableGallery } from '@/components/FilterableGallery'
 import { PropertyMapSection } from '@/components/PropertyMapSection'
-import { normalizeGalleryImages, pickHeroAndGallery, type GalleryImage } from '@/lib/media'
+import {
+  normalizeGalleryImages,
+  pickHeroAndGallery,
+  type GalleryImage,
+} from '@/lib/media'
 import { placesNear, formatKm } from '@/lib/distances'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
+import { DAY_USE_STAY_KIND_PARAM } from '@/lib/stay-kind'
 import {
   lodgingBusinessJsonLd,
   breadcrumbJsonLd,
   faqPageJsonLd,
+  videoObjectJsonLd,
 } from '@/lib/structured-data'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 export const revalidate = 1800
 export const dynamicParams = false
 
@@ -65,11 +81,15 @@ export async function generateMetadata({ params }: Props) {
 
   const title =
     property.seoTitle ??
-    `${property.publicName} by Zenvana | Boutique Hotel in ${property.city ?? 'Dehradun'} | Book Direct`
+    `${property.publicName} by Zenvana | Boutique Hotel in ${
+      property.city ?? 'Dehradun'
+    } | Book Direct`
   const description =
     property.seoDescription ??
     property.descriptionShort ??
-    `${property.publicName} by Zenvana offers a thoughtful stay in ${location || 'Dehradun'}. Explore rooms, see real property photos, and book direct for a smoother arrival.`
+    `${property.publicName} by Zenvana offers a thoughtful stay in ${
+      location || 'Dehradun'
+    }. Explore rooms, see real property photos, and book direct for a smoother arrival.`
 
   const canonical = `${SITE_URL}/hotels/${slug}`
 
@@ -115,13 +135,16 @@ export default async function PropertyPage({ params, searchParams }: Props) {
     getPublicProperties().catch(() => []),
   ])
   if (!property) notFound()
-  const otherProperties = allProperties.filter((p) => p.slug !== slug).slice(0, 4)
+  const otherProperties = allProperties
+    .filter((p) => p.slug !== slug)
+    .slice(0, 4)
 
   const galleryData = pickHeroAndGallery(property.images)
   const heroUrl = galleryData.heroUrl
   const galleryImages = galleryData.gallery
   const roomTypes = property.roomTypes ?? []
-  const location = [property.city, property.state].filter(Boolean).join(', ') || 'Dehradun'
+  const location =
+    [property.city, property.state].filter(Boolean).join(', ') || 'Dehradun'
   const totalImageCount = (heroUrl ? 1 : 0) + galleryImages.length
 
   const breadcrumbs = [
@@ -134,6 +157,21 @@ export default async function PropertyPage({ params, searchParams }: Props) {
     question: f.question,
     answer: f.answer,
   }))
+
+  const videos = property.videos ?? []
+  const videoKindCopy: Record<
+    'walkthrough' | 'drone',
+    { name: string; description: string }
+  > = {
+    walkthrough: {
+      name: `${property.publicName} — Walkthrough`,
+      description: `A guided walkthrough of ${property.publicName} in ${location}: rooms, common spaces, and arrival experience.`,
+    },
+    drone: {
+      name: `${property.publicName} — Drone view`,
+      description: `Aerial drone footage of ${property.publicName} and its surroundings in ${location}.`,
+    },
+  }
 
   return (
     <>
@@ -157,8 +195,29 @@ export default async function PropertyPage({ params, searchParams }: Props) {
           }}
         />
       )}
+      {videos.map((video) => (
+        <script
+          key={`video-ld-${video.kind}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(
+              videoObjectJsonLd({
+                name: video.title ?? videoKindCopy[video.kind].name,
+                description: videoKindCopy[video.kind].description,
+                thumbnailUrl: video.posterUrl,
+                contentUrl: video.playbackUrl,
+                duration:
+                  video.durationSec != null
+                    ? secondsToIsoDuration(video.durationSec)
+                    : undefined,
+                embedPageUrl: `${SITE_URL}/hotels/${slug}`,
+              }),
+            ),
+          }}
+        />
+      ))}
 
-      <main className="page-enter bg-background text-foreground pb-24 xl:pb-0">
+      <main className="page-enter bg-background pb-24 text-foreground xl:pb-0">
         <PropertyHero
           property={property}
           heroUrl={heroUrl}
@@ -166,6 +225,7 @@ export default async function PropertyPage({ params, searchParams }: Props) {
           galleryImages={galleryImages}
           totalImageCount={totalImageCount}
           couponCode={couponCode}
+          walkthrough={videos.find((v) => v.kind === 'walkthrough')}
         />
 
         <QuickFacts property={property} location={location} />
@@ -186,10 +246,11 @@ export default async function PropertyPage({ params, searchParams }: Props) {
                 galleryImages={galleryImages}
               />
 
-              {galleryImages.length > 0 && (
+              {(galleryImages.length > 0 || videos.length > 0) && (
                 <GallerySection
                   propertyName={property.publicName}
                   images={galleryImages}
+                  videos={videos}
                 />
               )}
 
@@ -264,6 +325,7 @@ function PropertyHero({
   galleryImages,
   totalImageCount,
   couponCode,
+  walkthrough,
 }: {
   property: Property
   heroUrl?: string
@@ -271,6 +333,7 @@ function PropertyHero({
   galleryImages: Array<{ url: string }>
   totalImageCount: number
   couponCode?: string
+  walkthrough?: PublicPropertyVideo
 }) {
   const previewImages = galleryImages.slice(0, 4)
 
@@ -320,55 +383,110 @@ function PropertyHero({
               Hotels
             </span>
           </Link>
-
-          <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.32em] text-white/55">
-            <span className="hidden sm:inline">The Collection</span>
-            <span className="hidden h-px w-6 bg-white/30 sm:inline-block" />
-            <span>Chapter&nbsp;I</span>
-          </div>
         </div>
 
-        {/* Featured editorial photo card — sharp, framed, asymmetric */}
-        <div className="mt-8 sm:mt-12">
-          <div className="relative mx-auto aspect-[4/5] w-full max-w-[300px] overflow-hidden rounded-[1.25rem] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/10 sm:max-w-md sm:rounded-[1.5rem]">
-            {heroUrl ? (
-              <CloudinaryImage
-                src={heroUrl}
-                alt={`${property.publicName} in ${location}`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 640px) 320px, 500px"
-                priority
-              />
-            ) : (
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,#0a1426,#143626)]" />
-            )}
-
-            {/* Subtle inner gradient for cover text legibility */}
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.20)_0%,transparent_30%,transparent_60%,rgba(0,0,0,0.55)_100%)]" />
-
-            {/* Top-corner monogram */}
-            <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[9px] font-medium uppercase tracking-[0.32em] text-white/75">
-                <span className="h-px w-5 bg-white/45" />
-                Zenvana
+        {walkthrough ? (
+          /* Film-first hero — clear 16:9 walkthrough at full width, facade
+             photo demoted to an overlapping avatar. Sits in the content layer
+             ABOVE the section scrims so the film is never dimmed or blurred. */
+          <div className="mt-6 sm:mt-10">
+            <div className="relative">
+              <div className="relative aspect-video w-full overflow-hidden rounded-[1.25rem] bg-[#0a0f18] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/10 sm:rounded-[1.5rem]">
+                {/* Poster paints instantly; the loop fades in over it */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={resizeVideoPosterUrl(walkthrough.posterUrl, 1280)}
+                  srcSet={`${resizeVideoPosterUrl(
+                    walkthrough.posterUrl,
+                    640,
+                  )} 640w, ${resizeVideoPosterUrl(
+                    walkthrough.posterUrl,
+                    1280,
+                  )} 1280w`}
+                  sizes="(max-width: 768px) 100vw, 1152px"
+                  alt={`${property.publicName} walkthrough film`}
+                  fetchPriority="high"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <AmbientVideo
+                  sources={[
+                    {
+                      media: '(min-width: 768px)',
+                      src: deriveVideoPreviewUrl(walkthrough.playbackUrl, {
+                        maxHeight: 720,
+                        maxDurationSec: 24,
+                        quality: 'auto',
+                      }),
+                    },
+                    {
+                      src: deriveVideoPreviewUrl(walkthrough.playbackUrl, {
+                        maxHeight: 540,
+                        maxDurationSec: 24,
+                        quality: 'auto',
+                      }),
+                    },
+                  ]}
+                />
               </div>
-              <div className="rounded-full bg-white/12 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.22em] text-white/80 backdrop-blur">
-                Boutique
-              </div>
+
+              {/* Facade avatar — the old cover photo, demoted */}
+              {heroUrl && (
+                <div className="absolute -bottom-6 left-4 h-16 w-16 overflow-hidden rounded-2xl shadow-[0_18px_40px_-12px_rgba(0,0,0,0.8)] ring-2 ring-white/20 sm:-bottom-8 sm:left-6 sm:h-20 sm:w-20">
+                  <CloudinaryImage
+                    src={heroUrl}
+                    alt={`${property.publicName} in ${location}`}
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                    priority
+                  />
+                </div>
+              )}
             </div>
+          </div>
+        ) : (
+          /* Featured editorial photo card — sharp, framed, asymmetric */
+          <div className="mt-8 sm:mt-12">
+            <div className="relative mx-auto aspect-[4/5] w-full max-w-[300px] overflow-hidden rounded-[1.25rem] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/10 sm:max-w-md sm:rounded-[1.5rem]">
+              {heroUrl ? (
+                <CloudinaryImage
+                  src={heroUrl}
+                  alt={`${property.publicName} in ${location}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 320px, 500px"
+                  priority
+                />
+              ) : (
+                <div className="absolute inset-0 bg-[linear-gradient(135deg,#0a1426,#143626)]" />
+              )}
 
-            {/* Bottom-corner location stamp */}
-            <div className="absolute bottom-4 left-4 right-4">
-              <div className="text-[9px] font-medium uppercase tracking-[0.32em] text-white/65">
-                Rajpur Road
+              {/* Subtle inner gradient for cover text legibility */}
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.20)_0%,transparent_30%,transparent_60%,rgba(0,0,0,0.55)_100%)]" />
+
+              {/* Top-corner monogram */}
+              <div className="absolute left-4 right-4 top-4 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[9px] font-medium uppercase tracking-[0.32em] text-white/75">
+                  <span className="h-px w-5 bg-white/45" />
+                  Zenvana
+                </div>
+                <div className="bg-white/12 rounded-full px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.22em] text-white/80 backdrop-blur">
+                  Boutique
+                </div>
               </div>
-              <div className="mt-0.5 font-serif text-base leading-tight text-white/95 sm:text-lg">
-                {location}
+
+              {/* Bottom-corner location stamp */}
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="text-[9px] font-medium uppercase tracking-[0.32em] text-white/65">
+                  Rajpur Road
+                </div>
+                <div className="mt-0.5 font-serif text-base leading-tight text-white/95 sm:text-lg">
+                  {location}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Editorial title block */}
         <div className="mx-auto mt-10 max-w-3xl text-center sm:mt-14">
@@ -382,7 +500,7 @@ function PropertyHero({
             {property.publicName}
           </h1>
 
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12.5px] text-white/72 sm:text-[13.5px]">
+          <div className="text-white/72 mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12.5px] sm:text-[13.5px]">
             <div className="inline-flex items-center gap-2">
               <MapPin className="h-3.5 w-3.5 text-white/55" />
               <span className="tracking-[0.04em]">{location}</span>
@@ -401,7 +519,7 @@ function PropertyHero({
             )}
           </div>
 
-          <p className="mx-auto mt-7 max-w-xl text-[14.5px] leading-[1.85] text-white/72 sm:text-[15.5px]">
+          <p className="text-white/72 mx-auto mt-7 max-w-xl text-[14.5px] leading-[1.85] sm:text-[15.5px]">
             {property.descriptionShort ??
               `A thoughtfully located Zenvana stay in ${location}, designed for easy arrivals, quiet comfort, and a smoother city stay.`}
           </p>
@@ -410,7 +528,9 @@ function PropertyHero({
             <PlaneButton
               href={
                 couponCode
-                  ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
+                  ? `/book/${property.slug}?${new URLSearchParams({
+                      couponCode,
+                    }).toString()}`
                   : `/book/${property.slug}`
               }
               sentLabel="Opening dates"
@@ -420,37 +540,12 @@ function PropertyHero({
               Check overnight availability
             </PlaneButton>
 
-            {property.hourlyStayEnabled ? (
-              <PlaneButton
-                href={
-                  couponCode
-                    ? `/book/${property.slug}?${new URLSearchParams({ stayKind: 'hourly', couponCode }).toString()}`
-                    : `/book/${property.slug}?stayKind=hourly`
-                }
-                sentLabel="Opening hourly"
-                className="rounded-full border border-white/20 bg-white/10 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-xl transition-colors hover:bg-white/15"
-              >
-                <Clock className="h-4 w-4" />
-                Book hourly stay
-              </PlaneButton>
-            ) : property.googleMapPlaceUrl ? (
+            {property.googleMapPlaceUrl ? (
               <a
                 href={property.googleMapPlaceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-medium text-white/90 backdrop-blur-xl transition hover:border-white/30 hover:bg-white/[0.10]"
-              >
-                <MapPin className="h-4 w-4" />
-                View on map
-              </a>
-            ) : null}
-
-            {property.hourlyStayEnabled && property.googleMapPlaceUrl ? (
-              <a
-                href={property.googleMapPlaceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-medium text-white/90 backdrop-blur-xl transition hover:border-white/30 hover:bg-white/[0.10] sm:hidden"
               >
                 <MapPin className="h-4 w-4" />
                 View on map
@@ -485,7 +580,7 @@ function PropertyHero({
                 <a
                   key={`${img.url}-${index}`}
                   href="#gallery"
-                  className="group relative overflow-hidden rounded-[0.85rem] border border-white/8 bg-white/[0.04] backdrop-blur-xl"
+                  className="border-white/8 group relative overflow-hidden rounded-[0.85rem] border bg-white/[0.04] backdrop-blur-xl"
                 >
                   <div className="relative aspect-[1.05/1]">
                     <CloudinaryImage
@@ -559,10 +654,11 @@ function QuickFacts({
             return (
               <div
                 key={item.label}
-                className={`flex items-center gap-3 sm:flex-1 sm:justify-start sm:px-2 ${index !== items.length - 1
-                  ? 'sm:border-r sm:border-border/60'
-                  : ''
-                  } ${index % 2 === 0 ? 'sm:pl-0' : ''}`}
+                className={`flex items-center gap-3 sm:flex-1 sm:justify-start sm:px-2 ${
+                  index !== items.length - 1
+                    ? 'sm:border-r sm:border-border/60'
+                    : ''
+                } ${index % 2 === 0 ? 'sm:pl-0' : ''}`}
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card/60 text-foreground/75">
                   <Icon className="h-3.5 w-3.5" />
@@ -647,10 +743,15 @@ function ChapterHeader({
   align?: 'left' | 'center'
 }) {
   return (
-    <div className={align === 'center' ? 'mx-auto max-w-2xl text-center' : 'max-w-2xl'}>
+    <div
+      className={
+        align === 'center' ? 'mx-auto max-w-2xl text-center' : 'max-w-2xl'
+      }
+    >
       <div
-        className={`flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground ${align === 'center' ? 'justify-center' : ''
-          }`}
+        className={`flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground ${
+          align === 'center' ? 'justify-center' : ''
+        }`}
       >
         <span className="font-serif text-base leading-none tracking-normal text-foreground/70">
           {roman}
@@ -701,16 +802,19 @@ function OverviewSplitSection({
           </p>
 
           {property.descriptionLong ? (
-            <div
-              className="prose prose-neutral mt-6 max-w-none text-muted-foreground dark:prose-invert prose-headings:font-serif prose-headings:font-light prose-headings:text-foreground prose-p:leading-[1.9]"
-              dangerouslySetInnerHTML={{
-                __html: property.descriptionLong.replace(/\n/g, '<br />'),
-              }}
-            />
+            <ReadMoreText className="mt-6">
+              <div
+                className="prose prose-neutral dark:prose-invert prose-headings:font-serif prose-headings:font-light prose-headings:text-foreground prose-p:leading-[1.9] max-w-none text-muted-foreground"
+                dangerouslySetInnerHTML={{
+                  __html: property.descriptionLong.replace(/\n/g, '<br />'),
+                }}
+              />
+            </ReadMoreText>
           ) : (
             <p className="mt-4 text-[15px] leading-[1.9] text-muted-foreground sm:text-base">
-              Whether you are here for a quick city stop, a longer work stay, or a relaxed Dehradun visit,
-              the page below lets you explore the property visually before committing to a booking.
+              Whether you are here for a quick city stop, a longer work stay, or
+              a relaxed Dehradun visit, the page below lets you explore the
+              property visually before committing to a booking.
             </p>
           )}
 
@@ -721,10 +825,14 @@ function OverviewSplitSection({
               On Rajpur Road
             </div>
             <p className="mt-3 text-sm leading-[1.85] text-foreground/85">
-              A short drive from the centre of Dehradun: about 20–25 minutes from the railway
-              station and ISBT, roughly 45 minutes from Jolly Grant Airport, and 35–45 minutes up
-              to Mussoorie. Exact distances and nearby spots are in{' '}
-              <a href="#getting-here" className="underline-gold underline-offset-4 hover:text-foreground">
+              A short drive from the centre of Dehradun: about 20–25 minutes
+              from the railway station and ISBT, roughly 45 minutes from Jolly
+              Grant Airport, and 35–45 minutes up to Mussoorie. Exact distances
+              and nearby spots are in{' '}
+              <a
+                href="#getting-here"
+                className="underline-gold underline-offset-4 hover:text-foreground"
+              >
                 Getting here
               </a>
               .
@@ -786,9 +894,11 @@ function OverviewSplitSection({
 function GallerySection({
   propertyName,
   images,
+  videos = [],
 }: {
   propertyName: string
   images: GalleryImage[]
+  videos?: PublicPropertyVideo[]
 }) {
   return (
     <section id="gallery" className="scroll-mt-28">
@@ -799,9 +909,30 @@ function GallerySection({
         lede="Browse the rooms, common spaces, and overall atmosphere to get a clearer sense of the property before you book."
       />
 
-      <div className="mt-10">
-        <FilterableGallery images={images} propertyName={propertyName} />
-      </div>
+      {videos.length > 0 && (
+        <div className="mt-10">
+          <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+            <Clapperboard className="h-3.5 w-3.5 text-gold-500" />
+            The film
+            <span aria-hidden className="h-px flex-1 bg-border/70" />
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {videos.map((video) => (
+              <PropertyVideoCard
+                key={video.kind}
+                video={video}
+                propertyName={propertyName}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {images.length > 0 && (
+        <div className="mt-10">
+          <FilterableGallery images={images} propertyName={propertyName} />
+        </div>
+      )}
     </section>
   )
 }
@@ -858,7 +989,9 @@ function RoomsSection({
                   </div>
                 </div>
                 <div className="hidden text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground sm:block">
-                  {roomImages.length > 0 ? `${roomImages.length} photographs` : 'Details'}
+                  {roomImages.length > 0
+                    ? `${roomImages.length} photographs`
+                    : 'Details'}
                 </div>
               </div>
 
@@ -909,7 +1042,7 @@ function RoomsSection({
                         href={
                           `/book/${propertySlug}?` +
                           new URLSearchParams({
-                            stayKind: 'hourly',
+                            stayKind: DAY_USE_STAY_KIND_PARAM,
                             room: rt.name,
                             ...(couponCode ? { couponCode } : {}),
                           }).toString()
@@ -919,7 +1052,7 @@ function RoomsSection({
                         className="flex items-center justify-center gap-2 rounded-full px-6 py-3"
                       >
                         <Clock className="h-4 w-4" />
-                        Book as hourly stay
+                        Book for a few hours
                       </Button>
                     ) : null}
 
@@ -964,8 +1097,8 @@ function GettingHereSection({ property }: { property: Property }) {
           Close to the station, the airport, and the hills.
         </h2>
         <p className="mt-5 text-[15px] leading-[1.85] text-muted-foreground sm:text-base">
-          Distances are straight-line from {property.publicName}; drive times are typical for the
-          Rajpur Road corridor and vary with traffic.
+          Distances are straight-line from {property.publicName}; drive times
+          are typical for the Rajpur Road corridor and vary with traffic.
         </p>
       </div>
 
@@ -976,16 +1109,25 @@ function GettingHereSection({ property }: { property: Property }) {
           </h3>
           <dl className="mt-4 divide-y divide-border/60">
             {transit.map((p) => (
-              <div key={p.name} className="flex items-baseline justify-between gap-4 py-3.5">
+              <div
+                key={p.name}
+                className="flex items-baseline justify-between gap-4 py-3.5"
+              >
                 <dt className="min-w-0">
-                  <span className="block text-[14.5px] leading-snug text-foreground">{p.name}</span>
+                  <span className="block text-[14.5px] leading-snug text-foreground">
+                    {p.name}
+                  </span>
                   <span className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                     {p.category}
                   </span>
                 </dt>
                 <dd className="shrink-0 text-right">
-                  <span className="block font-serif text-[15px] text-foreground">{p.driveTime}</span>
-                  <span className="text-[11px] text-muted-foreground">≈ {formatKm(p.km)}</span>
+                  <span className="block font-serif text-[15px] text-foreground">
+                    {p.driveTime}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    ≈ {formatKm(p.km)}
+                  </span>
                 </dd>
               </div>
             ))}
@@ -998,14 +1140,21 @@ function GettingHereSection({ property }: { property: Property }) {
           </h3>
           <dl className="mt-4 divide-y divide-border/60">
             {nearby.map((p) => (
-              <div key={p.name} className="flex items-baseline justify-between gap-4 py-3.5">
+              <div
+                key={p.name}
+                className="flex items-baseline justify-between gap-4 py-3.5"
+              >
                 <dt className="min-w-0">
-                  <span className="block text-[14.5px] leading-snug text-foreground">{p.name}</span>
+                  <span className="block text-[14.5px] leading-snug text-foreground">
+                    {p.name}
+                  </span>
                   <span className="text-[10.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                     {p.category}
                   </span>
                 </dt>
-                <dd className="shrink-0 font-serif text-[15px] text-foreground">≈ {formatKm(p.km)}</dd>
+                <dd className="shrink-0 font-serif text-[15px] text-foreground">
+                  ≈ {formatKm(p.km)}
+                </dd>
               </div>
             ))}
           </dl>
@@ -1014,7 +1163,7 @@ function GettingHereSection({ property }: { property: Property }) {
               href={property.googleMapPlaceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center gap-2 text-[13px] font-medium text-foreground underline-gold underline-offset-4 hover:text-foreground"
+              className="underline-gold mt-6 inline-flex items-center gap-2 text-[13px] font-medium text-foreground underline-offset-4 hover:text-foreground"
             >
               <Navigation className="h-4 w-4" />
               Open in Google Maps
@@ -1107,25 +1256,18 @@ function BookingSidebar({
           </h2>
 
           <p className="mt-3 text-[13.5px] leading-[1.85] text-muted-foreground">
-            Explore the property visually, compare rooms properly, and book direct when you are ready.
+            Explore the property visually, compare rooms properly, and book
+            direct when you are ready.
           </p>
         </div>
 
         <div className="px-6 py-6 sm:px-7">
-          {property.hourlyStayEnabled ? (
-            <div className="mb-5">
-              <HourlyStayCallout
-                durationsHours={property.hourlyStay?.durationsHours}
-                windowStart={property.hourlyStay?.windowStart}
-                windowEnd={property.hourlyStay?.windowEnd}
-              />
-            </div>
-          ) : null}
-
           <Button
             href={
               couponCode
-                ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
+                ? `/book/${property.slug}?${new URLSearchParams({
+                    couponCode,
+                  }).toString()}`
                 : `/book/${property.slug}`
             }
             color="blue"
@@ -1135,27 +1277,50 @@ function BookingSidebar({
             Check overnight availability
           </Button>
 
+          {/* Hourly stays stay deliberately quiet — one use-case line, no banner. */}
           {property.hourlyStayEnabled ? (
-            <Button
-              href={
-                couponCode
-                  ? `/book/${property.slug}?${new URLSearchParams({ stayKind: 'hourly', couponCode }).toString()}`
-                  : `/book/${property.slug}?stayKind=hourly`
-              }
-              variant="outline"
-              color="slate"
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-full py-3.5"
-            >
-              <Clock className="h-4 w-4" />
-              Book hourly stay
-            </Button>
+            <p className="mt-3 text-center text-xs leading-6 text-muted-foreground">
+              In town for a wedding or between trains?{' '}
+              <Link
+                href={
+                  couponCode
+                    ? `/book/${property.slug}?${new URLSearchParams({
+                        stayKind: DAY_USE_STAY_KIND_PARAM,
+                        couponCode,
+                      }).toString()}`
+                    : `/book/${property.slug}?stayKind=${DAY_USE_STAY_KIND_PARAM}`
+                }
+                className="font-medium text-foreground/80 underline-offset-4 transition hover:text-foreground hover:underline"
+              >
+                Hourly stays available
+              </Link>
+            </p>
           ) : null}
 
           <div className="mt-6 space-y-4 border-t border-border/60 pt-6">
-            <SidebarStat icon={Plane} label="Airport" value="≈ 45 min" sub="Jolly Grant (DED)" />
-            <SidebarStat icon={BedDouble} label="Room types" value={`${roomCount}`} />
-            <SidebarStat icon={MapPin} label="Setting" value={location} sub={property.fullAddress ?? undefined} />
-            <SidebarStat icon={ShieldCheck} label="Coordination" value="Direct line" sub="Reach the team easily before arrival." />
+            <SidebarStat
+              icon={Plane}
+              label="Airport"
+              value="≈ 45 min"
+              sub="Jolly Grant (DED)"
+            />
+            <SidebarStat
+              icon={BedDouble}
+              label="Room types"
+              value={`${roomCount}`}
+            />
+            <SidebarStat
+              icon={MapPin}
+              label="Setting"
+              value={location}
+              sub={property.fullAddress ?? undefined}
+            />
+            <SidebarStat
+              icon={ShieldCheck}
+              label="Coordination"
+              value="Direct line"
+              sub="Reach the team easily before arrival."
+            />
           </div>
 
           {(property.primaryPhone || property.googleMapPlaceUrl) && (
@@ -1241,63 +1406,30 @@ function PropertyMobileBookingBar({
   const overnightHref = couponCode
     ? `/book/${property.slug}?${new URLSearchParams({ couponCode }).toString()}`
     : `/book/${property.slug}`
-  const hourlyHref = couponCode
-    ? `/book/${property.slug}?${new URLSearchParams({ stayKind: 'hourly', couponCode }).toString()}`
-    : `/book/${property.slug}?stayKind=hourly`
 
+  // Deliberately quiet: one primary CTA and a call button. Hourly stays are
+  // surfaced contextually (rooms section, booking page) — never shouted here.
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/92 px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur-xl xl:hidden">
-      <div className="mx-auto flex max-w-7xl flex-col gap-2">
-        {property.hourlyStayEnabled ? (
-          <div className="flex items-center gap-2 px-0.5 text-[11px] font-medium uppercase tracking-[0.18em] text-amber-800 dark:text-amber-200">
-            <Clock className="h-3.5 w-3.5" />
-            Hourly stays ·{' '}
-            {(property.hourlyStay?.durationsHours ?? [3, 6, 9])
-              .map((h) => `${h}h`)
-              .join(' · ')}
-          </div>
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/95 px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur-xl xl:hidden">
+      <div className="mx-auto flex max-w-7xl items-center gap-2">
+        {property.primaryPhone ? (
+          <a
+            href={`tel:${property.primaryPhone}`}
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-foreground transition hover:bg-muted"
+            aria-label="Call property"
+          >
+            <Phone className="h-4 w-4" />
+          </a>
         ) : null}
-        <div className="flex items-center gap-2">
-          {property.primaryPhone ? (
-            <a
-              href={`tel:${property.primaryPhone}`}
-              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-foreground transition hover:bg-muted"
-              aria-label="Call property"
-            >
-              <Phone className="h-4 w-4" />
-            </a>
-          ) : null}
 
-          {property.hourlyStayEnabled ? (
-            <>
-              <PlaneButton
-                href={overnightHref}
-                sentLabel="Opening dates"
-                className="h-12 flex-1 rounded-full bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-              >
-                <CalendarCheck className="h-4 w-4" />
-                <span className="tracking-[0.02em]">Overnight</span>
-              </PlaneButton>
-              <PlaneButton
-                href={hourlyHref}
-                sentLabel="Opening hourly"
-                className="h-12 flex-1 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 text-sm font-medium text-amber-950 transition-colors hover:bg-amber-500/25 dark:text-amber-50"
-              >
-                <Clock className="h-4 w-4" />
-                <span className="tracking-[0.02em]">Hourly</span>
-              </PlaneButton>
-            </>
-          ) : (
-            <PlaneButton
-              href={overnightHref}
-              sentLabel="Opening dates"
-              className="h-12 flex-1 rounded-full bg-blue-600 px-5 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-            >
-              <CalendarCheck className="h-4 w-4" />
-              <span className="tracking-[0.02em]">Check availability</span>
-            </PlaneButton>
-          )}
-        </div>
+        <PlaneButton
+          href={overnightHref}
+          sentLabel="Opening dates"
+          className="h-12 flex-1 rounded-full bg-blue-600 px-5 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+        >
+          <CalendarCheck className="h-4 w-4" />
+          <span className="tracking-[0.02em]">Check availability</span>
+        </PlaneButton>
       </div>
     </div>
   )
@@ -1323,7 +1455,7 @@ function CompareOtherProperties({
 }) {
   return (
     <section className="border-t border-border/60 bg-card/30">
-      <Container className="py-14 sm:py-18 lg:py-22">
+      <Container className="sm:py-18 lg:py-22 py-14">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
             <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
@@ -1337,8 +1469,8 @@ function CompareOtherProperties({
               Same road, different mood.
             </h2>
             <p className="mt-5 max-w-xl text-[15px] leading-[1.85] text-muted-foreground">
-              Seven hotels on the same Rajpur Road. Each with its own character — pick the
-              one that matches the mood of your trip.
+              Seven hotels on the same Rajpur Road. Each with its own character
+              — pick the one that matches the mood of your trip.
             </p>
           </div>
           <Link
@@ -1350,14 +1482,14 @@ function CompareOtherProperties({
           </Link>
         </div>
 
-        <div className="-mx-4 mt-10 flex gap-4 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+        <div className="-mx-4 mt-10 flex gap-4 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden">
           {others.map((p, index) => {
             const location = [p.city, p.state].filter(Boolean).join(', ')
             return (
               <Link
                 key={p.slug}
                 href={`/hotels/${p.slug}`}
-                className="group relative min-w-[260px] max-w-[320px] flex-1 snap-start overflow-hidden rounded-[1.25rem] border border-border/60 bg-card/80 transition duration-500 ease-out hover:-translate-y-1 hover:border-foreground/30 hover:shadow-[0_20px_50px_-15px_rgba(8,17,31,0.15)] sm:min-w-0 sm:max-w-none dark:bg-card/60"
+                className="group relative min-w-[260px] max-w-[320px] flex-1 snap-start overflow-hidden rounded-[1.25rem] border border-border/60 bg-card/80 transition duration-500 ease-out hover:-translate-y-1 hover:border-foreground/30 hover:shadow-[0_20px_50px_-15px_rgba(8,17,31,0.15)] dark:bg-card/60 sm:min-w-0 sm:max-w-none"
               >
                 <div className="relative aspect-[4/5] overflow-hidden bg-muted">
                   {p.heroImageUrl ? (
@@ -1370,7 +1502,7 @@ function CompareOtherProperties({
                     />
                   ) : null}
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_50%,rgba(0,0,0,0.55)_100%)]" />
-                  <div className="absolute top-3 left-3 text-[9.5px] font-medium uppercase tracking-[0.3em] text-white/85">
+                  <div className="absolute left-3 top-3 text-[9.5px] font-medium uppercase tracking-[0.3em] text-white/85">
                     {String(index + 1).padStart(2, '0')}
                   </div>
                   <div className="absolute bottom-3 left-3 right-3">

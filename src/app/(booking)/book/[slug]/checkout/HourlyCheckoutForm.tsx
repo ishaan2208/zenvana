@@ -7,26 +7,54 @@ import {
   CalendarRange,
   CheckCircle2,
   Clock,
+  CreditCard,
   Loader2,
   Mail,
   PhoneCall,
   ShieldCheck,
   User2,
+  Wallet,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
   createPublicHourlyBooking,
+  createPublicHourlyRazorpayOrder,
   sendPublicBookingOtp,
   verifyPublicBookingOtp,
+  verifyPublicHourlyRazorpay,
+  type PublicHourlyRazorpayBookingPayload,
 } from '@/lib/api'
 import { Button } from '@/components/Button'
 import { PriceWithTax } from '@/components/PriceWithTax'
-import { trackBookingCompletedAction } from '@/app/actions/analytics'
-import { buildBookHourlyRoomsPath, sanitizeReturnTo } from '@/lib/book-rooms-url'
+import { track } from '@/lib/analytics/client'
+import {
+  trackBookingCompletedAction,
+  trackPaymentFailedAction,
+  trackPaymentInitiatedAction,
+} from '@/app/actions/analytics'
+import {
+  buildBookHourlyRoomsPath,
+  sanitizeReturnTo,
+} from '@/lib/book-rooms-url'
+import { DAY_USE_STAY_KIND_PARAM } from '@/lib/stay-kind'
+import {
+  GUEST_REQUIRED_TOAST_ID,
+  InputField,
+  OTP_REQUIRED_TOAST_ID,
+  PaymentOptionCard,
+  SummaryCard,
+  WhatsAppIcon,
+  focusCheckoutField,
+  loadRazorpayScript,
+} from './checkout-fields'
+import { CheckoutDockBar } from './CheckoutDockBar'
 
-const GUEST_REQUIRED_TOAST_ID = 'hourly-guest-required'
-const OTP_REQUIRED_TOAST_ID = 'hourly-otp-required'
+/**
+ * Kill-switch for day-use online payment: the UI ships dark until the
+ * backend's verified hourly Razorpay path is deployed, then flips on via env.
+ */
+const DAY_USE_PAY_NOW_ENABLED = process.env.NEXT_PUBLIC_DAYUSE_PAYNOW === '1'
 
 type Props = {
   slug: string
@@ -40,73 +68,6 @@ type Props = {
   totalAmount: string
   occupancy: number
   returnTo?: string | null
-}
-
-function WhatsAppIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-    </svg>
-  )
-}
-
-function InputField(props: {
-  id: string
-  label: string
-  type: string
-  value: string
-  onChange: (v: string) => void
-  autoComplete?: string
-  icon: React.ReactNode
-  error?: string
-}) {
-  return (
-    <label htmlFor={props.id} className="block space-y-2">
-      <span className="text-sm font-medium text-foreground">{props.label}</span>
-      <div className="relative">
-        <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-          {props.icon}
-        </span>
-        <input
-          id={props.id}
-          type={props.type}
-          value={props.value}
-          onChange={(e) => props.onChange(e.target.value)}
-          autoComplete={props.autoComplete}
-          className={`h-12 w-full rounded-2xl border bg-background/80 pl-11 pr-4 text-sm outline-none transition focus:ring-2 focus:ring-primary/20 dark:bg-background/40 ${
-            props.error
-              ? 'border-destructive/60 focus:border-destructive'
-              : 'border-border/70 focus:border-primary/40'
-          }`}
-        />
-      </div>
-      {props.error ? (
-        <span className="text-xs text-destructive" role="alert">
-          {props.error}
-        </span>
-      ) : null}
-    </label>
-  )
-}
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: React.ReactNode
-}) {
-  return (
-    <div className="rounded-[1.35rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        {icon}
-        <span className="text-[11px] uppercase tracking-[0.18em]">{label}</span>
-      </div>
-      <div className="mt-2 text-sm font-medium text-foreground">{value}</div>
-    </div>
-  )
 }
 
 export default function HourlyCheckoutForm({
@@ -133,20 +94,15 @@ export default function HourlyCheckoutForm({
   const [otpBusy, setOtpBusy] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [paymentMode, setPaymentMode] = useState<'pay_now' | 'pay_at_property'>(
+    DAY_USE_PAY_NOW_ENABLED ? 'pay_now' : 'pay_at_property',
+  )
   const [fieldErrors, setFieldErrors] = useState<{
     guestName?: string
     guestPhone?: string
   }>({})
 
-  function focusCheckoutField(fieldId: string) {
-    requestAnimationFrame(() => {
-      document.getElementById(fieldId)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      })
-      document.getElementById(fieldId)?.focus()
-    })
-  }
+  const isPayNow = DAY_USE_PAY_NOW_ENABLED && paymentMode === 'pay_now'
 
   function validateRequiredFields() {
     const nextErrors: { guestName?: string; guestPhone?: string } = {}
@@ -165,6 +121,8 @@ export default function HourlyCheckoutForm({
   }
 
   function validateWhatsAppOtp() {
+    // Verified online payment substitutes for OTP (server models this too).
+    if (isPayNow) return true
     if (phoneVerified) return true
     const msg = otpSent
       ? 'Please enter the 6-digit OTP sent to your WhatsApp.'
@@ -226,11 +184,36 @@ export default function HourlyCheckoutForm({
     }
   }
 
+  function confirmationHref(data: {
+    bookingReference: string
+    checkOut?: string
+  }): string {
+    const confirmParams = new URLSearchParams({
+      slug,
+      propertyName,
+      propertyPhone: primaryPhone ?? '',
+      checkIn: date,
+      checkOut: data.checkOut ?? date,
+      roomTypeName,
+      totalAmount: String(totalAmount),
+      bookingReference: data.bookingReference,
+      stayKind: DAY_USE_STAY_KIND_PARAM,
+      startTime,
+      durationHours: String(durationHours),
+    })
+    return `/booking/confirmation?${confirmParams.toString()}`
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     if (!validateRequiredFields()) return
     if (!validateWhatsAppOtp()) return
+
+    if (isPayNow) {
+      await handlePayNow()
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -245,7 +228,6 @@ export default function HourlyCheckoutForm({
         roomTypeId: parseInt(roomTypeId, 10),
         totalAmount: Number(totalAmount),
         occupancy,
-        payment: { paid: false },
       })
 
       trackBookingCompletedAction({
@@ -260,24 +242,140 @@ export default function HourlyCheckoutForm({
         },
       }).catch(() => {})
 
-      const confirmParams = new URLSearchParams({
-        slug,
-        propertyName,
-        propertyPhone: primaryPhone ?? '',
-        checkIn: date,
-        checkOut: data.checkOut ?? date,
-        roomTypeName,
-        totalAmount: String(totalAmount),
-        bookingReference: data.bookingReference,
-        stayKind: 'hourly',
-        startTime,
-        durationHours: String(durationHours),
-      })
-      router.push(`/booking/confirmation?${confirmParams.toString()}`)
+      router.push(confirmationHref(data))
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Booking failed'
       setError(msg)
       toast.error(msg)
+      setSubmitting(false)
+    }
+  }
+
+  /** Mirrors CheckoutForm.handlePayNow: order → Razorpay modal → verify → confirmation. */
+  async function handlePayNow() {
+    const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+    if (!rzpKey) {
+      setError('Online payment is not configured.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await loadRazorpayScript()
+      const RazorpayCtor = window.Razorpay
+      if (!RazorpayCtor) {
+        throw new Error(
+          'Payment script did not load. Please refresh and try again.',
+        )
+      }
+
+      const bookingPayload: PublicHourlyRazorpayBookingPayload = {
+        stayKind: 'HOURLY',
+        guest: {
+          name: guestName.trim(),
+          phone: guestPhone.trim(),
+          email: guestEmail.trim() || undefined,
+        },
+        date,
+        startTime,
+        durationHours,
+        roomTypeId: parseInt(roomTypeId, 10),
+        occupancy,
+      }
+
+      const order = await createPublicHourlyRazorpayOrder(slug, bookingPayload)
+      const { orderId, cashPaise: amountPaise } = order
+
+      const options = {
+        key: rzpKey,
+        amount: amountPaise,
+        currency: 'INR',
+        name: 'ZenVana',
+        description: `Hourly stay — ${propertyName}`,
+        order_id: orderId,
+        prefill: {
+          name: guestName,
+          email: guestEmail || undefined,
+          contact: guestPhone || undefined,
+        },
+        handler: async (response: {
+          razorpay_payment_id: string
+          razorpay_order_id: string
+          razorpay_signature: string
+        }) => {
+          try {
+            const data = await verifyPublicHourlyRazorpay(
+              slug,
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              bookingPayload,
+            )
+            trackBookingCompletedAction({
+              bookingReference: data.bookingReference,
+              propertySlug: slug,
+              paymentMode: 'pay_now',
+              amount: amountPaise / 100,
+              meta: {
+                stayKind: 'hourly',
+                durationHours,
+                roomTypeName,
+              },
+            }).catch(() => {})
+            setSubmitting(false)
+            router.push(confirmationHref(data))
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Booking failed')
+            setSubmitting(false)
+          }
+        },
+      }
+
+      const rzp = new RazorpayCtor(options)
+
+      rzp.on('payment.failed', () => {
+        setError('Payment failed or was cancelled.')
+        setSubmitting(false)
+        trackPaymentFailedAction({
+          propertySlug: slug,
+          bookingReference: null,
+          paymentMode: 'pay_now',
+          amount: amountPaise / 100,
+          meta: { amountPaise, orderId, stayKind: 'hourly' },
+        }).catch(() => {})
+        track(
+          'payment_failed',
+          {
+            amount: amountPaise / 100,
+            amountPaise,
+            orderId,
+            stayKind: 'hourly',
+          },
+          slug,
+        )
+      })
+
+      rzp.open()
+      trackPaymentInitiatedAction({
+        propertySlug: slug,
+        bookingReference: null,
+        paymentMode: 'pay_now',
+        amount: amountPaise / 100,
+        meta: { amountPaise, orderId, stayKind: 'hourly' },
+      }).catch(() => {})
+      track(
+        'payment_initiated',
+        {
+          amount: amountPaise / 100,
+          amountPaise,
+          orderId,
+          paymentMode: 'pay_now',
+          stayKind: 'hourly',
+        },
+        slug,
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed')
       setSubmitting(false)
     }
   }
@@ -292,7 +390,7 @@ export default function HourlyCheckoutForm({
   })
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 pb-28 xl:pb-0">
       <section className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl dark:bg-background/30">
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="p-5 sm:p-6 lg:p-7">
@@ -316,7 +414,9 @@ export default function HourlyCheckoutForm({
               <SummaryCard
                 icon={<BadgeCheck className="h-4 w-4" />}
                 label="Total"
-                value={<PriceWithTax amount={Number(totalAmount)} size="default" />}
+                value={
+                  <PriceWithTax amount={Number(totalAmount)} size="default" />
+                }
               />
               <SummaryCard
                 icon={<User2 className="h-4 w-4" />}
@@ -327,25 +427,59 @@ export default function HourlyCheckoutForm({
           </div>
 
           <div className="border-t border-border/60 p-5 sm:p-6 lg:border-l lg:border-t-0 lg:p-7">
-            <div className="rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
+            <div className="bg-background/72 rounded-[1.5rem] border border-border/60 p-4 backdrop-blur-xl dark:bg-background/35">
               <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                 Payment
               </div>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                  Hourly
-                </span>
-                <span className="text-sm font-medium text-foreground">
-                  Pay at property
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                Confirm your slot now and settle at the hotel on arrival.
-              </p>
+              {DAY_USE_PAY_NOW_ENABLED ? (
+                <div className="mt-3 grid gap-3">
+                  <PaymentOptionCard
+                    checked={paymentMode === 'pay_now'}
+                    onSelect={() => setPaymentMode('pay_now')}
+                    title="Pay now"
+                    description={
+                      <>
+                        Complete payment online for{' '}
+                        <PriceWithTax
+                          amount={Number(totalAmount)}
+                          size="sm"
+                          inline
+                        />
+                        .
+                      </>
+                    }
+                    icon={<CreditCard className="h-5 w-5" />}
+                    tone="primary"
+                    badge="Recommended"
+                  />
+                  <PaymentOptionCard
+                    checked={paymentMode === 'pay_at_property'}
+                    onSelect={() => setPaymentMode('pay_at_property')}
+                    title="Pay at the hotel"
+                    description="Reserve now, pay when you arrive."
+                    icon={<Wallet className="h-5 w-5" />}
+                    tone="neutral"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                      Hourly stay
+                    </span>
+                    <span className="text-sm font-medium text-foreground">
+                      Pay at property
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    Confirm your slot now and pay at the hotel when you arrive.
+                  </p>
+                </>
+              )}
             </div>
 
             {primaryPhone ? (
-              <div className="mt-4 rounded-[1.5rem] border border-border/60 bg-background/72 p-4 backdrop-blur-xl dark:bg-background/35">
+              <div className="bg-background/72 mt-4 rounded-[1.5rem] border border-border/60 p-4 backdrop-blur-xl dark:bg-background/35">
                 <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                   Need help?
                 </div>
@@ -375,7 +509,8 @@ export default function HourlyCheckoutForm({
             Guest details
           </div>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-            Enter the primary guest details exactly as they should appear on the booking.
+            Enter the primary guest details exactly as they should appear on the
+            booking.
           </p>
         </div>
 
@@ -426,105 +561,109 @@ export default function HourlyCheckoutForm({
             />
           </div>
 
-          <div
-            id="whatsappVerification"
-            className={`rounded-[1.35rem] border p-4 ${
-              phoneVerified
-                ? 'border-emerald-300/60 bg-emerald-50/80 text-emerald-800 dark:border-emerald-700/40 dark:bg-emerald-950/25 dark:text-emerald-300'
-                : 'border-[#25D366]/20 bg-[linear-gradient(180deg,rgba(37,211,102,0.10),rgba(37,211,102,0.04))] text-foreground dark:bg-[linear-gradient(180deg,rgba(37,211,102,0.12),rgba(37,211,102,0.03))]'
-            }`}
-          >
-            {phoneVerified ? (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <span className="text-sm font-medium">
-                    Phone verified successfully on WhatsApp.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="text-xs font-medium text-foreground hover:underline dark:text-white"
-                  onClick={() => setPhoneVerified(false)}
-                >
-                  Verify another number
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_12px_28px_rgba(37,211,102,0.28)]">
-                    <WhatsAppIcon className="h-5 w-5" />
+          {!isPayNow && (
+            <div
+              id="whatsappVerification"
+              className={`rounded-[1.35rem] border p-4 ${
+                phoneVerified
+                  ? 'border-emerald-300/60 bg-emerald-50/80 text-emerald-800 dark:border-emerald-700/40 dark:bg-emerald-950/25 dark:text-emerald-300'
+                  : 'border-[#25D366]/20 bg-[linear-gradient(180deg,rgba(37,211,102,0.10),rgba(37,211,102,0.04))] text-foreground dark:bg-[linear-gradient(180deg,rgba(37,211,102,0.12),rgba(37,211,102,0.03))]'
+              }`}
+            >
+              {phoneVerified ? (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5" />
+                    <span className="text-sm font-medium">
+                      Phone verified successfully on WhatsApp.
+                    </span>
                   </div>
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                      WhatsApp verification
-                    </div>
-                    <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                      We verify the guest phone on WhatsApp before confirming
-                      pay-at-property bookings.
-                      {maskedPhone ? ` Sent to ${maskedPhone}.` : ''}
-                    </p>
-                  </div>
-                </div>
-
-                {!otpSent ? (
-                  <Button
-                    id="sendWhatsappOtp"
+                  <button
                     type="button"
-                    variant="outline"
-                    color="slate"
-                    disabled={otpBusy || guestPhone.replace(/\D/g, '').length < 10}
-                    onClick={() => void handleSendOtp()}
-                    className="dark:text-white"
+                    className="text-xs font-medium text-foreground hover:underline dark:text-white"
+                    onClick={() => setPhoneVerified(false)}
                   >
-                    {otpBusy ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sending…
-                      </>
-                    ) : (
-                      'Send WhatsApp OTP'
-                    )}
-                  </Button>
-                ) : (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                    <label className="block min-w-0 flex-1 space-y-2">
-                      <span className="text-sm font-medium">6-digit OTP</span>
-                      <input
-                        id="guestPhoneOtp"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        className="h-12 w-full rounded-2xl border border-border/70 bg-background/80 px-4 text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:bg-background/40"
-                        placeholder="••••••"
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                      />
-                    </label>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        disabled={otpBusy}
-                        onClick={() => void handleVerifyOtp()}
-                      >
-                        {otpBusy ? 'Verifying…' : 'Verify OTP'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        color="slate"
-                        disabled={otpBusy}
-                        onClick={() => void handleSendOtp()}
-                        className="dark:text-white"
-                      >
-                        Resend
-                      </Button>
+                    Verify another number
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_12px_28px_rgba(37,211,102,0.28)]">
+                      <WhatsAppIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                        WhatsApp verification
+                      </div>
+                      <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                        We verify the guest phone on WhatsApp before confirming
+                        pay-at-property bookings.
+                        {maskedPhone ? ` Sent to ${maskedPhone}.` : ''}
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+
+                  {!otpSent ? (
+                    <Button
+                      id="sendWhatsappOtp"
+                      type="button"
+                      variant="outline"
+                      color="slate"
+                      disabled={
+                        otpBusy || guestPhone.replace(/\D/g, '').length < 10
+                      }
+                      onClick={() => void handleSendOtp()}
+                      className="dark:text-white"
+                    >
+                      {otpBusy ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending…
+                        </>
+                      ) : (
+                        'Send WhatsApp OTP'
+                      )}
+                    </Button>
+                  ) : (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                      <label className="block min-w-0 flex-1 space-y-2">
+                        <span className="text-sm font-medium">6-digit OTP</span>
+                        <input
+                          id="guestPhoneOtp"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value)}
+                          className="h-12 w-full rounded-2xl border border-border/70 bg-background/80 px-4 text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:bg-background/40"
+                          placeholder="••••••"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                        />
+                      </label>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          disabled={otpBusy}
+                          onClick={() => void handleVerifyOtp()}
+                        >
+                          {otpBusy ? 'Verifying…' : 'Verify OTP'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          color="slate"
+                          disabled={otpBusy}
+                          onClick={() => void handleSendOtp()}
+                          className="dark:text-white"
+                        >
+                          Resend
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {error ? (
             <div
@@ -538,27 +677,54 @@ export default function HourlyCheckoutForm({
           <div className="flex items-start gap-3 rounded-[1.35rem] border border-border/60 bg-background/60 px-4 py-3 text-sm text-muted-foreground dark:bg-background/30">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              You are booking directly with {propertyName}. Your reference is created as
-              soon as you confirm.
+              You are booking directly with {propertyName}. Your reference is
+              created as soon as you confirm.
             </p>
           </div>
 
-          <Button
-            type="submit"
-            disabled={submitting}
-            className="w-full sm:w-auto sm:min-w-[14rem]"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Confirming…
-              </>
-            ) : (
-              'Confirm hourly stay'
-            )}
-          </Button>
+          <div className="hidden xl:block">
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full sm:w-auto sm:min-w-[14rem]"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isPayNow ? 'Opening payment…' : 'Confirming…'}
+                </>
+              ) : isPayNow ? (
+                'Pay & confirm booking'
+              ) : (
+                'Confirm booking'
+              )}
+            </Button>
+          </div>
         </div>
       </section>
+
+      <CheckoutDockBar
+        ctaLabel={isPayNow ? 'Pay & confirm' : 'Confirm booking'}
+        sentLabel={isPayNow ? 'Opening payment…' : 'Confirming…'}
+        submitting={submitting}
+        microline={
+          isPayNow
+            ? 'Secure payment via Razorpay'
+            : 'No payment needed now — pay at the hotel'
+        }
+      >
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex flex-col">
+            <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+              Total
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {startTime} · {durationHours}h
+            </span>
+          </span>
+          <PriceWithTax amount={Number(totalAmount)} size="lg" />
+        </div>
+      </CheckoutDockBar>
     </form>
   )
 }
