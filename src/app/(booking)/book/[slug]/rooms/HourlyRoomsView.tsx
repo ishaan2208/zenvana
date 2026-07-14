@@ -6,6 +6,7 @@ import {
   Hotel,
   MapPin,
   Sparkles,
+  Users,
 } from 'lucide-react'
 
 import {
@@ -17,6 +18,9 @@ import {
 import { Button } from '@/components/Button'
 import { Container } from '@/components/Container'
 import { SoldOutTag } from '@/components/SoldOutTag'
+import { PriceWithTax } from '@/components/PriceWithTax'
+import { sanitizeReturnTo } from '@/lib/book-rooms-url'
+import { TrackOnMount } from '@/components/analytics/TrackOnMount'
 
 function roomsBackLabel(returnTo: string | null): string {
   if (!returnTo) return 'Back to stay details'
@@ -46,14 +50,46 @@ export async function HourlyRoomsView({
   const property = await getPublicPropertyBySlug(slug)
   if (!property) notFound()
 
+  const backHref = returnTo ?? `/hotels/${slug}`
+  const backLabel = roomsBackLabel(returnTo)
+
   if (!property.hourlyStayEnabled) {
     return (
-      <HourlyEmptyState
-        slug={slug}
-        returnTo={returnTo}
-        title="Hourly stay not available"
-        message="This property is not offering hourly stays right now."
-      />
+      <main className="min-h-screen bg-background text-foreground">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,198,0.10),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.08),transparent_28%)]" />
+        <Container className="relative py-6 sm:py-8 lg:py-12">
+          <Link
+            href={backHref}
+            className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-4 py-2 text-sm font-medium text-foreground/80 backdrop-blur-xl transition hover:text-foreground dark:bg-background/40"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {backLabel}
+          </Link>
+          <section className="mt-5 overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl dark:bg-background/30">
+            <div className="p-5 sm:p-6 lg:p-8">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[10px] uppercase tracking-[0.26em] text-muted-foreground dark:bg-background/40">
+                <Sparkles className="h-3.5 w-3.5" />
+                Hourly stay
+              </div>
+              <h1 className="mt-4 font-serif text-[clamp(2rem,5vw,3.5rem)] leading-[0.95] tracking-[-0.05em] text-foreground">
+                Hourly stay is not available
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+                This property is not offering hourly stays right now. Try an overnight booking
+                or pick another hotel.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button href={backHref} variant="outline" color="slate" className="dark:text-white">
+                  Go back
+                </Button>
+                <Button href="/hotels" color="blue">
+                  View all properties
+                </Button>
+              </div>
+            </div>
+          </section>
+        </Container>
+      </main>
     )
   }
 
@@ -82,13 +118,31 @@ export async function HourlyRoomsView({
     })
   )
 
-  const backHref = returnTo ?? `/hotels/${slug}`
-  const backLabel = roomsBackLabel(returnTo)
+  const bookable = roomTypesWithQuotes.filter(
+    (r) => r.avail > 0 && r.quote?.price != null
+  )
+  const allSoldOut =
+    (property.roomTypes?.length ?? 0) > 0 && bookable.length === 0
 
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <TrackOnMount
+        name="availability_checked"
+        propertySlug={slug}
+        properties={{
+          stayKind: 'hourly',
+          date,
+          startTime,
+          durationHours,
+          guests,
+          roomTypeCount: property.roomTypes?.length ?? 0,
+          anyAvailable: bookable.length > 0,
+        }}
+        dedupeKey={`hourly_availability:${slug}:${date}:${startTime}:${durationHours}`}
+      />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,198,0.10),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.08),transparent_28%)]" />
-      <Container className="relative py-6 sm:py-8 lg:py-12">
+
+      <Container className="relative py-5 sm:py-6 lg:py-10">
         <Link
           href={backHref}
           className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-4 py-2 text-sm font-medium text-foreground/80 backdrop-blur-xl transition hover:text-foreground dark:bg-background/40"
@@ -97,78 +151,97 @@ export async function HourlyRoomsView({
           {backLabel}
         </Link>
 
-        <section className="mt-5 overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_24px_70px_rgba(8,17,31,0.08)] backdrop-blur-2xl dark:bg-background/30">
-          <div className="p-5 sm:p-6 lg:p-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[10px] uppercase tracking-[0.26em] text-muted-foreground dark:bg-background/40">
-              <Sparkles className="h-3.5 w-3.5" />
-              Hourly stay
-            </div>
-            <h1 className="mt-4 font-serif text-3xl tracking-tight sm:text-4xl">
-              {property.publicName}
-            </h1>
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              {property.fullAddress ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4" />
-                  {property.fullAddress}
-                </span>
-              ) : null}
-              <span className="inline-flex items-center gap-1.5">
-                <Clock className="h-4 w-4" />
-                {date} · {startTime} · {durationHours} hours
-              </span>
-            </div>
+        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-8">
+          <div className="min-w-0 space-y-5">
+            {allSoldOut ? (
+              <section className="relative overflow-hidden rounded-[2rem] border border-rose-200/70 bg-gradient-to-br from-rose-50/95 via-background/85 to-background/60 shadow-[0_28px_80px_rgba(190,18,60,0.12)] backdrop-blur-2xl dark:border-rose-900/50 dark:from-rose-950/40 dark:via-background/40 dark:to-background/25">
+                <div className="relative p-6 sm:p-8 lg:p-10">
+                  <div className="inline-flex flex-wrap items-center gap-3">
+                    <SoldOutTag
+                      className="px-4 py-2 text-xs tracking-[0.18em]"
+                      label="Unavailable"
+                    />
+                    <span className="text-[11px] uppercase tracking-[0.24em] text-rose-800/80 dark:text-rose-200/80">
+                      {property.publicName}
+                    </span>
+                  </div>
+                  <h1 className="mt-5 max-w-xl font-serif text-[clamp(1.75rem,4.5vw,2.75rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-foreground">
+                    No rooms free for this hourly slot
+                  </h1>
+                  <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
+                    Try another start time or duration, or book overnight instead.
+                  </p>
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <Button href={backHref} variant="outline" color="slate" className="dark:text-white">
+                      Change slot
+                    </Button>
+                    <Button href="/hotels" color="blue">
+                      <Hotel className="mr-2 h-4 w-4" />
+                      View all properties
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            ) : (
+              roomTypesWithQuotes.map(({ rt, avail, quote }) => (
+                <HourlyRoomRow
+                  key={rt.id}
+                  slug={slug}
+                  roomType={rt}
+                  available={avail}
+                  price={quote?.price ?? null}
+                  date={date}
+                  startTime={startTime}
+                  durationHours={durationHours}
+                  guests={guests}
+                  returnTo={returnTo}
+                />
+              ))
+            )}
           </div>
-        </section>
 
-        <div className="mt-8 grid gap-4">
-          {roomTypesWithQuotes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No room types available.</p>
-          ) : (
-            roomTypesWithQuotes.map(({ rt, avail, quote }) => (
-              <HourlyRoomRow
-                key={rt.id}
-                slug={slug}
-                property={property}
-                roomType={rt}
-                available={avail}
-                price={quote?.price ?? null}
-                date={date}
-                startTime={startTime}
-                durationHours={durationHours}
-                guests={guests}
-              />
-            ))
-          )}
+          <aside className="min-w-0">
+            <div className="rounded-[1.8rem] border border-border/60 bg-card/70 p-5 text-card-foreground shadow-[0_14px_35px_rgba(8,17,31,0.04)] backdrop-blur-xl dark:bg-card/50 xl:sticky xl:top-8">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                Slot summary
+              </div>
+              <h2 className="mt-3 font-serif text-2xl tracking-[-0.04em] text-foreground">
+                {property.publicName}
+              </h2>
+              {(property.city || property.state) && (
+                <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0" />
+                  <span>{[property.city, property.state].filter(Boolean).join(', ')}</span>
+                </div>
+              )}
+              <div className="mt-5 space-y-3 border-t border-border/60 pt-5">
+                <SummaryRow label="Date" value={date} />
+                <SummaryRow label="Start" value={startTime} />
+                <SummaryRow label="Duration" value={`${durationHours} hours`} />
+                <SummaryRow
+                  label="Guests"
+                  value={`${guests} guest${guests !== 1 ? 's' : ''}`}
+                />
+              </div>
+            </div>
+          </aside>
         </div>
       </Container>
     </main>
   )
 }
 
-function HourlyEmptyState(props: {
-  slug: string
-  returnTo: string | null
-  title: string
-  message: string
-}) {
-  const backHref = props.returnTo ?? `/hotels/${props.slug}`
+function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <Container className="py-12">
-        <h1 className="font-serif text-3xl">{props.title}</h1>
-        <p className="mt-2 text-muted-foreground">{props.message}</p>
-        <Button href={backHref} className="mt-6">
-          Go back
-        </Button>
-      </Container>
-    </main>
+    <div className="flex items-start justify-between gap-4 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-medium text-foreground">{value}</span>
+    </div>
   )
 }
 
 function HourlyRoomRow(props: {
   slug: string
-  property: PublicPropertyDetail
   roomType: PublicPropertyDetail['roomTypes'][number]
   available: number
   price: number | null
@@ -176,6 +249,7 @@ function HourlyRoomRow(props: {
   startTime: string
   durationHours: number
   guests: number
+  returnTo: string | null
 }) {
   const {
     slug,
@@ -186,6 +260,7 @@ function HourlyRoomRow(props: {
     startTime,
     durationHours,
     guests,
+    returnTo,
   } = props
   const soldOut = available < 1 || price == null
 
@@ -201,44 +276,57 @@ function HourlyRoomRow(props: {
     checkIn: date,
     checkOut: date,
   })
+  const safeReturnTo = sanitizeReturnTo(returnTo)
+  if (safeReturnTo) checkoutParams.set('returnTo', safeReturnTo)
 
   return (
-    <article className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card/60 p-5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <Hotel className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-serif text-xl">{roomType.name}</h2>
-          {soldOut ? <SoldOutTag /> : null}
-        </div>
-        {roomType.shortDescription ? (
-          <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-            {roomType.shortDescription}
-          </p>
-        ) : null}
-        {!soldOut ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {available} room{available === 1 ? '' : 's'} free for this slot
-          </p>
-        ) : null}
-      </div>
-      <div className="flex flex-col items-stretch gap-2 sm:items-end">
-        {!soldOut && price != null ? (
-          <p className="text-2xl font-semibold tracking-tight">
-            ₹{price.toLocaleString('en-IN')}
-            <span className="ml-1 text-sm font-normal text-muted-foreground">
-              / {durationHours}h
+    <article className="overflow-hidden rounded-[2rem] border border-border/60 bg-background/55 shadow-[0_18px_45px_rgba(8,17,31,0.04)] backdrop-blur-2xl dark:bg-background/30">
+      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-serif text-xl tracking-[-0.03em] text-foreground sm:text-2xl">
+              {roomType.name}
+            </h2>
+            {soldOut ? <SoldOutTag /> : null}
+          </div>
+          {roomType.shortDescription ? (
+            <p className="mt-2 text-sm leading-6 text-muted-foreground line-clamp-2">
+              {roomType.shortDescription}
+            </p>
+          ) : null}
+          <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5" />
+              {durationHours}h · {startTime}
             </span>
-          </p>
-        ) : null}
-        {soldOut ? (
-          <Button disabled variant="outline" color="slate">
-            Unavailable
-          </Button>
-        ) : (
-          <Button href={`/book/${slug}/checkout?${checkoutParams.toString()}`}>
-            Continue to checkout
-          </Button>
-        )}
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              {guests} guest{guests !== 1 ? 's' : ''}
+            </span>
+            {!soldOut ? (
+              <span>
+                {available} room{available === 1 ? '' : 's'} free
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex flex-col items-stretch gap-2 sm:min-w-[11rem] sm:items-end">
+          {!soldOut && price != null ? (
+            <div className="text-right">
+              <PriceWithTax amount={price} size="default" />
+              <p className="mt-0.5 text-xs text-muted-foreground">for {durationHours} hours</p>
+            </div>
+          ) : null}
+          {soldOut ? (
+            <Button disabled variant="outline" color="slate" className="dark:text-white">
+              Unavailable
+            </Button>
+          ) : (
+            <Button href={`/book/${slug}/checkout?${checkoutParams.toString()}`}>
+              Continue to checkout
+            </Button>
+          )}
+        </div>
       </div>
     </article>
   )

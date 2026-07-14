@@ -22,6 +22,8 @@ import {
   CheckoutCouponProvider,
   LiveBookingTotal,
 } from './CheckoutCouponState'
+import { buildBookHourlyRoomsPath, sanitizeReturnTo } from '@/lib/book-rooms-url'
+import { PriceWithTax } from '@/components/PriceWithTax'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -44,6 +46,7 @@ type Props = {
     date?: string
     startTime?: string
     durationHours?: string
+    returnTo?: string
   }>
 }
 
@@ -170,6 +173,8 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
     const date = q.date || q.checkIn
     const startTime = q.startTime
     const durationHours = q.durationHours ? parseInt(q.durationHours, 10) : NaN
+    const occupancy = q.occupancy ? parseInt(q.occupancy, 10) : 1
+    const returnTo = sanitizeReturnTo(q.returnTo)
     if (
       !date ||
       !startTime ||
@@ -181,43 +186,153 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
       redirect(`/book/${slug}`)
     }
 
+    const roomsBackHref = buildBookHourlyRoomsPath({
+      slug,
+      date: date!,
+      startTime: startTime!,
+      durationHours,
+      guests: occupancy,
+      returnTo: returnTo ?? undefined,
+    })
+    const originBackHref = returnTo ?? `/hotels/${slug}`
+    const originBackLabel =
+      returnTo === '/'
+        ? 'Back to home'
+        : returnTo === '/hotels'
+          ? 'Back to hotels'
+          : returnTo?.startsWith('/hotels/')
+            ? 'Back to property'
+            : returnTo
+              ? 'Back'
+              : 'Back to property'
+
     return (
       <main className="bg-background text-foreground">
         <section className="relative overflow-hidden border-b border-border/60 bg-background">
-          <Container className="relative py-6 sm:py-10 lg:py-16">
-            <div className="max-w-xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-                <Sparkles className="h-3.5 w-3.5" />
-                Hourly checkout
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(219,230,76,0.08),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(116,195,101,0.06),transparent_22%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(219,230,76,0.05),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(116,195,101,0.05),transparent_22%)]" />
+
+          <Container className="relative py-6 sm:py-10 lg:py-20">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-10 xl:items-start">
+              <div className="max-w-4xl">
+                <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground backdrop-blur-sm">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Hourly checkout
+                </div>
+
+                <h1 className="mt-3 font-serif text-3xl leading-[0.95] tracking-[-0.05em] text-foreground sm:mt-5 sm:text-5xl lg:text-6xl">
+                  Complete your booking
+                  <span className="block">{property.publicName}</span>
+                </h1>
+
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:mt-5 sm:text-base sm:leading-8 lg:text-lg">
+                  Review the hourly slot and enter guest information to confirm the booking.
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2 sm:mt-8 sm:gap-2.5">
+                  <SummaryChip
+                    icon={<CalendarRange className="h-4 w-4" />}
+                    text={`${date} · ${startTime} · ${durationHours}h`}
+                  />
+                  <SummaryChip
+                    icon={<BedDouble className="h-4 w-4" />}
+                    text={q.roomTypeName!}
+                  />
+                  <SummaryChip
+                    icon={<Receipt className="h-4 w-4" />}
+                    text={<PriceWithTax amount={Number(q.totalAmount)} size="default" />}
+                  />
+                  <SummaryChip
+                    icon={<Users className="h-4 w-4" />}
+                    text={`${occupancy} guest${occupancy !== 1 ? 's' : ''}`}
+                  />
+                </div>
               </div>
-              <h1 className="mt-4 font-serif text-3xl tracking-tight sm:text-4xl">
-                Confirm your {durationHours}h stay
-                <span className="block text-muted-foreground">{property.publicName}</span>
-              </h1>
-              <div className="mt-8">
-                <HourlyCheckoutForm
-                  slug={slug}
-                  propertyName={property.publicName}
-                  primaryPhone={property.primaryPhone}
-                  date={date!}
-                  startTime={startTime!}
-                  durationHours={durationHours}
-                  roomTypeId={q.roomTypeId!}
-                  roomTypeName={q.roomTypeName!}
-                  totalAmount={q.totalAmount!}
-                  occupancy={q.occupancy ? parseInt(q.occupancy, 10) : 1}
-                />
+
+              <div className="hidden xl:block xl:pt-6">
+                <div className="rounded-[2rem] border border-border/60 bg-card/70 p-5 shadow-[0_18px_45px_rgba(8,17,31,0.04)] dark:bg-card/50">
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                    Final step
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                    Once confirmed, your booking reference will be generated immediately.
+                  </p>
+                  <div className="mt-5 border-t border-border/60 pt-5">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      <p className="text-sm leading-7 text-muted-foreground">
+                        Direct booking gives you a smoother line to the property before
+                        arrival.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <Link
-                href={`/hotels/${slug}`}
-                className="mt-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to property
-              </Link>
             </div>
           </Container>
         </section>
+
+        <Container className="py-10 sm:py-12 lg:py-16">
+          <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0 max-w-4xl">
+              <div className="mb-6 flex flex-wrap gap-2 xl:hidden">
+                <Link
+                  href={roomsBackHref}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to rooms
+                </Link>
+                <Link
+                  href={originBackHref}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {originBackLabel}
+                </Link>
+              </div>
+
+              <HourlyCheckoutForm
+                slug={slug}
+                propertyName={property.publicName}
+                primaryPhone={property.primaryPhone}
+                date={date!}
+                startTime={startTime!}
+                durationHours={durationHours}
+                roomTypeId={q.roomTypeId!}
+                roomTypeName={q.roomTypeName!}
+                totalAmount={q.totalAmount!}
+                occupancy={occupancy}
+                returnTo={returnTo}
+              />
+            </div>
+
+            <aside className="hidden min-w-0 xl:block">
+              <div className="rounded-[1.8rem] border border-border/60 bg-card/70 p-5 text-card-foreground shadow-[0_14px_35px_rgba(8,17,31,0.04)] dark:bg-card/50 xl:sticky xl:top-8">
+                <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                  Need to go back?
+                </div>
+                <div className="mt-5 flex flex-col gap-3">
+                  <Link
+                    href={roomsBackHref}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to rooms
+                  </Link>
+                  <Link
+                    href={originBackHref}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    {originBackLabel}
+                  </Link>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </Container>
       </main>
     )
   }

@@ -7,6 +7,7 @@ import { useAppRouter } from '@/hooks/useAppRouter'
 import { usePrefetchBookRooms } from '@/hooks/usePrefetchBookRooms'
 import { buildBookRoomsPath, buildBookHourlyRoomsPath } from '@/lib/book-rooms-url'
 import type { PublicHourlyStaySummary } from '@/lib/api'
+import { buildHourlyStartTimeOptions, istYmd } from '@/lib/hourly-start-times'
 import * as SelectPrimitive from '@radix-ui/react-select'
 import { Calendar as CalendarIcon, Check, ChevronRight, Clock, MapPinned, Users } from 'lucide-react'
 
@@ -79,28 +80,6 @@ function toDateString(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
-}
-
-function hhMmToMinutes(hhMm: string): number {
-  const [h, m] = hhMm.split(':').map(Number)
-  return h * 60 + m
-}
-
-function buildStartTimeOptions(
-  windowStart: string,
-  windowEnd: string,
-  durationHours: number
-): string[] {
-  const start = hhMmToMinutes(windowStart)
-  const end = hhMmToMinutes(windowEnd)
-  const needed = durationHours * 60
-  const opts: string[] = []
-  for (let t = start; t + needed <= end; t += 30) {
-    const h = Math.floor(t / 60)
-    const m = t % 60
-    opts.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
-  }
-  return opts
 }
 
 type StayMode = 'overnight' | 'hourly'
@@ -182,10 +161,15 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
     }
   }, [stayMode, durations, durationHours])
 
-  const startTimeOptions = useMemo(
-    () => buildStartTimeOptions(windowStart, windowEnd, durationHours),
-    [windowStart, windowEnd, durationHours],
-  )
+  const startTimeOptions = useMemo(() => {
+    const dateYmd = checkIn ? toDateString(checkIn) : istYmd()
+    return buildHourlyStartTimeOptions({
+      windowStart,
+      windowEnd,
+      durationHours,
+      dateYmd,
+    })
+  }, [windowStart, windowEnd, durationHours, checkIn])
 
   useEffect(() => {
     if (stayMode !== 'hourly') return
@@ -480,11 +464,17 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                   collisionPadding={{ top: 80, bottom: 96, left: 12, right: 12 }}
                   className="max-h-[min(16rem,calc(100dvh-10rem))]"
                 >
-                  {startTimeOptions.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
+                  {startTimeOptions.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">
+                      No starts left today for this duration — pick another date or shorter package
+                    </div>
+                  ) : (
+                    startTimeOptions.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </>
