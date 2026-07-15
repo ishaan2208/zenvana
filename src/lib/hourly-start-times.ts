@@ -54,9 +54,6 @@ export function earliestBookableStartMinutes(
 /**
  * Start times where [start, start+duration] fits inside [windowStart, windowEnd],
  * and for today, start is not already in the past (IST).
- *
- * Example: window 10:00–22:00, duration 3h → last start 19:00 (not 20:00/21:00).
- * If now is 15:00 IST today → 10:00…14:30 dropped.
  */
 export function buildHourlyStartTimeOptions(params: {
   windowStart: string
@@ -82,7 +79,8 @@ export function buildHourlyStartTimeOptions(params: {
 
   const earliestToday =
     dateYmd != null ? earliestBookableStartMinutes(dateYmd, now) : null
-  const floor = earliestToday != null ? Math.max(winStart, earliestToday) : winStart
+  const floor =
+    earliestToday != null ? Math.max(winStart, earliestToday) : winStart
 
   const opts: string[] = []
   for (let t = winStart; t + needed <= winEnd; t += stepMinutes) {
@@ -90,4 +88,37 @@ export function buildHourlyStartTimeOptions(params: {
     opts.push(minutesToHhMm(t))
   }
   return opts
+}
+
+/**
+ * Next bookable start for the given day/window/duration.
+ * Keeps `current` if still valid; otherwise returns the earliest remaining slot.
+ */
+export function nextHourlyStartTime(params: {
+  windowStart: string
+  windowEnd: string
+  durationHours: number
+  dateYmd: string
+  now?: Date
+  current?: string | null
+  forceEarliest?: boolean
+}): string | null {
+  const options = buildHourlyStartTimeOptions(params)
+  if (options.length === 0) return null
+  if (
+    !params.forceEarliest &&
+    params.current &&
+    options.includes(params.current)
+  ) {
+    return params.current
+  }
+  return options[0] ?? null
+}
+
+/** Local calendar YYYY-MM-DD (browser local — matches date pickers). */
+export function toLocalDateString(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }

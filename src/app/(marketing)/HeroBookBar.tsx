@@ -10,7 +10,7 @@ import {
   buildBookHourlyRoomsPath,
 } from '@/lib/book-rooms-url'
 import type { PublicHourlyStaySummary } from '@/lib/api'
-import { buildHourlyStartTimeOptions, istYmd } from '@/lib/hourly-start-times'
+import { buildHourlyStartTimeOptions, nextHourlyStartTime, toLocalDateString } from '@/lib/hourly-start-times'
 import * as SelectPrimitive from '@radix-ui/react-select'
 import {
   Calendar as CalendarIcon,
@@ -120,7 +120,16 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
   const [rooms, setRooms] = useState('1')
   const [guests, setGuests] = useState('2')
   const [durationHours, setDurationHours] = useState(3)
-  const [startTime, setStartTime] = useState('10:00')
+  const [startTime, setStartTime] = useState(() =>
+    nextHourlyStartTime({
+      windowStart: '10:00',
+      windowEnd: '21:00',
+      durationHours: 3,
+      dateYmd: toLocalDateString(new Date()),
+      forceEarliest: true,
+    }) ?? '10:00',
+  )
+  const [nowTick, setNowTick] = useState(() => Date.now())
 
   const propertyOptions = stayMode === 'hourly' ? hourlyProperties : properties
 
@@ -176,22 +185,47 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
     }
   }, [stayMode, durations, durationHours])
 
+  useEffect(() => {
+    if (stayMode !== 'hourly') return
+    const id = window.setInterval(() => setNowTick(Date.now()), 30_000)
+    return () => window.clearInterval(id)
+  }, [stayMode])
+
   const startTimeOptions = useMemo(() => {
-    const dateYmd = checkIn ? toDateString(checkIn) : istYmd()
+    const dateYmd = checkIn ? toLocalDateString(checkIn) : toLocalDateString(new Date())
     return buildHourlyStartTimeOptions({
       windowStart,
       windowEnd,
       durationHours,
       dateYmd,
+      now: new Date(nowTick),
     })
-  }, [windowStart, windowEnd, durationHours, checkIn])
+  }, [windowStart, windowEnd, durationHours, checkIn, nowTick])
 
   useEffect(() => {
     if (stayMode !== 'hourly') return
-    if (!startTimeOptions.includes(startTime)) {
-      setStartTime(startTimeOptions[0] ?? windowStart)
-    }
-  }, [stayMode, startTimeOptions, startTime, windowStart])
+    const dateYmd = checkIn
+      ? toLocalDateString(checkIn)
+      : toLocalDateString(new Date())
+    const next = nextHourlyStartTime({
+      windowStart,
+      windowEnd,
+      durationHours,
+      dateYmd,
+      now: new Date(nowTick),
+      current: startTime,
+    })
+    if (next && next !== startTime) setStartTime(next)
+    else if (!next && startTime) setStartTime('')
+  }, [
+    stayMode,
+    windowStart,
+    windowEnd,
+    durationHours,
+    checkIn,
+    nowTick,
+    startTime,
+  ])
 
   const checkInMin = today
   const checkOutMin = useMemo(() => {
@@ -300,7 +334,20 @@ export function HeroBookBar({ properties }: HeroBookBarProps) {
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}
-            onClick={() => setStayMode('hourly')}
+            onClick={() => {
+              setStayMode('hourly')
+              const dateYmd = checkIn
+                ? toLocalDateString(checkIn)
+                : toLocalDateString(new Date())
+              const next = nextHourlyStartTime({
+                windowStart,
+                windowEnd,
+                durationHours,
+                dateYmd,
+                forceEarliest: true,
+              })
+              if (next) setStartTime(next)
+            }}
           >
             Hourly stay
           </button>

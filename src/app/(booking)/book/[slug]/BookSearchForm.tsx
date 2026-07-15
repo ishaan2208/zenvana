@@ -28,6 +28,11 @@ import { StayModeToggle, type StayMode } from '@/components/StayModeToggle'
 import { track } from '@/lib/analytics/client'
 import { cn } from '@/lib/utils'
 import {
+  buildHourlyStartTimeOptions,
+  nextHourlyStartTime,
+  toLocalDateString,
+} from '@/lib/hourly-start-times'
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -69,28 +74,6 @@ function startOfDay(d: Date): Date {
   const out = new Date(d)
   out.setHours(0, 0, 0, 0)
   return out
-}
-
-function hhMmToMinutes(hhMm: string): number {
-  const [h, m] = hhMm.split(':').map(Number)
-  return h * 60 + m
-}
-
-function buildStartTimeOptions(
-  windowStart: string,
-  windowEnd: string,
-  durationHours: number,
-): string[] {
-  const start = hhMmToMinutes(windowStart)
-  const end = hhMmToMinutes(windowEnd)
-  const needed = durationHours * 60
-  const opts: string[] = []
-  for (let t = start; t + needed <= end; t += 30) {
-    const h = Math.floor(t / 60)
-    const m = t % 60
-    opts.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
-  }
-  return opts
 }
 
 function formatStartTimeLabel(hhMm: string): string {
@@ -168,7 +151,20 @@ export function BookSearchForm({
   const windowEnd = hourlyStay?.windowEnd ?? '21:00'
 
   const [durationHours, setDurationHours] = useState(durations[0] ?? 3)
-  const [startTime, setStartTime] = useState(windowStart)
+  const [startTime, setStartTime] = useState(() => {
+    const dateYmd = toLocalDateString(new Date())
+    return (
+      nextHourlyStartTime({
+        windowStart,
+        windowEnd,
+        durationHours: durations[0] ?? 3,
+        dateYmd,
+        forceEarliest: true,
+      }) ?? windowStart
+    )
+  })
+  /** Recompute available starts as the clock advances (today only). */
+  const [nowTick, setNowTick] = useState(() => Date.now())
 
   const isHourly = stayMode === 'hourly' && hourlyEnabled
 
@@ -198,27 +194,73 @@ export function BookSearchForm({
     }
   }, [isHourly, durations, durationHours])
 
-  const startTimeOptions = useMemo(
-    () => buildStartTimeOptions(windowStart, windowEnd, durationHours),
-    [windowStart, windowEnd, durationHours],
-  )
-
   useEffect(() => {
     if (!isHourly) return
-    if (!startTimeOptions.includes(startTime)) {
-      setStartTime(startTimeOptions[0] ?? windowStart)
+    const id = window.setInterval(() => setNowTick(Date.now()), 30_000)
+    return () => window.clearInterval(id)
+  }, [isHourly])
+
+  const hourlyDateYmd = checkIn ? toLocalDateString(checkIn) : toLocalDateString(new Date())
+
+  const startTimeOptions = useMemo(
+    () =>
+      buildHourlyStartTimeOptions({
+        windowStart,
+        windowEnd,
+        durationHours,
+        dateYmd: hourlyDateYmd,
+        now: new Date(nowTick),
+      }),
+    [windowStart, windowEnd, durationHours, hourlyDateYmd, nowTick],
+  )
+
+  // Snap to the next valid slot whenever date/duration/window/time makes the
+  // current selection invalid — or when switching into hourly / changing day.
+  useEffect(() => {
+    if (!isHourly) return
+    const next = nextHourlyStartTime({
+      windowStart,
+      windowEnd,
+      durationHours,
+      dateYmd: hourlyDateYmd,
+      now: new Date(nowTick),
+      current: startTime,
+    })
+    if (next && next !== startTime) {
+      setStartTime(next)
+    } else if (!next && startTime) {
+      setStartTime('')
     }
-  }, [isHourly, startTimeOptions, startTime, windowStart])
+  }, [
+    isHourly,
+    windowStart,
+    windowEnd,
+    durationHours,
+    hourlyDateYmd,
+    nowTick,
+    startTime,
+  ])
 
   useEffect(() => {
     if (prevStayModeRef.current === stayMode) return
 
     if (stayMode === 'hourly') {
       setGuests((current) => Math.min(HOURLY_MAX_GUESTS, Math.max(1, current)))
+      const dateYmd = checkIn
+        ? toLocalDateString(checkIn)
+        : toLocalDateString(new Date())
+      const next = nextHourlyStartTime({
+        windowStart,
+        windowEnd,
+        durationHours,
+        dateYmd,
+        forceEarliest: true,
+      })
+      if (next) setStartTime(next)
     }
 
     prevStayModeRef.current = stayMode
-  }, [stayMode])
+  }, [stayMode, checkIn, windowStart, windowEnd, durationHours])
 
   useEffect(() => {
     if (isHourly) return
@@ -506,11 +548,18 @@ export function BookSearchForm({
                       collisionPadding={12}
                       className="max-h-[min(16rem,calc(100dvh-10rem))] rounded-[1.15rem]"
                     >
-                      {startTimeOptions.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {formatStartTimeLabel(time)}
-                        </SelectItem>
-                      ))}
+                      {startTimeOptions.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          No starts left today for this duration — pick another
+                          date or a shorter package
+                        </div>
+                      ) : (
+                        startTimeOptions.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {formatStartTimeLabel(time)}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </Field>

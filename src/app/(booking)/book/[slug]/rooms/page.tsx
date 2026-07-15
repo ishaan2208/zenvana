@@ -19,8 +19,9 @@ import {
   sortRoomTypesByLowestRate,
 } from './roomAvailability'
 import { promoOrCouponFromSearchParams } from '@/lib/promo-or-coupon-code'
-import { sanitizeReturnTo } from '@/lib/book-rooms-url'
+import { sanitizeReturnTo, buildBookHourlyRoomsPath } from '@/lib/book-rooms-url'
 import { isDayUseParam } from '@/lib/stay-kind'
+import { nextHourlyStartTime } from '@/lib/hourly-start-times'
 import { BookingSteps } from '@/components/booking/BookingSteps'
 import { TrackOnMount } from '@/components/analytics/TrackOnMount'
 import {
@@ -87,11 +88,41 @@ export default async function BookRoomsPage({ params, searchParams }: Props) {
     if (!date || !startTime || !Number.isInteger(durationHours)) {
       redirect(`/book/${slug}`)
     }
+
+    // If a deep-linked / stale start time is already past (or outside the window),
+    // bounce to the next bookable slot with the same duration/date.
+    const property = await getPublicPropertyBySlug(slug)
+    const cfg = property?.hourlyStay
+    const resolvedStart =
+      nextHourlyStartTime({
+        windowStart: cfg?.windowStart ?? '10:00',
+        windowEnd: cfg?.windowEnd ?? '21:00',
+        durationHours,
+        dateYmd: date,
+        current: startTime,
+      }) ?? null
+
+    if (resolvedStart && resolvedStart !== startTime) {
+      redirect(
+        buildBookHourlyRoomsPath({
+          slug,
+          date,
+          startTime: resolvedStart,
+          durationHours,
+          guests,
+          returnTo: returnTo ?? undefined,
+        }),
+      )
+    }
+    if (!resolvedStart) {
+      redirect(`/book/${slug}?stayKind=hourly`)
+    }
+
     return (
       <HourlyRoomsView
         slug={slug}
         date={date}
-        startTime={startTime}
+        startTime={resolvedStart}
         durationHours={durationHours}
         guests={guests}
         returnTo={returnTo}

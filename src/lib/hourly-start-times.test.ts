@@ -3,6 +3,7 @@ import {
   buildHourlyStartTimeOptions,
   earliestBookableStartMinutes,
   istYmd,
+  nextHourlyStartTime,
 } from './hourly-start-times'
 
 describe('buildHourlyStartTimeOptions', () => {
@@ -39,5 +40,49 @@ describe('buildHourlyStartTimeOptions', () => {
     expect(opts[0]).toBe('15:30')
     expect(opts).toContain('18:00')
     expect(opts).not.toContain('19:00') // 19+3h > 21:00
+  })
+})
+
+describe('nextHourlyStartTime', () => {
+  it('defaults to the next available slot for today', () => {
+    const now = new Date('2026-07-14T09:40:00.000Z') // 15:10 IST
+    expect(
+      nextHourlyStartTime({
+        windowStart: '10:00',
+        windowEnd: '21:00',
+        durationHours: 3,
+        dateYmd: '2026-07-14',
+        now,
+        forceEarliest: true,
+      }),
+    ).toBe('15:30')
+  })
+
+  it('keeps a still-valid later selection', () => {
+    const now = new Date('2026-07-14T09:40:00.000Z')
+    expect(
+      nextHourlyStartTime({
+        windowStart: '10:00',
+        windowEnd: '21:00',
+        durationHours: 3,
+        dateYmd: '2026-07-14',
+        now,
+        current: '17:00',
+      }),
+    ).toBe('17:00')
+  })
+
+  it('snaps past selection up to the next slot', () => {
+    const now = new Date('2026-07-14T09:40:00.000Z')
+    expect(
+      nextHourlyStartTime({
+        windowStart: '10:00',
+        windowEnd: '21:00',
+        durationHours: 3,
+        dateYmd: '2026-07-14',
+        now,
+        current: '10:00',
+      }),
+    ).toBe('15:30')
   })
 })
