@@ -271,11 +271,8 @@ export default async function HourlyStaysPage() {
           <div className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
             Kab kaam aata hai
           </div>
-          <h2 className="mt-3 max-w-2xl font-serif text-3xl leading-tight tracking-[-0.04em] text-foreground sm:text-4xl">
-            Har safar mein ek pal aata hai jab bas ek kamra chahiye hota hai.
-          </h2>
 
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {useCases.map(({ icon: Icon, title, text }) => (
               <li
                 key={title}
