@@ -80,14 +80,14 @@ export default async function OffersPage() {
             {featuredOffers.map((offer) => (
               <section key={offer.title} className="quiet-card overflow-hidden">
                 <div className="grid gap-0 lg:grid-cols-12">
-                  <div className="lg:col-span-5">
-                    <div className="relative h-full min-h-[240px] bg-muted lg:min-h-[320px]">
+                  <div className="lg:col-span-5 lg:flex lg:items-start">
+                    <div className="relative aspect-video w-full overflow-hidden bg-muted">
                       {offer.imageUrl ? (
                         <Image
                           src={offer.imageUrl}
                           alt={offer.title}
                           fill
-                          className="object-cover"
+                          className="object-cover object-center"
                           sizes="(min-width: 1024px) 40vw, 100vw"
                         />
                       ) : null}
