@@ -117,6 +117,16 @@ model AnalyticsSession {
   utmCampaign   String?
   utmTerm       String?
   utmContent    String?
+  gclid         String?
+  fbclid        String?
+  wbraid        String?
+  msclkid       String?
+  /// Derived acquisition channel (whatsapp, google-ads, google-organic, meta, ...)
+  channel       String?
+  lastUtmSource   String?
+  lastUtmMedium   String?
+  lastUtmCampaign String?
+  lastTouchAt     DateTime?
   deviceType    String?
   country       String?
   userAgentHash String?
@@ -126,6 +136,8 @@ model AnalyticsSession {
 
   @@index([createdAt])
   @@index([utmSource, createdAt])
+  @@index([utmCampaign, createdAt])
+  @@index([channel, createdAt])
   @@index([country, createdAt])
   @@map("session")
   @@schema("analytics")
@@ -182,15 +194,19 @@ model AnalyticsDailyMetric {
   date         DateTime
   propertySlug String
   utmSource    String
+  channel      String   @default("direct")
   sessions     Int      @default(0)
   bookings     Int      @default(0)
   events       Int      @default(0)
+  /// Sum of booking_completed properties.amount for the bucket
+  revenue      Float    @default(0)
   updatedAt    DateTime @default(now()) @updatedAt
 
-  @@id([date, propertySlug, utmSource])
+  @@id([date, propertySlug, utmSource, channel])
   @@index([date])
   @@index([propertySlug, date])
   @@index([utmSource, date])
+  @@index([channel, date])
   @@map("daily_metrics")
   @@schema("analytics")
 }

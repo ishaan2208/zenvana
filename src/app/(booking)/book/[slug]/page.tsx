@@ -69,8 +69,8 @@ export default async function BookPropertyPage({
       <TrackOnMount
         name="property_viewed"
         propertySlug={slug}
-        properties={{ slug, publicName: property.publicName }}
-        dedupeKey={`property_viewed:${slug}`}
+        properties={{ slug, publicName: property.publicName, surface: 'booking' }}
+        dedupeKey={`property_viewed:booking:${slug}`}
       />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,119,198,0.10),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.08),transparent_28%)]" />
 

@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const {
   cookiesMock,
   headersMock,
-  analyticsSessionUpsert,
+  analyticsSessionFindUnique,
+  analyticsSessionCreate,
+  analyticsSessionUpdate,
   analyticsEventFindFirst,
   analyticsEventCreate,
   analyticsEventFindMany,
@@ -14,7 +16,9 @@ const {
 } = vi.hoisted(() => ({
   cookiesMock: vi.fn(),
   headersMock: vi.fn(),
-  analyticsSessionUpsert: vi.fn(),
+  analyticsSessionFindUnique: vi.fn(),
+  analyticsSessionCreate: vi.fn(),
+  analyticsSessionUpdate: vi.fn(),
   analyticsEventFindFirst: vi.fn(),
   analyticsEventCreate: vi.fn(),
   analyticsEventFindMany: vi.fn(),
@@ -48,7 +52,9 @@ vi.mock('next/headers', () => ({
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     analyticsSession: {
-      upsert: analyticsSessionUpsert,
+      findUnique: analyticsSessionFindUnique,
+      create: analyticsSessionCreate,
+      update: analyticsSessionUpdate,
     },
     analyticsEvent: {
       findFirst: analyticsEventFindFirst,
@@ -67,7 +73,11 @@ vi.mock('@/lib/analytics/audit', () => ({
 
 import { ANON_SESSION_COOKIE, recordEvent, recordEventsBatch } from '@/lib/analytics/recorder'
 
-function setupRequestContext(options?: { sessionId?: string | null; userAgent?: string | null; allowCookieSet?: boolean }) {
+function setupRequestContext(options?: {
+  sessionId?: string | null
+  userAgent?: string | null
+  allowCookieSet?: boolean
+}) {
   const sessionId = options && 'sessionId' in options ? options.sessionId : 's_existing'
   const userAgent = options && 'userAgent' in options ? options.userAgent : 'Mozilla/5.0'
   const allowCookieSet = options && 'allowCookieSet' in options ? options.allowCookieSet : true
@@ -105,7 +115,16 @@ describe('recordEvent audit instrumentation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupRequestContext()
-    analyticsSessionUpsert.mockResolvedValue(undefined)
+    analyticsSessionFindUnique.mockResolvedValue({
+      utmSource: 'google',
+      utmMedium: 'cpc',
+      utmCampaign: 'brand',
+      channel: 'google-ads',
+      lastUtmSource: null,
+      lastUtmCampaign: null,
+    })
+    analyticsSessionCreate.mockResolvedValue({})
+    analyticsSessionUpdate.mockResolvedValue({})
     analyticsEventFindFirst.mockResolvedValue(null)
     analyticsEventCreate.mockResolvedValue({ id: BigInt(1) })
     analyticsEventFindMany.mockResolvedValue([])
@@ -149,8 +168,9 @@ describe('recordEvent audit instrumentation', () => {
     expect(analyticsEventCreate).not.toHaveBeenCalled()
   })
 
-  it('writes rejected audit when session cannot be established', async () => {
+  it('uses a synthetic session when cookies are read-only (never drops bookings)', async () => {
     setupRequestContext({ sessionId: null, allowCookieSet: false })
+    analyticsSessionFindUnique.mockResolvedValue(null)
 
     await recordEvent({
       name: 'booking_completed',
@@ -158,14 +178,31 @@ describe('recordEvent audit instrumentation', () => {
       properties: { bookingReference: 'BK-2' },
     })
 
+    expect(analyticsSessionCreate).toHaveBeenCalled()
+    expect(analyticsEventCreate).toHaveBeenCalled()
     expect(writeAnalyticsAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'booking_completed',
-        status: AUDIT_STATUS.REJECTED,
-        reasonCode: AUDIT_REASON.SESSION_UNAVAILABLE,
+        status: AUDIT_STATUS.ACCEPTED,
+        reasonCode: AUDIT_REASON.EVENT_RECORDED,
       }),
     )
-    expect(analyticsEventCreate).not.toHaveBeenCalled()
+  })
+
+  it('denormalizes session UTM onto the event', async () => {
+    await recordEvent({
+      name: 'page_viewed',
+      source: 'client',
+      properties: { path: '/' },
+    })
+
+    expect(analyticsEventCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          utmSource: 'google',
+        }),
+      }),
+    )
   })
 
   it('writes deduped audit when booking reference already exists', async () => {
@@ -262,7 +299,16 @@ describe('recordEventsBatch audit instrumentation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupRequestContext()
-    analyticsSessionUpsert.mockResolvedValue(undefined)
+    analyticsSessionFindUnique.mockResolvedValue({
+      utmSource: null,
+      utmMedium: null,
+      utmCampaign: null,
+      channel: 'direct',
+      lastUtmSource: null,
+      lastUtmCampaign: null,
+    })
+    analyticsSessionCreate.mockResolvedValue({})
+    analyticsSessionUpdate.mockResolvedValue({})
     analyticsEventFindMany.mockResolvedValue([])
     analyticsEventCreateMany.mockResolvedValue({ count: 1 })
     writeAnalyticsAudit.mockResolvedValue(undefined)
@@ -308,26 +354,30 @@ describe('recordEventsBatch audit instrumentation', () => {
     expect(analyticsEventCreateMany).not.toHaveBeenCalled()
   })
 
-  it('writes rejected audit when batch session cannot be established', async () => {
+  it('uses synthetic session for batch when cookies are read-only', async () => {
     setupRequestContext({ sessionId: null, allowCookieSet: false })
+    analyticsSessionFindUnique.mockResolvedValue(null)
 
     await expect(
       recordEventsBatch([
         { name: 'page_viewed', source: 'client' },
-        { name: 'booking_completed', source: 'server', properties: { bookingReference: 'BK-SESSION' } },
+        {
+          name: 'booking_completed',
+          source: 'server',
+          properties: { bookingReference: 'BK-SESSION' },
+        },
       ]),
     ).resolves.toBeUndefined()
 
-    expect(writeAnalyticsAudit).toHaveBeenCalledTimes(1)
+    expect(analyticsEventCreateMany).toHaveBeenCalled()
     expect(writeAnalyticsAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'batch',
         source: 'system',
-        status: AUDIT_STATUS.REJECTED,
-        reasonCode: AUDIT_REASON.SESSION_UNAVAILABLE,
+        status: AUDIT_STATUS.ACCEPTED,
+        reasonCode: AUDIT_REASON.EVENT_RECORDED,
       }),
     )
-    expect(analyticsEventCreateMany).not.toHaveBeenCalled()
   })
 
   it('writes failed audit when batch createMany write fails', async () => {
@@ -336,7 +386,11 @@ describe('recordEventsBatch audit instrumentation', () => {
     await expect(
       recordEventsBatch([
         { name: 'page_viewed', source: 'client' },
-        { name: 'booking_completed', source: 'server', properties: { bookingReference: 'BK-DBFAIL' } },
+        {
+          name: 'booking_completed',
+          source: 'server',
+          properties: { bookingReference: 'BK-DBFAIL' },
+        },
       ]),
     ).resolves.toBeUndefined()
 

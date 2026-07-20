@@ -65,6 +65,9 @@ export default async function AnalyticsSessionPage({ params }: Props) {
               <Row k="UTM source" v={session.utmSource ?? '—'} />
               <Row k="UTM medium" v={session.utmMedium ?? '—'} />
               <Row k="UTM campaign" v={session.utmCampaign ?? '—'} />
+              <Row k="Channel" v={session.channel ?? '—'} />
+              <Row k="Last UTM source" v={session.lastUtmSource ?? '—'} />
+              <Row k="Last UTM campaign" v={session.lastUtmCampaign ?? '—'} />
               <Row k="Device" v={session.deviceType ?? '—'} />
               <Row k="Country" v={session.country ?? '—'} />
               <Row k="Events" v={String(session.events.length)} />

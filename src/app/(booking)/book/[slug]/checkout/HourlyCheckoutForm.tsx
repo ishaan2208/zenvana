@@ -27,7 +27,6 @@ import {
 } from '@/lib/api'
 import { Button } from '@/components/Button'
 import { PriceWithTax } from '@/components/PriceWithTax'
-import { track } from '@/lib/analytics/client'
 import {
   trackBookingCompletedAction,
   trackPaymentFailedAction,
@@ -343,16 +342,6 @@ export default function HourlyCheckoutForm({
           amount: amountPaise / 100,
           meta: { amountPaise, orderId, stayKind: 'hourly' },
         }).catch(() => {})
-        track(
-          'payment_failed',
-          {
-            amount: amountPaise / 100,
-            amountPaise,
-            orderId,
-            stayKind: 'hourly',
-          },
-          slug,
-        )
       })
 
       rzp.open()
@@ -363,17 +352,6 @@ export default function HourlyCheckoutForm({
         amount: amountPaise / 100,
         meta: { amountPaise, orderId, stayKind: 'hourly' },
       }).catch(() => {})
-      track(
-        'payment_initiated',
-        {
-          amount: amountPaise / 100,
-          amountPaise,
-          orderId,
-          paymentMode: 'pay_now',
-          stayKind: 'hourly',
-        },
-        slug,
-      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed')
       setSubmitting(false)

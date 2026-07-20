@@ -554,15 +554,6 @@ export default function MultiRoomCheckoutForm({
           amount: effectiveTotalAmount,
           meta: { orderId, couponCode: appliedCoupon?.code ?? null },
         }).catch(() => {})
-        track(
-          'payment_failed',
-          {
-            amount: effectiveTotalAmount,
-            orderId,
-            couponCode: appliedCoupon?.code ?? null,
-          },
-          slug,
-        )
       })
 
       rzp.open()
@@ -573,17 +564,6 @@ export default function MultiRoomCheckoutForm({
         amount: effectiveTotalAmount,
         meta: { amountPaise, orderId, couponCode: appliedCoupon?.code ?? null },
       }).catch(() => {})
-      track(
-        'payment_initiated',
-        {
-          amount: effectiveTotalAmount,
-          amountPaise,
-          orderId,
-          paymentMode: 'pay_now',
-          couponCode: appliedCoupon?.code ?? null,
-        },
-        slug,
-      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed')
       setSubmitting(false)

@@ -10,7 +10,9 @@ type QueuedEvent = {
   occurredAt: string
 }
 
-const ENDPOINT = '/api/track'
+// Ad blockers commonly block paths containing "track" / "analytics".
+// Prefer the innocuous /api/zv path; /api/track remains as a server-side alias.
+const ENDPOINT = '/api/zv'
 const FLUSH_INTERVAL_MS = 5_000
 const MAX_QUEUE = 50
 const RETRY_STORAGE_KEY = 'zenvana_analytics_retry_queue_v1'

@@ -16,6 +16,7 @@ import { SiteAnalytics, GtmNoscript } from '@/components/SiteAnalytics'
 import { InitialSplash } from '@/components/InitialSplash'
 import { PageViewTracker } from '@/components/analytics/PageViewTracker'
 import { PhoneCallTracker } from '@/components/analytics/PhoneCallTracker'
+import { WhatsAppClickTracker } from '@/components/analytics/WhatsAppClickTracker'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
@@ -198,6 +199,7 @@ export default function RootLayout({
             <PageViewTracker />
           </Suspense>
           <PhoneCallTracker />
+          <WhatsAppClickTracker />
           <Suspense fallback={null}>
             <NavigationLoadingProvider>
               <AppToaster />

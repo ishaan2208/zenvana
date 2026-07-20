@@ -5,10 +5,12 @@ import { cookies, headers } from 'next/headers'
 
 import { prisma } from '@/lib/prisma'
 import { AUDIT_REASON, AUDIT_STATUS, writeAnalyticsAudit } from '@/lib/analytics/audit'
+import { deriveChannel, hasCampaignSignals } from '@/lib/analytics/channel'
 import { isAnalyticsEventName } from '@/lib/analytics/events'
 
 export const ANON_SESSION_COOKIE = 'zenvana_anon_session'
 export const ANON_BOOTSTRAP_COOKIE = 'zenvana_anon_bootstrap'
+export const ANON_TOUCH_COOKIE = 'zenvana_anon_touch'
 const SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
 
 const MAX_PROPERTIES_BYTES = 8 * 1024
@@ -18,7 +20,12 @@ function generateSessionId(): string {
   return `s_${Date.now().toString(36)}${randomBytes(8).toString('hex')}`
 }
 
-async function ensureSessionCookie(currentValue: string | null): Promise<string | null> {
+/**
+ * Ensure we have a session id. Prefer setting the cookie; if cookies are
+ * read-only (some Server Action / RSC contexts), fall back to a synthetic id
+ * so critical events like booking_completed are never dropped.
+ */
+async function resolveSessionId(currentValue: string | null): Promise<string> {
   if (currentValue) return currentValue
   try {
     const cookieStore = await cookies()
@@ -32,10 +39,7 @@ async function ensureSessionCookie(currentValue: string | null): Promise<string 
     })
     return fresh
   } catch {
-    // Server Components can't mutate cookies — this is expected.
-    // The next client-side event (page_viewed, room_selected, etc.) will establish
-    // the session via /api/track. Drop this event silently rather than spam logs.
-    return null
+    return generateSessionId()
   }
 }
 
@@ -49,8 +53,26 @@ type BootstrapPayload = {
   utmCampaign?: string
   utmTerm?: string
   utmContent?: string
+  gclid?: string
+  fbclid?: string
+  wbraid?: string
+  msclkid?: string
   country?: string
   deviceType?: string
+}
+
+type TouchPayload = {
+  utmSource?: string
+  utmMedium?: string
+  utmCampaign?: string
+  utmTerm?: string
+  utmContent?: string
+  gclid?: string
+  fbclid?: string
+  wbraid?: string
+  msclkid?: string
+  referrer?: string
+  path?: string
 }
 
 function safeJsonStringify(value: unknown): string {
@@ -98,15 +120,15 @@ function detectDeviceType(userAgent: string | null): string | null {
   return 'desktop'
 }
 
-function parseBootstrapCookie(value: string | undefined): BootstrapPayload {
-  if (!value) return {}
+function parseJsonCookie<T extends object>(value: string | undefined): T | null {
+  if (!value) return null
   try {
     const parsed = JSON.parse(decodeURIComponent(value))
-    if (parsed && typeof parsed === 'object') return parsed as BootstrapPayload
+    if (parsed && typeof parsed === 'object') return parsed as T
   } catch {
     /* ignore corrupted cookie */
   }
-  return {}
+  return null
 }
 
 function fallbackBootstrapFromReferer(referer: string | null): BootstrapPayload {
@@ -121,6 +143,10 @@ function fallbackBootstrapFromReferer(referer: string | null): BootstrapPayload 
       utmCampaign: url.searchParams.get('utm_campaign') ?? undefined,
       utmTerm: url.searchParams.get('utm_term') ?? undefined,
       utmContent: url.searchParams.get('utm_content') ?? undefined,
+      gclid: url.searchParams.get('gclid') ?? undefined,
+      fbclid: url.searchParams.get('fbclid') ?? undefined,
+      wbraid: url.searchParams.get('wbraid') ?? undefined,
+      msclkid: url.searchParams.get('msclkid') ?? undefined,
     }
   } catch {
     return {}
@@ -132,18 +158,20 @@ async function readRequestContext() {
   const headerStore = await headers()
   const userAgent = headerStore.get('user-agent')
   const sessionId = cookieStore.get(ANON_SESSION_COOKIE)?.value ?? null
-  const cookieBootstrap = parseBootstrapCookie(cookieStore.get(ANON_BOOTSTRAP_COOKIE)?.value)
-  // Fallback for when middleware didn't run (e.g. dev hot reload, edge skip).
+  const cookieBootstrap = parseJsonCookie<BootstrapPayload>(
+    cookieStore.get(ANON_BOOTSTRAP_COOKIE)?.value,
+  )
+  const touch = parseJsonCookie<TouchPayload>(cookieStore.get(ANON_TOUCH_COOKIE)?.value)
   const refererBootstrap =
-    Object.keys(cookieBootstrap).length === 0
+    !cookieBootstrap || Object.keys(cookieBootstrap).length === 0
       ? fallbackBootstrapFromReferer(headerStore.get('referer'))
       : {}
-  const bootstrap: BootstrapPayload = { ...refererBootstrap, ...cookieBootstrap }
+  const bootstrap: BootstrapPayload = { ...refererBootstrap, ...(cookieBootstrap ?? {}) }
   const ip =
     headerStore.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     headerStore.get('x-real-ip') ||
     null
-  return { cookieStore, headerStore, userAgent, sessionId, bootstrap, ip }
+  return { cookieStore, headerStore, userAgent, sessionId, bootstrap, touch, ip }
 }
 
 function isBot(userAgent: string | null): boolean {
@@ -151,43 +179,184 @@ function isBot(userAgent: string | null): boolean {
   return BOT_UA_RE.test(userAgent)
 }
 
+type SessionAttribution = {
+  utmSource: string | null
+  utmMedium: string | null
+  utmCampaign: string | null
+  channel: string | null
+}
+
 async function ensureSessionRow(
   sessionId: string,
   userAgent: string | null,
   ip: string | null,
   bootstrap: BootstrapPayload,
-): Promise<void> {
+): Promise<SessionAttribution> {
   const utmSource = bootstrap.utmSource ?? null
+  const utmMedium = bootstrap.utmMedium ?? null
+  const utmCampaign = bootstrap.utmCampaign ?? null
   const landingPath = bootstrap.landingPath ?? '/'
   const deviceType = bootstrap.deviceType ?? detectDeviceType(userAgent)
+  const channel = deriveChannel({
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    gclid: bootstrap.gclid,
+    fbclid: bootstrap.fbclid,
+    wbraid: bootstrap.wbraid,
+    msclkid: bootstrap.msclkid,
+    referrer: bootstrap.referrer,
+  })
 
-  await prisma.analyticsSession.upsert({
+  const existing = await prisma.analyticsSession.findUnique({
     where: { id: sessionId },
-    create: {
+    select: {
+      utmSource: true,
+      utmMedium: true,
+      utmCampaign: true,
+      channel: true,
+    },
+  })
+
+  if (existing) {
+    await prisma.analyticsSession.update({
+      where: { id: sessionId },
+      data: { lastSeenAt: new Date() },
+    })
+    return {
+      utmSource: existing.utmSource,
+      utmMedium: existing.utmMedium,
+      utmCampaign: existing.utmCampaign,
+      channel: existing.channel,
+    }
+  }
+
+  await prisma.analyticsSession.create({
+    data: {
       id: sessionId,
       landingPath,
       referrer: bootstrap.referrer ?? null,
       utmSource,
-      utmMedium: bootstrap.utmMedium ?? null,
-      utmCampaign: bootstrap.utmCampaign ?? null,
+      utmMedium,
+      utmCampaign,
       utmTerm: bootstrap.utmTerm ?? null,
       utmContent: bootstrap.utmContent ?? null,
+      gclid: bootstrap.gclid ?? null,
+      fbclid: bootstrap.fbclid ?? null,
+      wbraid: bootstrap.wbraid ?? null,
+      msclkid: bootstrap.msclkid ?? null,
+      channel,
+      lastUtmSource: utmSource,
+      lastUtmMedium: utmMedium,
+      lastUtmCampaign: utmCampaign,
+      lastTouchAt: utmSource || utmCampaign ? new Date() : null,
       deviceType,
       country: bootstrap.country ?? null,
       userAgentHash: hashWithSalt(userAgent),
       ipHash: hashWithSalt(ip),
     },
-    update: {
-      lastSeenAt: new Date(),
-    },
   })
+
+  return { utmSource, utmMedium, utmCampaign, channel }
 }
 
-async function clearBootstrapCookie() {
+/**
+ * Apply last-touch campaign params from the touch cookie (returning visitor
+ * arrived with new UTMs / click IDs). First-touch fields stay unchanged.
+ */
+async function applyLastTouch(
+  sessionId: string,
+  touch: TouchPayload | null,
+): Promise<{ attribution: SessionAttribution; touched: boolean }> {
+  const session = await prisma.analyticsSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      utmSource: true,
+      utmMedium: true,
+      utmCampaign: true,
+      channel: true,
+      lastUtmSource: true,
+      lastUtmCampaign: true,
+    },
+  })
+
+  const baseAttribution: SessionAttribution = {
+    utmSource: session?.utmSource ?? null,
+    utmMedium: session?.utmMedium ?? null,
+    utmCampaign: session?.utmCampaign ?? null,
+    channel: session?.channel ?? null,
+  }
+
+  if (!touch || !hasCampaignSignals(touch)) {
+    return { attribution: baseAttribution, touched: false }
+  }
+
+  const nextSource = touch.utmSource ?? null
+  const nextMedium = touch.utmMedium ?? null
+  const nextCampaign = touch.utmCampaign ?? null
+
+  // Skip no-op touch (same as last touch already recorded)
+  if (
+    nextSource === (session?.lastUtmSource ?? null) &&
+    nextCampaign === (session?.lastUtmCampaign ?? null) &&
+    nextSource === (session?.utmSource ?? null) &&
+    nextCampaign === (session?.utmCampaign ?? null)
+  ) {
+    return { attribution: baseAttribution, touched: false }
+  }
+
+  const lastChannel = deriveChannel({
+    utmSource: nextSource,
+    utmMedium: nextMedium,
+    utmCampaign: nextCampaign,
+    gclid: touch.gclid,
+    fbclid: touch.fbclid,
+    wbraid: touch.wbraid,
+    msclkid: touch.msclkid,
+    referrer: touch.referrer,
+  })
+
+  await prisma.analyticsSession.update({
+    where: { id: sessionId },
+    data: {
+      lastUtmSource: nextSource,
+      lastUtmMedium: nextMedium,
+      lastUtmCampaign: nextCampaign,
+      lastTouchAt: new Date(),
+      lastSeenAt: new Date(),
+      // Keep first-touch channel; last-touch lives in lastUtm* fields.
+      // If first-touch was empty/direct, upgrade first-touch attribution.
+      ...(!session?.utmSource && nextSource
+        ? {
+            utmSource: nextSource,
+            utmMedium: nextMedium,
+            utmCampaign: nextCampaign,
+            channel: lastChannel,
+            gclid: touch.gclid ?? undefined,
+            fbclid: touch.fbclid ?? undefined,
+            wbraid: touch.wbraid ?? undefined,
+            msclkid: touch.msclkid ?? undefined,
+          }
+        : {}),
+    },
+  })
+
+  return {
+    attribution: {
+      utmSource: session?.utmSource ?? nextSource,
+      utmMedium: session?.utmMedium ?? nextMedium,
+      utmCampaign: session?.utmCampaign ?? nextCampaign,
+      channel: session?.channel ?? lastChannel,
+    },
+    touched: true,
+  }
+}
+
+async function clearCookie(name: string) {
   try {
     const cookieStore = await cookies()
-    if (cookieStore.get(ANON_BOOTSTRAP_COOKIE)) {
-      cookieStore.delete(ANON_BOOTSTRAP_COOKIE)
+    if (cookieStore.get(name)) {
+      cookieStore.delete(name)
     }
   } catch {
     /* ignore — may be read-only context */
@@ -246,6 +415,74 @@ async function writeRecorderAudit(input: RecorderAuditInput): Promise<void> {
   })
 }
 
+type PreparedSession = {
+  sessionId: string
+  attribution: SessionAttribution
+  touch: TouchPayload | null
+  touched: boolean
+}
+
+async function prepareSession(): Promise<{
+  ok: true
+  prepared: PreparedSession
+  userAgent: string | null
+} | { ok: false; reason: 'bot'; sessionId: string | null }> {
+  const { sessionId: existing, userAgent, ip, bootstrap, touch } = await readRequestContext()
+  if (isBot(userAgent)) {
+    return { ok: false, reason: 'bot', sessionId: existing }
+  }
+
+  const sessionId = await resolveSessionId(existing)
+  const attribution = await ensureSessionRow(sessionId, userAgent, ip, bootstrap)
+  await clearCookie(ANON_BOOTSTRAP_COOKIE)
+
+  const touchResult = await applyLastTouch(sessionId, touch)
+  await clearCookie(ANON_TOUCH_COOKIE)
+
+  return {
+    ok: true,
+    userAgent,
+    prepared: {
+      sessionId,
+      attribution: touchResult.attribution,
+      touch,
+      touched: touchResult.touched,
+    },
+  }
+}
+
+async function maybeRecordCampaignTouch(
+  prepared: PreparedSession,
+  source: 'client' | 'server',
+): Promise<void> {
+  if (!prepared.touched || !prepared.touch) return
+  const { json, size } = capProperties({
+    utmSource: prepared.touch.utmSource ?? null,
+    utmMedium: prepared.touch.utmMedium ?? null,
+    utmCampaign: prepared.touch.utmCampaign ?? null,
+    path: prepared.touch.path ?? null,
+    gclid: prepared.touch.gclid ?? null,
+    fbclid: prepared.touch.fbclid ?? null,
+  })
+  try {
+    await prisma.analyticsEvent.create({
+      data: {
+        sessionId: prepared.sessionId,
+        name: 'campaign_touch',
+        eventId: `touch_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+        occurredAt: new Date(),
+        propertySlug: null,
+        source,
+        properties: json as never,
+        propertiesSize: size,
+        utmSource: prepared.touch.utmSource ?? prepared.attribution.utmSource,
+      },
+    })
+  } catch {
+    /* ignore — best-effort touch marker */
+  }
+}
+
 /**
  * Records an analytics event. NEVER throws — analytics must not break the booking flow.
  */
@@ -266,14 +503,15 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
       })
       return
     }
-    const { sessionId: existing, userAgent, ip, bootstrap } = await readRequestContext()
-    if (isBot(userAgent)) {
+
+    const preparedResult = await prepareSession()
+    if (!preparedResult.ok) {
       await writeRecorderAudit({
         eventName: input.name,
         source: input.source,
         status: AUDIT_STATUS.REJECTED,
         reasonCode: AUDIT_REASON.BOT_FILTERED,
-        sessionId: existing,
+        sessionId: preparedResult.sessionId,
         eventId: input.eventId ?? null,
         bookingReference,
         propertySlug: input.propertySlug ?? null,
@@ -282,25 +520,10 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
       return
     }
 
-    const sessionId = await ensureSessionCookie(existing)
-    if (!sessionId) {
-      await writeRecorderAudit({
-        eventName: input.name,
-        source: input.source,
-        status: AUDIT_STATUS.REJECTED,
-        reasonCode: AUDIT_REASON.SESSION_UNAVAILABLE,
-        sessionId: existing,
-        eventId: input.eventId ?? null,
-        bookingReference,
-        propertySlug: input.propertySlug ?? null,
-        occurredAt,
-      })
-      return
-    }
+    const { prepared } = preparedResult
+    const sessionId = prepared.sessionId
     sessionIdForAudit = sessionId
-
-    await ensureSessionRow(sessionId, userAgent, ip, bootstrap)
-    await clearBootstrapCookie()
+    await maybeRecordCampaignTouch(prepared, input.source)
 
     const { json, size, truncated, originalSize } = capProperties(input.properties)
     if (truncated) {
@@ -314,10 +537,7 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
         bookingReference,
         propertySlug: input.propertySlug ?? null,
         occurredAt,
-        meta: {
-          originalSize,
-          truncatedSize: size,
-        },
+        meta: { originalSize, truncatedSize: size },
       })
     }
     if (bookingReference) {
@@ -340,6 +560,10 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
         return
       }
     }
+
+    // Always denormalize session first-touch UTM onto the event so bookings
+    // stay attributable after the bootstrap cookie is cleared.
+    const eventUtm = prepared.attribution.utmSource
     const dataWithOptionalFields = {
       sessionId,
       name: input.name,
@@ -350,7 +574,7 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
       source: input.source,
       properties: json as never,
       propertiesSize: size,
-      utmSource: bootstrap.utmSource ?? null,
+      utmSource: eventUtm,
     }
     try {
       await prisma.analyticsEvent.create({ data: dataWithOptionalFields })
@@ -381,7 +605,7 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
         source: input.source,
         properties: json as never,
         propertiesSize: size,
-        utmSource: bootstrap.utmSource ?? null,
+        utmSource: eventUtm,
       }
       try {
         await prisma.analyticsEvent.create({ data: fallbackData })
@@ -414,9 +638,7 @@ export async function recordEvent(input: RecordEventInput): Promise<void> {
       bookingReference,
       propertySlug: input.propertySlug ?? null,
       occurredAt,
-      meta: {
-        outcome: 'success',
-      },
+      meta: { outcome: 'success', channel: prepared.attribution.channel },
     })
   } catch (err) {
     console.error('[analytics] recordEvent failed:', err)
@@ -452,21 +674,19 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
         status: AUDIT_STATUS.REJECTED,
         reasonCode: AUDIT_REASON.INVALID_EVENT_NAME,
         occurredAt,
-        meta: {
-          totalInputs: inputs.length,
-          invalidCount,
-        },
+        meta: { totalInputs: inputs.length, invalidCount },
       })
       return
     }
-    const { sessionId: existing, userAgent, ip, bootstrap } = await readRequestContext()
-    if (isBot(userAgent)) {
+
+    const preparedResult = await prepareSession()
+    if (!preparedResult.ok) {
       await writeRecorderAudit({
         eventName: 'batch',
         source: 'system',
         status: AUDIT_STATUS.REJECTED,
         reasonCode: AUDIT_REASON.BOT_FILTERED,
-        sessionId: existing,
+        sessionId: preparedResult.sessionId,
         occurredAt,
         meta: {
           totalInputs: inputs.length,
@@ -477,27 +697,10 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
       return
     }
 
-    const sessionId = await ensureSessionCookie(existing)
-    if (!sessionId) {
-      await writeRecorderAudit({
-        eventName: 'batch',
-        source: 'system',
-        status: AUDIT_STATUS.REJECTED,
-        reasonCode: AUDIT_REASON.SESSION_UNAVAILABLE,
-        sessionId: existing,
-        occurredAt,
-        meta: {
-          totalInputs: inputs.length,
-          validCount: validInputs.length,
-          invalidCount,
-        },
-      })
-      return
-    }
+    const { prepared } = preparedResult
+    const sessionId = prepared.sessionId
     sessionIdForAudit = sessionId
-
-    await ensureSessionRow(sessionId, userAgent, ip, bootstrap)
-    await clearBootstrapCookie()
+    await maybeRecordCampaignTouch(prepared, 'client')
 
     const bookingRefs = validInputs
       .map((input) => deriveBookingReference(input.name, input.properties))
@@ -521,11 +724,10 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
     const seenBookingRefs = new Set<string>()
     let dedupedCount = 0
     let truncatedCount = 0
+    const eventUtm = prepared.attribution.utmSource
     const rows = validInputs.flatMap((input) => {
       const { json, size, truncated } = capProperties(input.properties)
-      if (truncated) {
-        truncatedCount += 1
-      }
+      if (truncated) truncatedCount += 1
       const bookingReference = deriveBookingReference(input.name, input.properties)
       if (bookingReference) {
         if (existingBookingRefs.has(bookingReference) || seenBookingRefs.has(bookingReference)) {
@@ -544,7 +746,7 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
         source: input.source,
         properties: json as never,
         propertiesSize: size,
-        utmSource: bootstrap.utmSource ?? null,
+        utmSource: eventUtm,
       }
     })
 
@@ -631,10 +833,7 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
         reasonCode: AUDIT_REASON.DEDUPE_SUPPRESSED,
         sessionId,
         occurredAt,
-        meta: {
-          dedupedCount,
-          totalInputs: inputs.length,
-        },
+        meta: { dedupedCount, totalInputs: inputs.length },
       })
     }
 
@@ -646,10 +845,7 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
         reasonCode: AUDIT_REASON.PROPERTIES_TRUNCATED,
         sessionId,
         occurredAt,
-        meta: {
-          truncatedCount,
-          totalInputs: inputs.length,
-        },
+        meta: { truncatedCount, totalInputs: inputs.length },
       })
     }
     await writeRecorderAudit({
@@ -665,6 +861,7 @@ export async function recordEventsBatch(inputs: RecordEventInput[]): Promise<voi
         invalidCount,
         dedupedCount,
         acceptedCount: rows.length,
+        channel: prepared.attribution.channel,
       },
     })
   } catch (err) {

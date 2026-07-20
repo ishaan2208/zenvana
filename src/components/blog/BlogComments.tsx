@@ -76,6 +76,16 @@ export function BlogComments({ postSlug, postTitle }: Props) {
     }
     setBody('')
     setReplyingTo(null)
+    try {
+      const { track } = await import('@/lib/analytics/client')
+      track('blog_comment_submitted', {
+        slug: postSlug,
+        isReply: Boolean(replyingTo),
+        bodyLength: body.trim().length,
+      })
+    } catch {
+      /* ignore */
+    }
     await load()
   }
 

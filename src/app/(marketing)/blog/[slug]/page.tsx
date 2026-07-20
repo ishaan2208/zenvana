@@ -33,6 +33,9 @@ import {
 } from '@/lib/blogImageResolver'
 import { estimateReadingTimeMinutes, formatPublishedDate } from '@/lib/blogReadingTime'
 import { articleJsonLd, breadcrumbJsonLd, type ArticleJsonLdInput } from '@/lib/structured-data'
+import { TrackOnMount } from '@/components/analytics/TrackOnMount'
+import { BlogReadTracker } from '@/components/analytics/BlogReadTracker'
+import { BlogCtaTracker } from '@/components/analytics/BlogCtaTracker'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
 
@@ -170,6 +173,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <article id="blog-article" className="relative">
+      <TrackOnMount
+        name="blog_post_viewed"
+        properties={{
+          slug: post.slug,
+          authorName: post.authorName,
+          title: post.title,
+          category,
+        }}
+        dedupeKey={`blog_post_viewed:${post.slug}`}
+      />
+      <BlogReadTracker slug={post.slug} authorName={post.authorName} />
+      <BlogCtaTracker slug={post.slug} authorName={post.authorName} />
       <ReadingProgress />
       <JsonLd data={[breadcrumbJsonLd(breadcrumbs), article]} />
 

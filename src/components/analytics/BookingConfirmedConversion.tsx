@@ -2,26 +2,13 @@
 
 import { useEffect } from 'react'
 
+import { track } from '@/lib/analytics/client'
 import { pushDataLayerEvent } from '@/lib/analytics/gtm'
 
-type Props = {
-  bookingReference?: string | null
-  value?: number | null
-  currency?: string
-  propertyName?: string | null
-  propertySlug?: string | null
-  roomTypeName?: string | null
-  checkIn?: string | null
-  checkOut?: string | null
-}
-
-const DEDUPE_PREFIX = 'zenvana_booking_conversion_'
-
 /**
- * Fires a `booking_confirmed` event on the confirmation page for GTM to map to
- * a Google Ads booking conversion. De-duplicated per booking (by reference, or
- * by the page params when no reference is present) so a refresh or back/forward
- * navigation does not double-count the conversion.
+ * Safety-net first-party booking_completed on the confirmation page.
+ * Deduped by bookingReference in the recorder, so either the checkout
+ * server action OR this page landing is enough to record the conversion.
  */
 export function BookingConfirmedConversion({
   bookingReference,
@@ -32,21 +19,53 @@ export function BookingConfirmedConversion({
   roomTypeName,
   checkIn,
   checkOut,
-}: Props) {
+}: {
+  bookingReference?: string | null
+  value?: number | null
+  currency?: string
+  propertyName?: string | null
+  propertySlug?: string | null
+  roomTypeName?: string | null
+  checkIn?: string | null
+  checkOut?: string | null
+}) {
   useEffect(() => {
     const transactionId = bookingReference?.trim() || null
     const dedupeKey =
-      DEDUPE_PREFIX +
+      'zenvana_booking_conversion_' +
       (transactionId ??
         [propertySlug, checkIn, checkOut, roomTypeName, value]
           .map((v) => (v == null ? '' : String(v)))
           .join('|'))
 
+    let alreadyFired = false
     try {
-      if (window.sessionStorage.getItem(dedupeKey)) return
-      window.sessionStorage.setItem(dedupeKey, '1')
+      if (window.sessionStorage.getItem(dedupeKey)) {
+        alreadyFired = true
+      } else {
+        window.sessionStorage.setItem(dedupeKey, '1')
+      }
     } catch {
-      /* private mode / quota — fall through and still fire once per mount */
+      /* private mode / quota — fall through */
+    }
+
+    if (alreadyFired) return
+
+    // First-party conversion safety net (server-deduped by bookingReference).
+    if (transactionId || propertySlug) {
+      track(
+        'booking_completed',
+        {
+          bookingReference: transactionId,
+          amount: typeof value === 'number' && !Number.isNaN(value) ? value : null,
+          paymentMode: 'confirmation_page',
+          surface: 'confirmation_safety_net',
+          roomTypeName: roomTypeName ?? null,
+          checkIn: checkIn ?? null,
+          checkOut: checkOut ?? null,
+        },
+        propertySlug ?? null,
+      )
     }
 
     pushDataLayerEvent({

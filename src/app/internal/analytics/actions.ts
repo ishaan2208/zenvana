@@ -1,4 +1,3 @@
-// src/app/internal/analytics/actions.ts
 'use server'
 
 import { timingSafeEqual } from 'crypto'
@@ -13,9 +12,16 @@ import {
 } from '@/lib/analyticsAdminAuth'
 import {
   getActiveUsersSnapshot,
+  getBlogAnalytics,
+  getCampaignTable,
+  getChannelTable,
   getDashboardSummary,
   getFunnel,
+  getInsightCallouts,
+  getLandingPages,
+  getOverviewComparison,
   getTimeSeries,
+  getTopPathTransitions,
   getTopProperties,
   getUtmTable,
   listRecentAuditEvents,
@@ -90,6 +96,22 @@ export async function fetchDashboardSummaryAction(range: DashboardRange, filters
   return getDashboardSummary(range, filters)
 }
 
+export async function fetchOverviewComparisonAction(
+  range: DashboardRange,
+  filters?: DashboardFilters,
+) {
+  await requireAdmin()
+  return getOverviewComparison(range, filters)
+}
+
+export async function fetchInsightCalloutsAction(
+  range: DashboardRange,
+  filters?: DashboardFilters,
+) {
+  await requireAdmin()
+  return getInsightCallouts(range, filters)
+}
+
 export async function fetchActiveUsersSnapshotAction() {
   await requireAdmin()
   return getActiveUsersSnapshot()
@@ -113,6 +135,34 @@ export async function fetchTopPropertiesAction(range: DashboardRange, filters?: 
 export async function fetchUtmTableAction(range: DashboardRange, filters?: DashboardFilters) {
   await requireAdmin()
   return getUtmTable(range, filters)
+}
+
+export async function fetchChannelTableAction(range: DashboardRange, filters?: DashboardFilters) {
+  await requireAdmin()
+  return getChannelTable(range, filters)
+}
+
+export async function fetchCampaignTableAction(range: DashboardRange, filters?: DashboardFilters) {
+  await requireAdmin()
+  return getCampaignTable(range, filters)
+}
+
+export async function fetchLandingPagesAction(range: DashboardRange, filters?: DashboardFilters) {
+  await requireAdmin()
+  return getLandingPages(range, filters)
+}
+
+export async function fetchPathTransitionsAction(
+  range: DashboardRange,
+  filters?: DashboardFilters,
+) {
+  await requireAdmin()
+  return getTopPathTransitions(range, filters)
+}
+
+export async function fetchBlogAnalyticsAction(range: DashboardRange) {
+  await requireAdmin()
+  return getBlogAnalytics(range)
 }
 
 export async function fetchRecentEventsAction(

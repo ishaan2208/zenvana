@@ -82,6 +82,15 @@ export function BlogNewsletter({
     }
     setStatus(result.data)
     setMessage('You’re on the list. We’ve sent a quiet welcome to your inbox.')
+    try {
+      const { track } = await import('@/lib/analytics/client')
+      track('newsletter_subscribed', {
+        page_path: pathname,
+        email_domain: email.includes('@') ? email.split('@')[1] : null,
+      })
+    } catch {
+      /* ignore */
+    }
   }
 
   async function handleUnsubscribe() {

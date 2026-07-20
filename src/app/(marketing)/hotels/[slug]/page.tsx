@@ -48,6 +48,7 @@ import {
   faqPageJsonLd,
   videoObjectJsonLd,
 } from '@/lib/structured-data'
+import { TrackOnMount } from '@/components/analytics/TrackOnMount'
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zenvanahotels.com'
@@ -175,6 +176,16 @@ export default async function PropertyPage({ params, searchParams }: Props) {
 
   return (
     <>
+      <TrackOnMount
+        name="property_viewed"
+        propertySlug={slug}
+        properties={{
+          slug,
+          publicName: property.publicName,
+          surface: 'marketing',
+        }}
+        dedupeKey={`property_viewed:marketing:${slug}`}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

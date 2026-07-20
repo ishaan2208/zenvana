@@ -667,6 +667,11 @@ export function BlogAdminClient({ authorized: initialAuthorized, posts: initialP
               editorRef={editorRef}
               form={form}
               setForm={setForm}
+              authorSuggestions={Array.from(
+                new Set(
+                  ['Zenvana Hotels', ...initialPosts.map((p) => p.authorName)].filter(Boolean),
+                ),
+              )}
               heroDesktopMedia={
                 (selectedPost?.media.find(
                   (item) => item.role === 'HERO_DESKTOP' && item.type === BlogMediaType.IMAGE,
@@ -789,6 +794,7 @@ function ContentTab({
   editorRef,
   form,
   setForm,
+  authorSuggestions,
   heroDesktopMedia,
   onHeroUpload,
   onHeroRemove,
@@ -799,6 +805,7 @@ function ContentTab({
   editorRef: React.Ref<BlogRichTextEditorHandle>
   form: BlogFormState
   setForm: React.Dispatch<React.SetStateAction<BlogFormState>>
+  authorSuggestions: string[]
   heroDesktopMedia: UploadSlotMedia | null
   onHeroUpload: (input: {
     role: BlogImageRole
@@ -853,13 +860,20 @@ function ContentTab({
         </Field>
         <Field
           label="Author"
-          hint="Shown in the byline and Article schema."
+          hint="Who wrote this post — used for byline + author performance analytics."
         >
           <input
+            list="blog-author-suggestions"
             value={form.authorName}
             onChange={(event) => setForm((current) => ({ ...current, authorName: event.target.value }))}
+            placeholder="e.g. Priya Sharma"
             className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
           />
+          <datalist id="blog-author-suggestions">
+            {authorSuggestions.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
         </Field>
       </div>
 
