@@ -223,12 +223,9 @@ export default async function PropertyPage({ params, searchParams }: Props) {
           heroUrl={heroUrl}
           location={location}
           galleryImages={galleryImages}
-          totalImageCount={totalImageCount}
           couponCode={couponCode}
           walkthrough={videos.find((v) => v.kind === 'walkthrough')}
         />
-
-        <QuickFacts property={property} location={location} />
 
         <QuickAnchorNav
           hasGallery={galleryImages.length > 0}
@@ -323,7 +320,6 @@ function PropertyHero({
   heroUrl,
   location,
   galleryImages,
-  totalImageCount,
   couponCode,
   walkthrough,
 }: {
@@ -331,7 +327,6 @@ function PropertyHero({
   heroUrl?: string
   location: string
   galleryImages: Array<{ url: string }>
-  totalImageCount: number
   couponCode?: string
   walkthrough?: PublicPropertyVideo
 }) {
@@ -372,191 +367,165 @@ function PropertyHero({
       />
 
       <Container className="relative z-10">
-        {/* Top utility row */}
         <div className="flex items-center justify-between pt-5 sm:pt-6">
           <Link
             href="/hotels"
-            className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 backdrop-blur-xl transition hover:border-white/25 hover:bg-white/[0.10]"
+            className="group inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 backdrop-blur-xl transition duration-300 hover:border-white/25 hover:bg-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
           >
-            <ArrowLeft className="h-3 w-3 text-white/70 transition group-hover:-translate-x-0.5 group-hover:text-white" />
+            <ArrowLeft className="h-3 w-3 text-white/70 transition-transform group-hover:-translate-x-0.5 group-hover:text-white motion-reduce:transform-none motion-reduce:transition-none" />
             <span className="text-[10px] font-medium uppercase tracking-[0.26em] text-white/80">
               Hotels
             </span>
           </Link>
         </div>
 
-        {walkthrough ? (
-          /* Film-first hero — clear 16:9 walkthrough at full width, facade
-             photo demoted to an overlapping avatar. Sits in the content layer
-             ABOVE the section scrims so the film is never dimmed or blurred. */
-          <div className="mt-6 sm:mt-10">
-            <div className="relative">
-              <div className="relative aspect-video w-full overflow-hidden rounded-[1.25rem] bg-[#0a0f18] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/10 sm:rounded-[1.5rem]">
-                {/* Poster paints instantly; the loop fades in over it */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={resizeVideoPosterUrl(walkthrough.posterUrl, 1280)}
-                  srcSet={`${resizeVideoPosterUrl(
-                    walkthrough.posterUrl,
-                    640,
-                  )} 640w, ${resizeVideoPosterUrl(
-                    walkthrough.posterUrl,
-                    1280,
-                  )} 1280w`}
-                  sizes="(max-width: 768px) 100vw, 1152px"
-                  alt={`${property.publicName} walkthrough film`}
-                  fetchPriority="high"
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                <AmbientVideo
-                  sources={[
-                    {
-                      media: '(min-width: 768px)',
-                      src: deriveVideoPreviewUrl(walkthrough.playbackUrl, {
-                        maxHeight: 720,
-                        maxDurationSec: 24,
-                        quality: 'auto',
-                      }),
-                    },
-                    {
-                      src: deriveVideoPreviewUrl(walkthrough.playbackUrl, {
-                        maxHeight: 540,
-                        maxDurationSec: 24,
-                        quality: 'auto',
-                      }),
-                    },
-                  ]}
-                />
-              </div>
+        <div className="grid gap-8 pb-12 pt-8 sm:gap-10 sm:pb-16 sm:pt-12 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-center lg:gap-x-12 lg:gap-y-8 lg:pb-20 lg:pt-14">
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:self-end">
+            <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.28em] text-white/60">
+              <span className="h-px w-7 bg-white/25" />A quieter way to stay
+            </div>
 
-              {/* Facade avatar — the old cover photo, demoted */}
-              {heroUrl && (
-                <div className="absolute -bottom-6 left-4 h-16 w-16 overflow-hidden rounded-2xl shadow-[0_18px_40px_-12px_rgba(0,0,0,0.8)] ring-2 ring-white/20 sm:-bottom-8 sm:left-6 sm:h-20 sm:w-20">
+            <h1 className="mt-5 max-w-[12ch] font-serif text-[clamp(2.75rem,8vw,3.75rem)] font-light leading-[0.96] tracking-[-0.04em] text-white">
+              {property.publicName}
+            </h1>
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-white/75 sm:text-sm">
+              <div className="inline-flex items-center gap-2">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-white/55" />
+                <span className="tracking-[0.02em]">{location}</span>
+              </div>
+              {property.primaryPhone && (
+                <a
+                  href={`tel:${property.primaryPhone}`}
+                  className="group inline-flex min-h-11 items-center gap-2 rounded-full px-1 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
+                >
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-white/55 transition-transform group-hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none" />
+                  <span>{property.primaryPhone}</span>
+                </a>
+              )}
+            </div>
+
+            <p className="mt-6 max-w-[62ch] text-[15px] leading-[1.8] text-white/75 sm:text-base">
+              {property.descriptionShort ??
+                `A thoughtfully located Zenvana stay in ${location}, designed for easy arrivals, quiet comfort, and a smoother city stay.`}
+            </p>
+
+            <div className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+              <PlaneButton
+                href={
+                  couponCode
+                    ? `/book/${property.slug}?${new URLSearchParams({
+                        couponCode,
+                      }).toString()}`
+                    : `/book/${property.slug}`
+                }
+                sentLabel="Opening dates"
+                className="min-h-12 rounded-full bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(37,99,235,0.6)] transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#06080d]"
+              >
+                <CalendarCheck className="h-4 w-4" />
+                Check overnight availability
+              </PlaneButton>
+
+              {property.googleMapPlaceUrl ? (
+                <a
+                  href={property.googleMapPlaceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-medium text-white/90 backdrop-blur-xl transition duration-300 hover:border-white/30 hover:bg-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
+                >
+                  <MapPin className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none" />
+                  View on map
+                </a>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:w-full lg:max-w-sm lg:justify-self-end">
+            <div className="group relative aspect-video overflow-hidden rounded-[1.25rem] bg-[#0a0f18] shadow-[0_30px_90px_-24px_rgba(0,0,0,0.75)] ring-1 ring-white/10 transition duration-500 focus-within:ring-2 focus-within:ring-white/70 hover:-translate-y-1 hover:ring-white/25 motion-reduce:transform-none motion-reduce:transition-none sm:rounded-[1.5rem]">
+              {walkthrough ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={resizeVideoPosterUrl(walkthrough.posterUrl, 960)}
+                    srcSet={`${resizeVideoPosterUrl(
+                      walkthrough.posterUrl,
+                      480,
+                    )} 480w, ${resizeVideoPosterUrl(
+                      walkthrough.posterUrl,
+                      720,
+                    )} 720w, ${resizeVideoPosterUrl(
+                      walkthrough.posterUrl,
+                      960,
+                    )} 960w`}
+                    sizes="(max-width: 1023px) calc(100vw - 2rem), 33vw"
+                    alt={`${property.publicName} walkthrough film`}
+                    fetchPriority="high"
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none"
+                  />
+                  <AmbientVideo
+                    sources={[
+                      {
+                        media: '(min-width: 1024px)',
+                        src: deriveVideoPreviewUrl(walkthrough.playbackUrl, {
+                          maxHeight: 720,
+                          maxDurationSec: 24,
+                          quality: 'auto',
+                        }),
+                      },
+                      {
+                        src: deriveVideoPreviewUrl(walkthrough.playbackUrl, {
+                          maxHeight: 540,
+                          maxDurationSec: 24,
+                          quality: 'auto',
+                        }),
+                      },
+                    ]}
+                    videoClassName="transition-transform duration-700 group-hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none"
+                  />
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.18)_0%,transparent_45%,rgba(0,0,0,0.58)_100%)]" />
+                  <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/35 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-white backdrop-blur-md">
+                    <Clapperboard className="h-3.5 w-3.5" />
+                    Walkthrough
+                  </div>
+                  <div className="pointer-events-none absolute bottom-4 left-4 right-4">
+                    <p className="font-serif text-xl font-light tracking-[-0.02em] text-white sm:text-2xl">
+                      Step inside the stay
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-white/70">
+                      A quiet preview of the rooms and shared spaces.
+                    </p>
+                  </div>
+                </>
+              ) : heroUrl ? (
+                <>
                   <CloudinaryImage
                     src={heroUrl}
                     alt={`${property.publicName} in ${location}`}
                     fill
-                    className="object-cover"
-                    sizes="80px"
+                    className="object-cover transition-transform duration-700 group-hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none"
+                    sizes="(max-width: 1023px) calc(100vw - 2rem), 33vw"
                     priority
                   />
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* Featured editorial photo card — sharp, framed, asymmetric */
-          <div className="mt-8 sm:mt-12">
-            <div className="relative mx-auto aspect-[4/5] w-full max-w-[300px] overflow-hidden rounded-[1.25rem] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/10 sm:max-w-md sm:rounded-[1.5rem]">
-              {heroUrl ? (
-                <CloudinaryImage
-                  src={heroUrl}
-                  alt={`${property.publicName} in ${location}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 320px, 500px"
-                  priority
-                />
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.12)_0%,transparent_45%,rgba(0,0,0,0.62)_100%)]" />
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <p className="font-serif text-xl font-light tracking-[-0.02em] text-white sm:text-2xl">
+                      {property.publicName}
+                    </p>
+                    <p className="mt-1 text-xs text-white/70">{location}</p>
+                  </div>
+                </>
               ) : (
                 <div className="absolute inset-0 bg-[linear-gradient(135deg,#0a1426,#143626)]" />
               )}
-
-              {/* Subtle inner gradient for cover text legibility */}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.20)_0%,transparent_30%,transparent_60%,rgba(0,0,0,0.55)_100%)]" />
-
-              {/* Top-corner monogram */}
-              <div className="absolute left-4 right-4 top-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[9px] font-medium uppercase tracking-[0.32em] text-white/75">
-                  <span className="h-px w-5 bg-white/45" />
-                  Zenvana
-                </div>
-                <div className="bg-white/12 rounded-full px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.22em] text-white/80 backdrop-blur">
-                  Boutique
-                </div>
-              </div>
-
-              {/* Bottom-corner location stamp */}
-              <div className="absolute bottom-4 left-4 right-4">
-                <div className="text-[9px] font-medium uppercase tracking-[0.32em] text-white/65">
-                  Rajpur Road
-                </div>
-                <div className="mt-0.5 font-serif text-base leading-tight text-white/95 sm:text-lg">
-                  {location}
-                </div>
-              </div>
             </div>
           </div>
-        )}
 
-        {/* Editorial title block */}
-        <div className="mx-auto mt-10 max-w-3xl text-center sm:mt-14">
-          <div className="flex items-center justify-center gap-3 text-[10px] font-medium uppercase tracking-[0.34em] text-white/55">
-            <span className="h-px w-7 bg-white/25" />
-            A Quieter Way to Stay
-            <span className="h-px w-7 bg-white/25" />
-          </div>
-
-          <h1 className="mt-5 font-serif text-[clamp(2.5rem,10.5vw,6.25rem)] font-light leading-[0.94] tracking-[-0.045em] text-white">
-            {property.publicName}
-          </h1>
-
-          <div className="text-white/72 mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12.5px] sm:text-[13.5px]">
-            <div className="inline-flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5 text-white/55" />
-              <span className="tracking-[0.04em]">{location}</span>
-            </div>
-            {property.primaryPhone && (
-              <>
-                <span className="inline-block h-1 w-1 rounded-full bg-white/35" />
-                <a
-                  href={`tel:${property.primaryPhone}`}
-                  className="inline-flex items-center gap-2 transition hover:text-white"
-                >
-                  <Phone className="h-3.5 w-3.5 text-white/55" />
-                  <span>{property.primaryPhone}</span>
-                </a>
-              </>
-            )}
-          </div>
-
-          <p className="text-white/72 mx-auto mt-7 max-w-xl text-[14.5px] leading-[1.85] sm:text-[15.5px]">
-            {property.descriptionShort ??
-              `A thoughtfully located Zenvana stay in ${location}, designed for easy arrivals, quiet comfort, and a smoother city stay.`}
-          </p>
-
-          <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center">
-            <PlaneButton
-              href={
-                couponCode
-                  ? `/book/${property.slug}?${new URLSearchParams({
-                      couponCode,
-                    }).toString()}`
-                  : `/book/${property.slug}`
-              }
-              sentLabel="Opening dates"
-              className="rounded-full bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(37,99,235,0.6)] transition-colors hover:bg-blue-500"
-            >
-              <CalendarCheck className="h-4 w-4" />
-              Check overnight availability
-            </PlaneButton>
-
-            {property.googleMapPlaceUrl ? (
-              <a
-                href={property.googleMapPlaceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-medium text-white/90 backdrop-blur-xl transition hover:border-white/30 hover:bg-white/[0.10]"
-              >
-                <MapPin className="h-4 w-4" />
-                View on map
-              </a>
-            ) : null}
-          </div>
+          <HeroFacts property={property} location={location} />
         </div>
 
         {/* Preview strip — sharp images, editorial caption */}
         {previewImages.length > 0 && (
-          <div className="mt-14 pb-14 sm:mt-20 sm:pb-20">
+          <div className="border-t border-white/10 pb-14 pt-10 sm:pb-20 sm:pt-12">
             <div className="mb-4 flex items-end justify-between">
               <div>
                 <div className="text-[9.5px] font-medium uppercase tracking-[0.34em] text-white/55">
@@ -611,11 +580,7 @@ function PropertyHero({
   )
 }
 
-/* ------------------------------------------------------------------ */
-/*  QUICK FACTS — editorial inline stripe                              */
-/* ------------------------------------------------------------------ */
-
-function QuickFacts({
+function HeroFacts({
   property,
   location,
 }: {
@@ -646,37 +611,31 @@ function QuickFacts({
   ]
 
   return (
-    <section className="border-b border-border/60 bg-background">
-      <Container className="py-6 sm:py-7">
-        <div className="grid grid-cols-2 gap-y-5 sm:flex sm:items-stretch sm:justify-between sm:gap-x-4">
-          {items.map((item, index) => {
-            const Icon = item.icon
-            return (
-              <div
-                key={item.label}
-                className={`flex items-center gap-3 sm:flex-1 sm:justify-start sm:px-2 ${
-                  index !== items.length - 1
-                    ? 'sm:border-r sm:border-border/60'
-                    : ''
-                } ${index % 2 === 0 ? 'sm:pl-0' : ''}`}
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card/60 text-foreground/75">
-                  <Icon className="h-3.5 w-3.5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[9.5px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                    {item.label}
-                  </div>
-                  <div className="mt-0.5 truncate font-serif text-base leading-tight tracking-[-0.01em] text-foreground sm:text-[17px]">
-                    {item.value}
-                  </div>
-                </div>
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 lg:col-start-1 lg:row-start-2 lg:self-start">
+      {items.map((item) => {
+        const Icon = item.icon
+        return (
+          <div
+            key={item.label}
+            className="group min-w-0 bg-[#080b11]/90 p-4 transition-colors duration-300 hover:bg-white/[0.07] motion-reduce:transition-none sm:p-5"
+          >
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 transition-colors group-hover:border-white/20 group-hover:text-white motion-reduce:transition-none">
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <dt className="text-[9px] font-medium uppercase tracking-[0.24em] text-white/50 sm:text-[9.5px]">
+                  {item.label}
+                </dt>
+                <dd className="mt-1 font-serif text-[15px] leading-snug tracking-[-0.01em] text-white sm:text-base">
+                  {item.value}
+                </dd>
               </div>
-            )
-          })}
-        </div>
-      </Container>
-    </section>
+            </div>
+          </div>
+        )
+      })}
+    </dl>
   )
 }
 
