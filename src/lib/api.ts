@@ -238,6 +238,32 @@ export type PublicWebsiteBookingStats = {
   from: string
   to: string
   slug: string | null
+  byDay?: Array<{ date: string; bookings: number; totalAmount: number }>
+  byProperty?: Array<{
+    slug: string
+    propertyName: string
+    bookings: number
+    totalAmount: number
+  }>
+  list?: PublicWebsiteBookingListItem[]
+}
+
+export type PublicWebsiteBookingListItem = {
+  bookingReference: string
+  slug: string | null
+  propertyName: string
+  guestName: string
+  guestPhoneLast4: string | null
+  totalAmount: number
+  totalPaid: number
+  avgTariff: number | null
+  totalRooms: number
+  nights: number
+  checkIn: string | null
+  checkOut: string | null
+  roomTypes: string
+  createdAt: string
+  source: string
 }
 
 /** WEBSITE-source PMS bookings for Zenvana (owner userId=1). */
@@ -245,6 +271,9 @@ export async function getPublicWebsiteBookingStats(params: {
   from: Date
   to?: Date
   slug?: string | null
+  groupBy?: 'day' | 'property'
+  list?: boolean
+  limit?: number
 }): Promise<PublicWebsiteBookingStats | null> {
   try {
     const qs = new URLSearchParams({
@@ -252,6 +281,11 @@ export async function getPublicWebsiteBookingStats(params: {
       to: (params.to ?? new Date()).toISOString(),
     })
     if (params.slug) qs.set('slug', params.slug)
+    if (params.groupBy) qs.set('groupBy', params.groupBy)
+    if (params.list) {
+      qs.set('list', '1')
+      qs.set('limit', String(params.limit ?? 50))
+    }
     const res = await fetch(`${BACKEND_URL}/public/stats/website-bookings?${qs}`, {
       cache: 'no-store',
     })
@@ -266,6 +300,29 @@ export async function getPublicWebsiteBookingStats(params: {
       from: String(data.from ?? ''),
       to: String(data.to ?? ''),
       slug: data.slug ?? null,
+      byDay: Array.isArray(data.byDay)
+        ? data.byDay.map((d: { date: string; bookings: number; totalAmount: number }) => ({
+            date: String(d.date).slice(0, 10),
+            bookings: Number(d.bookings) || 0,
+            totalAmount: Number(d.totalAmount) || 0,
+          }))
+        : undefined,
+      byProperty: Array.isArray(data.byProperty)
+        ? data.byProperty.map(
+            (p: {
+              slug: string
+              propertyName: string
+              bookings: number
+              totalAmount: number
+            }) => ({
+              slug: String(p.slug),
+              propertyName: String(p.propertyName ?? p.slug),
+              bookings: Number(p.bookings) || 0,
+              totalAmount: Number(p.totalAmount) || 0,
+            }),
+          )
+        : undefined,
+      list: Array.isArray(data.list) ? data.list : undefined,
     }
   } catch {
     return null

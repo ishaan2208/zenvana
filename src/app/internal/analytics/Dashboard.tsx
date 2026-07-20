@@ -197,6 +197,14 @@ function formatStayDate(iso: string | null | undefined): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function formatChartDay(isoDate: string): string {
+  // isoDate is YYYY-MM-DD in local calendar; parse as local noon to avoid TZ shift
+  const [y, m, d] = isoDate.split('-').map(Number)
+  if (!y || !m || !d) return isoDate.slice(5)
+  const date = new Date(y, m - 1, d, 12)
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
+
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -476,12 +484,10 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
             >
               <KpiCard
                 label="Bookings"
-                value={formatNumber(
-                  overview?.pms.current?.bookings ?? current?.bookings ?? 0,
-                )}
+                value={formatNumber(current?.bookings ?? 0)}
                 hint={
                   overview?.pms.current
-                    ? `Website PMS · tracked ${formatNumber(current?.bookings ?? 0)} →`
+                    ? `Website PMS · tracked ${formatNumber(overview.pms.trackedCurrent.bookings)} →`
                     : 'Tracked events · click to drill down →'
                 }
                 delta={overview?.deltas.bookings}
@@ -490,17 +496,15 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
             <KpiCard
               label="Conversion"
               value={formatPct(current?.conversionRate ?? 0)}
-              hint="Tracked bookings ÷ sessions"
+              hint="Bookings ÷ sessions"
               delta={overview?.deltas.conversionRate}
             />
             <KpiCard
               label="Revenue"
-              value={formatMoney(
-                overview?.pms.current?.revenue ?? current?.revenue ?? 0,
-              )}
+              value={formatMoney(current?.revenue ?? 0)}
               hint={
                 overview?.pms.current
-                  ? `Website PMS · tracked ${formatMoney(current?.revenue ?? 0)}`
+                  ? `Website PMS · tracked ${formatMoney(overview.pms.trackedCurrent.revenue)}`
                   : 'From tracked booking amounts'
               }
               delta={overview?.deltas.revenue}
@@ -508,13 +512,13 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
           </div>
 
           {overview?.pms.current &&
-          (overview.pms.current.bookings !== (current?.bookings ?? 0) ||
-            Math.abs(overview.pms.current.revenue - (current?.revenue ?? 0)) > 1) ? (
+          (overview.pms.current.bookings !== overview.pms.trackedCurrent.bookings ||
+            Math.abs(overview.pms.current.revenue - overview.pms.trackedCurrent.revenue) > 1) ? (
             <p className="text-xs text-muted-foreground">
               PMS website bookings ({formatNumber(overview.pms.current.bookings)} ·{' '}
               {formatMoney(overview.pms.current.revenue)}) are the money source of truth.
-              Tracked analytics ({formatNumber(current?.bookings ?? 0)} ·{' '}
-              {formatMoney(current?.revenue ?? 0)}) undercount when{' '}
+              Tracked analytics ({formatNumber(overview.pms.trackedCurrent.bookings)} ·{' '}
+              {formatMoney(overview.pms.trackedCurrent.revenue)}) undercount when{' '}
               <code className="text-[11px]">booking_completed</code> did not fire.
             </p>
           ) : null}
@@ -615,7 +619,8 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
               <CardTitle className="text-base">Channels — where should you spend?</CardTitle>
               <p className="text-xs text-muted-foreground">
                 First-touch channel derived from UTM, click IDs (gclid/fbclid), and referrer.
-                Interakt campaigns: use{' '}
+                Bookings here are tracked events (for attribution); Overview/Properties use website
+                PMS for money totals. Interakt campaigns: use{' '}
                 <code className="rounded bg-muted px-1">
                   ?utm_source=whatsapp&utm_medium=interakt&utm_campaign=NAME
                 </code>
@@ -697,7 +702,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
               ) : (
                 <>
                   <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                    Tracked bookings (all <code className="text-[11px]">booking_completed</code>):{' '}
+                    Website bookings (PMS when available):{' '}
                     <span className="font-medium text-foreground">
                       {formatNumber(funnel.totalBookings)}
                     </span>
@@ -709,7 +714,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
                       )}
                     </span>
                     {' · '}
-                    Sessions that booked:{' '}
+                    Sessions that reached Booked:{' '}
                     <span className="font-medium text-foreground">
                       {formatNumber(funnel.steps[funnel.steps.length - 1]?.sessions ?? 0)}
                     </span>
@@ -778,7 +783,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
                 Property comparison — what to change
               </CardTitle>
               <p className="text-xs text-muted-foreground">
-                Low conversion + high views → fix page/CTA/pricing. High conversion → replicate what works.
+                Bookings &amp; revenue from website PMS. Views/sessions from on-site tracking.
               </p>
             </CardHeader>
             <CardContent>
@@ -819,8 +824,8 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
                 Booking details — from StaySystems PMS
               </CardTitle>
               <p className="text-xs text-muted-foreground">
-                Analytics conversions enriched with guest name, stay dates, avg tariff, and created
-                time. Click a row for full detail. Phone shown as last 4 digits only.
+                All WEBSITE bookings from StaySystems PMS in this range (source of truth). Channel
+                shown when a matching analytics event exists. Click a row for detail.
               </p>
             </CardHeader>
             <CardContent>
@@ -999,16 +1004,139 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
 
         {/* ── Blog ───────────────────────────────────────────── */}
         <TabsContent value="blog" className="space-y-5">
+          <div>
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Last 10 days</h3>
+                <p className="text-xs text-muted-foreground">
+                  Fixed window for ops — independent of the range picker above.
+                </p>
+              </div>
+              <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
+                Rolling 10d
+              </Badge>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <KpiCard
+                label="Published"
+                value={formatNumber(blog?.last10Days.published ?? 0)}
+                hint="Went live"
+              />
+              <KpiCard
+                label="Created"
+                value={formatNumber(blog?.last10Days.created ?? 0)}
+                hint="Drafts + published"
+              />
+              <KpiCard
+                label="Post views"
+                value={formatNumber(blog?.last10Days.views ?? 0)}
+              />
+              <KpiCard
+                label="Unique readers"
+                value={formatNumber(blog?.last10Days.readers ?? 0)}
+              />
+              <KpiCard
+                label="Comments"
+                value={formatNumber(blog?.last10Days.comments ?? 0)}
+              />
+              <KpiCard
+                label="Blog → hotel CTAs"
+                value={formatNumber(blog?.last10Days.ctaClicks ?? 0)}
+              />
+              <KpiCard
+                label="Newsletter"
+                value={formatNumber(blog?.last10Days.newsletterSignups ?? 0)}
+              />
+              <KpiCard
+                label="Assisted bookings"
+                value={formatNumber(blog?.last10Days.assistedBookings ?? 0)}
+                hint="Viewed a post → booked"
+              />
+            </div>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <KpiCard
+              label="Published"
+              value={formatNumber(blog?.totals.published ?? 0)}
+              hint={`In selected ${range}`}
+            />
             <KpiCard label="Post views" value={formatNumber(blog?.totals.views ?? 0)} />
             <KpiCard label="Unique readers" value={formatNumber(blog?.totals.readers ?? 0)} />
             <KpiCard label="Comments" value={formatNumber(blog?.totals.comments ?? 0)} />
-            <KpiCard label="Blog → hotel CTAs" value={formatNumber(blog?.totals.ctaClicks ?? 0)} />
             <KpiCard
               label="Newsletter"
               value={formatNumber(blog?.newsletterSignups ?? 0)}
               hint="Signups this period"
             />
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarRange className="h-4 w-4" />
+                  Posts uploaded by day
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Published = went live. Created = any new post (including drafts) in the selected
+                  range.
+                </p>
+              </CardHeader>
+              <CardContent className="h-[280px]">
+                {(blog?.uploadsByDate ?? []).every((d) => d.published === 0 && d.created === 0) ? (
+                  <EmptyState message="No posts created or published in this range" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={(blog?.uploadsByDate ?? []).map((d) => ({
+                        ...d,
+                        label: formatChartDay(d.date),
+                      }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={16} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
+                      <RechartsTooltip />
+                      <Bar dataKey="published" name="Published" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="created" name="Created" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Last 10 days — upload cadence</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  How consistently content is shipping day by day.
+                </p>
+              </CardHeader>
+              <CardContent className="h-[280px]">
+                {(blog?.last10Days.uploadsByDate ?? []).every(
+                  (d) => d.published === 0 && d.created === 0,
+                ) ? (
+                  <EmptyState message="No posts in the last 10 days" />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={(blog?.last10Days.uploadsByDate ?? []).map((d) => ({
+                        ...d,
+                        label: formatChartDay(d.date),
+                      }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={12} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
+                      <RechartsTooltip />
+                      <Bar dataKey="published" name="Published" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="created" name="Created" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           <Card>

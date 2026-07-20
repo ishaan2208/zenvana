@@ -81,6 +81,11 @@ function normalizeFilters(filters?: DashboardFilters): DashboardFilters {
   }
 }
 
+function canQueryPms(filters?: DashboardFilters): boolean {
+  const normalized = normalizeFilters(filters)
+  return !normalized.utmSource && !normalized.channel
+}
+
 /** SQL fragments joining events → sessions for attribution. */
 function sessionJoinFilters(normalized: DashboardFilters) {
   const propertyFilter = normalized.propertySlug
@@ -177,13 +182,15 @@ export async function getDashboardSummary(
 }
 
 export type OverviewComparison = {
-  /** First-party tracked events (analytics DB) */
+  /** KPI numbers (PMS-backed when available) */
   current: DashboardSummary
   previous: DashboardSummary
-  /** Website PMS bookings (source of truth for money). Null if filter can't map to PMS. */
+  /** Website PMS vs tracked undercount diagnostics */
   pms: {
     current: { bookings: number; revenue: number } | null
     previous: { bookings: number; revenue: number } | null
+    trackedCurrent: { bookings: number; revenue: number }
+    trackedPrevious: { bookings: number; revenue: number }
   }
   deltas: {
     sessions: number
@@ -202,7 +209,7 @@ export async function getOverviewComparison(
   const { since: prevSince, until: prevUntil } = previousRangeWindow(range)
   const normalized = normalizeFilters(filters)
   // PMS can filter by property slug only — not channel/UTM.
-  const canUsePms = !normalized.utmSource && !normalized.channel
+  const canUsePms = canQueryPms(filters)
 
   const [current, previous, pmsCurrent, pmsPrevious] = await Promise.all([
     summarizeWindow(since, null, filters),
@@ -236,16 +243,34 @@ export async function getOverviewComparison(
   const bookPrev = pms.previous?.bookings ?? previous.bookings
   const revCur = pms.current?.revenue ?? current.revenue
   const revPrev = pms.previous?.revenue ?? previous.revenue
+  const convCur = current.sessions === 0 ? 0 : bookCur / current.sessions
+  const convPrev = previous.sessions === 0 ? 0 : bookPrev / previous.sessions
 
   const pct = (cur: number, prev: number) => (prev === 0 ? (cur > 0 ? 1 : 0) : (cur - prev) / prev)
   return {
-    current,
-    previous,
-    pms,
+    current: {
+      ...current,
+      bookings: bookCur,
+      revenue: revCur,
+      conversionRate: convCur,
+    },
+    previous: {
+      ...previous,
+      bookings: bookPrev,
+      revenue: revPrev,
+      conversionRate: convPrev,
+    },
+    pms: {
+      current: pms.current,
+      previous: pms.previous,
+      /** Raw first-party tracked totals (for undercount callouts) */
+      trackedCurrent: { bookings: current.bookings, revenue: current.revenue },
+      trackedPrevious: { bookings: previous.bookings, revenue: previous.revenue },
+    },
     deltas: {
       sessions: pct(current.sessions, previous.sessions),
       bookings: pct(bookCur, bookPrev),
-      conversionRate: current.conversionRate - previous.conversionRate,
+      conversionRate: convCur - convPrev,
       revenue: pct(revCur, revPrev),
     },
   }
@@ -375,6 +400,23 @@ export async function getFunnel(
   }
 }
 
+/** Prefer PMS website booking count when channel/UTM filters are not applied. */
+export async function getFunnelWithPms(
+  range: DashboardRange,
+  filters?: DashboardFilters,
+): Promise<FunnelResult> {
+  const funnel = await getFunnel(range, filters)
+  if (!canQueryPms(filters)) return funnel
+  const normalized = normalizeFilters(filters)
+  const pms = await getPublicWebsiteBookingStats({
+    from: rangeStart(range),
+    to: new Date(),
+    slug: normalized.propertySlug,
+  })
+  if (!pms) return funnel
+  return { ...funnel, totalBookings: pms.bookings }
+}
+
 export type TimeSeriesPoint = {
   date: string
   sessions: number
@@ -444,12 +486,35 @@ export async function getTimeSeries(
     ORDER BY days.day ASC
   `
 
-  return rows.map((row) => ({
+  const tracked = rows.map((row) => ({
     date: row.day.toISOString().slice(0, 10),
     sessions: Number(row.sessions),
     bookings: Number(row.bookings),
     revenue: Number(row.revenue ?? 0),
   }))
+
+  if (!canQueryPms(filters)) return tracked
+
+  const pms = await getPublicWebsiteBookingStats({
+    from: since,
+    to: new Date(),
+    slug: normalized.propertySlug,
+    groupBy: 'day',
+  })
+  if (!pms?.byDay?.length) return tracked
+
+  const byDay = new Map(pms.byDay.map((d) => [d.date, d]))
+  return tracked.map((point) => {
+    const pmsDay = byDay.get(point.date)
+    if (!pmsDay) {
+      return { ...point, bookings: 0, revenue: 0 }
+    }
+    return {
+      ...point,
+      bookings: pmsDay.bookings,
+      revenue: pmsDay.totalAmount,
+    }
+  })
 }
 
 export type TopProperty = {
@@ -505,7 +570,7 @@ export async function getTopProperties(
     LIMIT 25
   `
 
-  return rows.map((row) => {
+  const tracked = rows.map((row) => {
     const sessions = Number(row.sessions)
     const bookings = Number(row.bookings)
     return {
@@ -517,6 +582,49 @@ export async function getTopProperties(
       conversionRate: sessions === 0 ? 0 : bookings / sessions,
     }
   })
+
+  if (!canQueryPms(filters)) return tracked
+
+  const pms = await getPublicWebsiteBookingStats({
+    from: since,
+    to: new Date(),
+    slug: normalized.propertySlug,
+    groupBy: 'property',
+  })
+  if (!pms?.byProperty?.length) return tracked
+
+  const bySlug = new Map(pms.byProperty.map((p) => [p.slug, p]))
+  const merged = new Map<string, TopProperty>()
+
+  for (const row of tracked) {
+    const pmsRow = bySlug.get(row.propertySlug)
+    const bookings = pmsRow?.bookings ?? 0
+    const revenue = pmsRow?.totalAmount ?? 0
+    merged.set(row.propertySlug, {
+      ...row,
+      bookings,
+      revenue,
+      conversionRate: row.sessions === 0 ? 0 : bookings / row.sessions,
+    })
+    bySlug.delete(row.propertySlug)
+  }
+
+  // PMS properties with bookings but no tracked traffic in range
+  for (const pmsRow of bySlug.values()) {
+    if (pmsRow.slug === 'unknown') continue
+    merged.set(pmsRow.slug, {
+      propertySlug: pmsRow.slug,
+      views: 0,
+      sessions: 0,
+      bookings: pmsRow.bookings,
+      revenue: pmsRow.totalAmount,
+      conversionRate: 0,
+    })
+  }
+
+  return [...merged.values()].sort(
+    (a, b) => b.bookings - a.bookings || b.revenue - a.revenue || b.views - a.views,
+  )
 }
 
 export type UtmRow = {
@@ -833,6 +941,24 @@ export type BlogAuthorStats = {
   assistedBookings: number
 }
 
+export type BlogUploadDay = {
+  date: string
+  published: number
+  created: number
+}
+
+export type BlogPeriodKpis = {
+  published: number
+  created: number
+  views: number
+  readers: number
+  comments: number
+  ctaClicks: number
+  newsletterSignups: number
+  assistedBookings: number
+  uploadsByDate: BlogUploadDay[]
+}
+
 export type BlogAnalytics = {
   posts: BlogPostStats[]
   authors: BlogAuthorStats[]
@@ -843,60 +969,201 @@ export type BlogAnalytics = {
     comments: number
     ctaClicks: number
     assistedBookings: number
+    published: number
+    created: number
+  }
+  /** Posts created/published per day for the selected dashboard range. */
+  uploadsByDate: BlogUploadDay[]
+  /** Fixed last-10-days snapshot for quick ops review (independent of range picker). */
+  last10Days: BlogPeriodKpis
+}
+
+function dateKeyLocal(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function eachDayKeys(since: Date, until: Date = new Date()): string[] {
+  const keys: string[] = []
+  const cursor = new Date(since)
+  cursor.setHours(0, 0, 0, 0)
+  const end = new Date(until)
+  end.setHours(0, 0, 0, 0)
+  while (cursor <= end) {
+    keys.push(dateKeyLocal(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return keys
+}
+
+async function getBlogUploadSeries(since: Date): Promise<{
+  uploadsByDate: BlogUploadDay[]
+  published: number
+  created: number
+}> {
+  const [publishedPosts, createdPosts] = await Promise.all([
+    prisma.blogPost.findMany({
+      where: {
+        status: 'PUBLISHED',
+        OR: [
+          { publishedAt: { gte: since } },
+          { publishedAt: null, createdAt: { gte: since } },
+        ],
+      },
+      select: { publishedAt: true, createdAt: true },
+    }),
+    prisma.blogPost.findMany({
+      where: { createdAt: { gte: since } },
+      select: { createdAt: true },
+    }),
+  ])
+
+  const publishedMap = new Map<string, number>()
+  for (const post of publishedPosts) {
+    const at = post.publishedAt ?? post.createdAt
+    if (at < since) continue
+    const key = dateKeyLocal(at)
+    publishedMap.set(key, (publishedMap.get(key) ?? 0) + 1)
+  }
+
+  const createdMap = new Map<string, number>()
+  for (const post of createdPosts) {
+    const key = dateKeyLocal(post.createdAt)
+    createdMap.set(key, (createdMap.get(key) ?? 0) + 1)
+  }
+
+  const uploadsByDate = eachDayKeys(since).map((date) => ({
+    date,
+    published: publishedMap.get(date) ?? 0,
+    created: createdMap.get(date) ?? 0,
+  }))
+
+  return {
+    uploadsByDate,
+    published: uploadsByDate.reduce((n, d) => n + d.published, 0),
+    created: uploadsByDate.reduce((n, d) => n + d.created, 0),
   }
 }
 
-export async function getBlogAnalytics(range: DashboardRange): Promise<BlogAnalytics> {
-  const since = rangeStart(range)
-
-  const [postRows, authorPosts, newsletterSignups] = await Promise.all([
+async function getBlogEngagementTotals(since: Date): Promise<{
+  views: number
+  readers: number
+  comments: number
+  ctaClicks: number
+  newsletterSignups: number
+  assistedBookings: number
+}> {
+  const [engagement, newsletterSignups, assisted] = await Promise.all([
     prisma.$queryRaw<
       Array<{
-        slug: string
-        author: string | null
         views: bigint
         readers: bigint
-        avg_depth: number | null
         comments: bigint
         ctas: bigint
       }>
     >`
       SELECT
-        COALESCE(e.properties->>'slug', 'unknown') AS slug,
-        MAX(e.properties->>'authorName') AS author,
         COUNT(*) FILTER (WHERE e.name = 'blog_post_viewed') AS views,
         COUNT(DISTINCT e."sessionId") FILTER (WHERE e.name = 'blog_post_viewed') AS readers,
-        AVG(
-          CASE
-            WHEN e.name = 'blog_read_progress'
-              AND (e.properties->>'percent') ~ '^[0-9]+$'
-            THEN (e.properties->>'percent')::float8
-            ELSE NULL
-          END
-        ) AS avg_depth,
         COUNT(*) FILTER (WHERE e.name = 'blog_comment_submitted') AS comments,
         COUNT(*) FILTER (WHERE e.name = 'blog_cta_clicked') AS ctas
       FROM "analytics"."event" e
       WHERE e."occurredAt" >= ${since}
         AND e.name IN (
           'blog_post_viewed',
-          'blog_read_progress',
           'blog_comment_submitted',
           'blog_cta_clicked'
         )
-      GROUP BY COALESCE(e.properties->>'slug', 'unknown')
-      ORDER BY views DESC
-      LIMIT 50
     `,
-    prisma.blogPost.groupBy({
-      by: ['authorName'],
-      where: { status: 'PUBLISHED' },
-      _count: { _all: true },
-    }),
     prisma.analyticsEvent.count({
       where: { name: 'newsletter_subscribed', occurredAt: { gte: since } },
     }),
+    prisma.$queryRaw<Array<{ bookings: bigint }>>`
+      WITH blog_sessions AS (
+        SELECT e."sessionId", MIN(e."occurredAt") AS viewed_at
+        FROM "analytics"."event" e
+        WHERE e.name = 'blog_post_viewed'
+          AND e."occurredAt" >= ${since}
+        GROUP BY e."sessionId"
+      )
+      SELECT COUNT(*)::bigint AS bookings
+      FROM blog_sessions bs
+      INNER JOIN "analytics"."event" b
+        ON b."sessionId" = bs."sessionId"
+        AND b.name = 'booking_completed'
+        AND b."occurredAt" >= bs.viewed_at
+    `,
   ])
+
+  const row = engagement[0]
+  return {
+    views: Number(row?.views ?? 0),
+    readers: Number(row?.readers ?? 0),
+    comments: Number(row?.comments ?? 0),
+    ctaClicks: Number(row?.ctas ?? 0),
+    newsletterSignups,
+    assistedBookings: Number(assisted[0]?.bookings ?? 0),
+  }
+}
+
+export async function getBlogAnalytics(range: DashboardRange): Promise<BlogAnalytics> {
+  const since = rangeStart(range)
+  const last10Since = rangeStart('10d')
+
+  const [postRows, authorPosts, newsletterSignups, rangeUploads, last10Uploads, last10Engagement] =
+    await Promise.all([
+      prisma.$queryRaw<
+        Array<{
+          slug: string
+          author: string | null
+          views: bigint
+          readers: bigint
+          avg_depth: number | null
+          comments: bigint
+          ctas: bigint
+        }>
+      >`
+        SELECT
+          COALESCE(e.properties->>'slug', 'unknown') AS slug,
+          MAX(e.properties->>'authorName') AS author,
+          COUNT(*) FILTER (WHERE e.name = 'blog_post_viewed') AS views,
+          COUNT(DISTINCT e."sessionId") FILTER (WHERE e.name = 'blog_post_viewed') AS readers,
+          AVG(
+            CASE
+              WHEN e.name = 'blog_read_progress'
+                AND (e.properties->>'percent') ~ '^[0-9]+$'
+              THEN (e.properties->>'percent')::float8
+              ELSE NULL
+            END
+          ) AS avg_depth,
+          COUNT(*) FILTER (WHERE e.name = 'blog_comment_submitted') AS comments,
+          COUNT(*) FILTER (WHERE e.name = 'blog_cta_clicked') AS ctas
+        FROM "analytics"."event" e
+        WHERE e."occurredAt" >= ${since}
+          AND e.name IN (
+            'blog_post_viewed',
+            'blog_read_progress',
+            'blog_comment_submitted',
+            'blog_cta_clicked'
+          )
+        GROUP BY COALESCE(e.properties->>'slug', 'unknown')
+        ORDER BY views DESC
+        LIMIT 50
+      `,
+      prisma.blogPost.groupBy({
+        by: ['authorName'],
+        where: { status: 'PUBLISHED' },
+        _count: { _all: true },
+      }),
+      prisma.analyticsEvent.count({
+        where: { name: 'newsletter_subscribed', occurredAt: { gte: since } },
+      }),
+      getBlogUploadSeries(since),
+      getBlogUploadSeries(last10Since),
+      getBlogEngagementTotals(last10Since),
+    ])
 
   // Blog-assisted bookings: sessions that viewed a blog then booked
   const assistedRows = await prisma.$queryRaw<
@@ -988,10 +1255,35 @@ export async function getBlogAnalytics(range: DashboardRange): Promise<BlogAnaly
       acc.assistedBookings += p.assistedBookings
       return acc
     },
-    { views: 0, readers: 0, comments: 0, ctaClicks: 0, assistedBookings: 0 },
+    {
+      views: 0,
+      readers: 0,
+      comments: 0,
+      ctaClicks: 0,
+      assistedBookings: 0,
+      published: rangeUploads.published,
+      created: rangeUploads.created,
+    },
   )
 
-  return { posts, authors, newsletterSignups, totals }
+  return {
+    posts,
+    authors,
+    newsletterSignups,
+    totals,
+    uploadsByDate: rangeUploads.uploadsByDate,
+    last10Days: {
+      published: last10Uploads.published,
+      created: last10Uploads.created,
+      views: last10Engagement.views,
+      readers: last10Engagement.readers,
+      comments: last10Engagement.comments,
+      ctaClicks: last10Engagement.ctaClicks,
+      newsletterSignups: last10Engagement.newsletterSignups,
+      assistedBookings: last10Engagement.assistedBookings,
+      uploadsByDate: last10Uploads.uploadsByDate,
+    },
+  }
 }
 
 export type InsightCallout = {
@@ -1015,8 +1307,8 @@ export async function getInsightCallouts(
 
   if (comparison.deltas.bookings !== 0) {
     const up = comparison.deltas.bookings > 0
-    const cur = comparison.pms.current?.bookings ?? comparison.current.bookings
-    const prev = comparison.pms.previous?.bookings ?? comparison.previous.bookings
+    const cur = comparison.current.bookings
+    const prev = comparison.previous.bookings
     const source = comparison.pms.current ? 'website PMS' : 'tracked'
     callouts.push({
       kind: up ? 'up' : 'down',

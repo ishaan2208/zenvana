@@ -16,7 +16,7 @@ import {
   getCampaignTable,
   getChannelTable,
   getDashboardSummary,
-  getFunnel,
+  getFunnelWithPms,
   getInsightCallouts,
   getLandingPages,
   getOverviewComparison,
@@ -24,13 +24,12 @@ import {
   getTopPathTransitions,
   getTopProperties,
   getUtmTable,
-  listCompletedBookingEvents,
   listRecentAuditEvents,
   listRecentEvents,
   type DashboardFilters,
   type DashboardRange,
 } from '@/lib/analytics/queries'
-import { enrichBookingsWithPmsDetails } from '@/lib/analytics/bookingDrilldown'
+import { listBookingsDrilldown } from '@/lib/analytics/bookingDrilldown'
 import { rebuildDailyMetricsRollup } from '@/lib/analytics/rollup'
 
 async function requireAdmin() {
@@ -121,7 +120,7 @@ export async function fetchActiveUsersSnapshotAction() {
 
 export async function fetchFunnelAction(range: DashboardRange, filters?: DashboardFilters) {
   await requireAdmin()
-  return getFunnel(range, filters)
+  return getFunnelWithPms(range, filters)
 }
 
 export async function fetchTimeSeriesAction(range: DashboardRange, filters?: DashboardFilters) {
@@ -173,8 +172,7 @@ export async function fetchBookingsDrilldownAction(
   limit = 40,
 ) {
   await requireAdmin()
-  const events = await listCompletedBookingEvents(range, filters, limit)
-  return enrichBookingsWithPmsDetails(events)
+  return listBookingsDrilldown(range, filters, limit)
 }
 
 export async function fetchRecentEventsAction(
