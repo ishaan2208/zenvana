@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import {
   fetchActiveUsersSnapshotAction,
   fetchBlogAnalyticsAction,
+  fetchBookingsDrilldownAction,
   fetchCampaignTableAction,
   fetchChannelTableAction,
   fetchFunnelAction,
@@ -166,6 +167,7 @@ export function AnalyticsAdminClient({ authorized: initialAuthorized }: Props) {
           landings: fetchLandingPagesAction,
           paths: fetchPathTransitionsAction,
           blog: fetchBlogAnalyticsAction,
+          bookings: fetchBookingsDrilldownAction,
           recent: fetchRecentEventsAction,
           audit: fetchRecentAuditEventsAction,
         }}

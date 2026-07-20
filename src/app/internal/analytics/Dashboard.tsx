@@ -19,11 +19,13 @@ import {
   ArrowUpRight,
   BookOpen,
   Building2,
+  CalendarRange,
   Compass,
   Filter,
   Flame,
   Lightbulb,
   MousePointerClick,
+  Receipt,
   RefreshCw,
   TrendingDown,
   TrendingUp,
@@ -42,7 +44,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { friendlyChannel } from '@/lib/analytics/channel'
+import type { BookingDrilldownRow } from '@/lib/analytics/bookingDrilldown'
 import type {
   ActiveUsersSnapshot,
   BlogAnalytics,
@@ -75,6 +85,7 @@ type Loaders = {
   landings: (range: DashboardRange, filters?: DashboardFilters) => Promise<LandingPageRow[]>
   paths: (range: DashboardRange, filters?: DashboardFilters) => Promise<PathTransition[]>
   blog: (range: DashboardRange) => Promise<BlogAnalytics>
+  bookings: (range: DashboardRange, filters?: DashboardFilters, limit?: number) => Promise<BookingDrilldownRow[]>
   recent: (range: DashboardRange, filters?: DashboardFilters, limit?: number) => Promise<RecentEventRow[]>
   audit: (limit?: number) => Promise<RecentAuditRow[]>
 }
@@ -178,6 +189,26 @@ function KpiCard({
   )
 }
 
+function formatStayDate(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10)
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 text-sm text-muted-foreground">
@@ -243,6 +274,8 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
   const [landings, setLandings] = useState<LandingPageRow[]>([])
   const [paths, setPaths] = useState<PathTransition[]>([])
   const [blog, setBlog] = useState<BlogAnalytics | null>(null)
+  const [bookings, setBookings] = useState<BookingDrilldownRow[]>([])
+  const [selectedBooking, setSelectedBooking] = useState<BookingDrilldownRow | null>(null)
   const [recent, setRecent] = useState<RecentEventRow[]>([])
   const [audit, setAudit] = useState<RecentAuditRow[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -272,6 +305,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
           landingsData,
           pathsData,
           blogData,
+          bookingsData,
           recentData,
           auditData,
         ] = await Promise.all([
@@ -287,6 +321,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
           loaders.landings(range, filters),
           loaders.paths(range, filters),
           loaders.blog(range),
+          loaders.bookings(range, filters, 40),
           loaders.recent(range, filters, 40),
           loaders.audit(30),
         ])
@@ -302,6 +337,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
         setLandings(landingsData)
         setPaths(pathsData)
         setBlog(blogData)
+        setBookings(bookingsData)
         setRecent(recentData)
         setAudit(auditData)
       } catch (err) {
@@ -411,6 +447,9 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
           <TabsTrigger value="properties" className="gap-1.5">
             <Building2 className="h-3.5 w-3.5" /> Properties
           </TabsTrigger>
+          <TabsTrigger value="bookings" className="gap-1.5">
+            <Receipt className="h-3.5 w-3.5" /> Bookings
+          </TabsTrigger>
           <TabsTrigger value="behavior" className="gap-1.5">
             <Waypoints className="h-3.5 w-3.5" /> Behavior
           </TabsTrigger>
@@ -428,12 +467,19 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
               hint="Distinct sessions"
               delta={overview?.deltas.sessions}
             />
-            <KpiCard
-              label="Bookings"
-              value={formatNumber(current?.bookings ?? 0)}
-              hint="Completed bookings"
-              delta={overview?.deltas.bookings}
-            />
+            <button
+              type="button"
+              className="text-left"
+              onClick={() => setTab('bookings')}
+              title="View booking details"
+            >
+              <KpiCard
+                label="Bookings"
+                value={formatNumber(current?.bookings ?? 0)}
+                hint="Click to drill down →"
+                delta={overview?.deltas.bookings}
+              />
+            </button>
             <KpiCard
               label="Conversion"
               value={formatPct(current?.conversionRate ?? 0)}
@@ -696,6 +742,78 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
           </Card>
         </TabsContent>
 
+        {/* ── Bookings drill-down ─────────────────────────────── */}
+        <TabsContent value="bookings" className="space-y-5">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CalendarRange className="h-4 w-4" />
+                Booking details — from StaySystems PMS
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Analytics conversions enriched with guest name, stay dates, avg tariff, and created
+                time. Click a row for full detail. Phone shown as last 4 digits only.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                headers={[
+                  'Guest',
+                  'Property',
+                  'Stay',
+                  'Nights',
+                  'Avg tariff',
+                  'Total',
+                  'Created',
+                  'Channel',
+                  'Ref',
+                ]}
+                rows={bookings.map((row) => {
+                  const d = row.detail
+                  return [
+                    <button
+                      key="g"
+                      type="button"
+                      className="text-left font-medium hover:underline"
+                      onClick={() => setSelectedBooking(row)}
+                    >
+                      {d?.guestName ?? '—'}
+                      {d?.guestPhoneLast4 ? (
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                          ···{d.guestPhoneLast4}
+                        </span>
+                      ) : null}
+                    </button>,
+                    <span key="p" className="capitalize">
+                      {d?.propertyName ??
+                        (row.propertySlug ? friendlyProperty(row.propertySlug) : '—')}
+                    </span>,
+                    <span key="s" className="whitespace-nowrap text-xs sm:text-sm">
+                      {formatStayDate(d?.checkIn)} → {formatStayDate(d?.checkOut)}
+                    </span>,
+                    d ? formatNumber(d.nights) : '—',
+                    d?.avgTariff != null ? formatMoney(d.avgTariff) : '—',
+                    formatMoney(d?.totalAmount ?? row.analyticsAmount ?? 0),
+                    <span key="c" className="whitespace-nowrap text-xs sm:text-sm">
+                      {formatDateTime(d?.createdAt ?? row.convertedAt)}
+                    </span>,
+                    friendlyChannel(row.channel),
+                    <button
+                      key="r"
+                      type="button"
+                      className="font-mono text-xs text-indigo-600 hover:underline dark:text-indigo-400"
+                      onClick={() => setSelectedBooking(row)}
+                    >
+                      {row.bookingReference}
+                    </button>,
+                  ]
+                })}
+                empty="No completed bookings in this period"
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ── Behavior ───────────────────────────────────────── */}
         <TabsContent value="behavior" className="space-y-5">
           <div className="grid gap-5 lg:grid-cols-2">
@@ -907,6 +1025,104 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Sheet
+        open={Boolean(selectedBooking)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedBooking(null)
+        }}
+      >
+        <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+          {selectedBooking ? (
+            <>
+              <SheetHeader>
+                <SheetTitle>{selectedBooking.detail?.guestName ?? 'Booking'}</SheetTitle>
+                <SheetDescription className="font-mono text-xs">
+                  {selectedBooking.bookingReference}
+                </SheetDescription>
+              </SheetHeader>
+              <dl className="mt-6 space-y-3 text-sm">
+                <DetailRow
+                  label="Property"
+                  value={
+                    selectedBooking.detail?.propertyName ??
+                    selectedBooking.propertySlug ??
+                    '—'
+                  }
+                />
+                <DetailRow
+                  label="Stay"
+                  value={`${formatStayDate(selectedBooking.detail?.checkIn)} → ${formatStayDate(selectedBooking.detail?.checkOut)}`}
+                />
+                <DetailRow
+                  label="Nights / rooms"
+                  value={
+                    selectedBooking.detail
+                      ? `${selectedBooking.detail.nights} night(s) · ${selectedBooking.detail.rooms} room(s)`
+                      : '—'
+                  }
+                />
+                <DetailRow
+                  label="Room type(s)"
+                  value={selectedBooking.detail?.roomTypes || '—'}
+                />
+                <DetailRow
+                  label="Avg tariff / night"
+                  value={
+                    selectedBooking.detail?.avgTariff != null
+                      ? formatMoney(selectedBooking.detail.avgTariff)
+                      : '—'
+                  }
+                />
+                <DetailRow
+                  label="Total / paid"
+                  value={
+                    selectedBooking.detail
+                      ? `${formatMoney(selectedBooking.detail.totalAmount)} / ${formatMoney(selectedBooking.detail.totalPaid)}`
+                      : formatMoney(selectedBooking.analyticsAmount ?? 0)
+                  }
+                />
+                <DetailRow
+                  label="Created (PMS)"
+                  value={formatDateTime(selectedBooking.detail?.createdAt)}
+                />
+                <DetailRow
+                  label="Converted (analytics)"
+                  value={formatDateTime(selectedBooking.convertedAt)}
+                />
+                <DetailRow
+                  label="Channel / campaign"
+                  value={`${friendlyChannel(selectedBooking.channel)}${selectedBooking.utmCampaign ? ` · ${selectedBooking.utmCampaign}` : ''}`}
+                />
+                <DetailRow
+                  label="PMS source"
+                  value={selectedBooking.detail?.source ?? '—'}
+                />
+                {selectedBooking.detailError ? (
+                  <DetailRow label="PMS note" value={selectedBooking.detailError} />
+                ) : null}
+              </dl>
+              <div className="mt-6">
+                <Link
+                  href={`/internal/analytics/sessions/${selectedBooking.sessionId}`}
+                  className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+                >
+                  Open analytics session →
+                </Link>
+              </div>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+    </div>
+  )
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-border/40 pb-2">
+      <dt className="shrink-0 text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium text-foreground">{value}</dd>
     </div>
   )
 }

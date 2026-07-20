@@ -1124,3 +1124,77 @@ export async function getSessionDetail(sessionId: string): Promise<SessionDetail
     })),
   }
 }
+
+export type CompletedBookingEvent = {
+  bookingReference: string
+  propertySlug: string | null
+  sessionId: string
+  occurredAt: string
+  amount: number | null
+  utmSource: string | null
+  channel: string | null
+  utmCampaign: string | null
+}
+
+/**
+ * Lists booking_completed events in range (analytics DB), newest first.
+ * Join session for channel/UTM attribution.
+ */
+export async function listCompletedBookingEvents(
+  range: DashboardRange,
+  filters?: DashboardFilters,
+  limit = 50,
+): Promise<CompletedBookingEvent[]> {
+  const since = rangeStart(range)
+  const normalized = normalizeFilters(filters)
+  const { propertyFilter, utmFilter, channelFilter } = sessionJoinFilters(normalized)
+  const take = Math.min(Math.max(limit, 1), 100)
+
+  const rows = await prisma.$queryRaw<
+    Array<{
+      booking_reference: string
+      property_slug: string | null
+      session_id: string
+      occurred_at: Date
+      amount: number | null
+      utm_source: string | null
+      channel: string | null
+      utm_campaign: string | null
+    }>
+  >`
+    SELECT
+      e."bookingReference" AS booking_reference,
+      e."propertySlug" AS property_slug,
+      e."sessionId" AS session_id,
+      e."occurredAt" AS occurred_at,
+      CASE
+        WHEN (e.properties->>'amount') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN (e.properties->>'amount')::float8
+        ELSE NULL
+      END AS amount,
+      s."utmSource" AS utm_source,
+      COALESCE(s."channel", 'direct') AS channel,
+      s."utmCampaign" AS utm_campaign
+    FROM "analytics"."event" e
+    INNER JOIN "analytics"."session" s ON s.id = e."sessionId"
+    WHERE e.name = 'booking_completed'
+      AND e."bookingReference" IS NOT NULL
+      AND e."occurredAt" >= ${since}
+      ${propertyFilter}
+      ${utmFilter}
+      ${channelFilter}
+    ORDER BY e."occurredAt" DESC
+    LIMIT 100
+  `
+
+  return rows.slice(0, take).map((row) => ({
+    bookingReference: row.booking_reference,
+    propertySlug: row.property_slug,
+    sessionId: row.session_id,
+    occurredAt: row.occurred_at.toISOString(),
+    amount: row.amount == null ? null : Number(row.amount),
+    utmSource: row.utm_source,
+    channel: row.channel,
+    utmCampaign: row.utm_campaign,
+  }))
+}

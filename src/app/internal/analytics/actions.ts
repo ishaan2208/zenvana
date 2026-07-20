@@ -24,11 +24,13 @@ import {
   getTopPathTransitions,
   getTopProperties,
   getUtmTable,
+  listCompletedBookingEvents,
   listRecentAuditEvents,
   listRecentEvents,
   type DashboardFilters,
   type DashboardRange,
 } from '@/lib/analytics/queries'
+import { enrichBookingsWithPmsDetails } from '@/lib/analytics/bookingDrilldown'
 import { rebuildDailyMetricsRollup } from '@/lib/analytics/rollup'
 
 async function requireAdmin() {
@@ -163,6 +165,16 @@ export async function fetchPathTransitionsAction(
 export async function fetchBlogAnalyticsAction(range: DashboardRange) {
   await requireAdmin()
   return getBlogAnalytics(range)
+}
+
+export async function fetchBookingsDrilldownAction(
+  range: DashboardRange,
+  filters?: DashboardFilters,
+  limit = 40,
+) {
+  await requireAdmin()
+  const events = await listCompletedBookingEvents(range, filters, limit)
+  return enrichBookingsWithPmsDetails(events)
 }
 
 export async function fetchRecentEventsAction(
