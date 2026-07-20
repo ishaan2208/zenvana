@@ -344,7 +344,7 @@ function PropertyHero({
   const previewImages = galleryImages.slice(0, 4)
 
   return (
-    <section className="relative isolate overflow-hidden bg-[#06080d] text-white">
+    <section className="relative isolate overflow-hidden bg-background text-foreground dark:bg-[#06080d] dark:text-white">
       {/* Atmospheric blurred backdrop — image becomes pure ambience */}
       {heroUrl ? (
         <div className="absolute inset-0">
@@ -352,24 +352,24 @@ function PropertyHero({
             src={heroUrl}
             alt=""
             fill
-            className="scale-[1.15] object-cover opacity-45 blur-3xl"
+            className="scale-[1.15] object-cover opacity-15 blur-3xl dark:opacity-45"
             sizes="100vw"
             priority
             aria-hidden
           />
         </div>
       ) : (
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,#06080d_0%,#0a1426_55%,#0b1f1a_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,#f6f7ed_0%,#eef2e7_55%,#e5eee6_100%)] dark:bg-[linear-gradient(135deg,#06080d_0%,#0a1426_55%,#0b1f1a_100%)]" />
       )}
 
-      {/* Cinematic darkening — vignette + vertical fade */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(6,8,13,0.35)_0%,rgba(6,8,13,0.75)_55%,rgba(6,8,13,0.96)_100%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,8,13,0.55)_0%,rgba(6,8,13,0.15)_30%,rgba(6,8,13,0.45)_65%,rgba(6,8,13,0.95)_100%)]" />
+      {/* Theme-aware ambience: airy in light mode, cinematic in dark mode. */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(246,247,237,0.52)_0%,rgba(246,247,237,0.82)_58%,rgba(246,247,237,0.97)_100%)] dark:bg-[radial-gradient(ellipse_at_50%_30%,rgba(6,8,13,0.35)_0%,rgba(6,8,13,0.75)_55%,rgba(6,8,13,0.96)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(246,247,237,0.72)_0%,rgba(246,247,237,0.58)_32%,rgba(246,247,237,0.82)_68%,rgba(246,247,237,0.98)_100%)] dark:bg-[linear-gradient(180deg,rgba(6,8,13,0.55)_0%,rgba(6,8,13,0.15)_30%,rgba(6,8,13,0.45)_65%,rgba(6,8,13,0.95)_100%)]" />
       {/* Subtle warm + cool color wash, very low opacity */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(219,230,76,0.10),transparent_28%),radial-gradient(circle_at_86%_82%,rgba(120,165,255,0.08),transparent_30%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(219,230,76,0.10),transparent_28%),radial-gradient(circle_at_86%_82%,rgba(120,165,255,0.08),transparent_30%)] opacity-40 dark:opacity-100" />
       {/* Film-grain feel via dot pattern */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
+        className="pointer-events-none absolute inset-0 opacity-[0.015] mix-blend-overlay dark:opacity-[0.04]"
         style={{
           backgroundImage:
             'radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px)',
@@ -381,10 +381,10 @@ function PropertyHero({
         <div className="flex items-center justify-between pt-5 sm:pt-6">
           <Link
             href="/hotels"
-            className="group inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 backdrop-blur-xl transition duration-300 hover:border-white/25 hover:bg-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
+            className="group inline-flex min-h-11 items-center gap-2 rounded-full border border-border/70 bg-card/70 px-4 py-2 backdrop-blur-xl transition duration-300 hover:border-foreground/25 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 motion-reduce:transition-none dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-white/25 dark:hover:bg-white/[0.10] dark:focus-visible:ring-white/70"
           >
-            <ArrowLeft className="h-3 w-3 text-white/70 transition-transform group-hover:-translate-x-0.5 group-hover:text-white motion-reduce:transform-none motion-reduce:transition-none" />
-            <span className="text-[10px] font-medium uppercase tracking-[0.26em] text-white/80">
+            <ArrowLeft className="h-3 w-3 text-foreground/65 transition-transform group-hover:-translate-x-0.5 group-hover:text-foreground motion-reduce:transform-none motion-reduce:transition-none dark:text-white/70 dark:group-hover:text-white" />
+            <span className="text-[10px] font-medium uppercase tracking-[0.26em] text-foreground/80 dark:text-white/80">
               Hotels
             </span>
           </Link>
@@ -392,25 +392,26 @@ function PropertyHero({
 
         <div className="grid gap-8 pb-12 pt-8 sm:gap-10 sm:pb-16 sm:pt-12 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-center lg:gap-x-12 lg:gap-y-8 lg:pb-20 lg:pt-14">
           <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:self-end">
-            <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.28em] text-white/60">
-              <span className="h-px w-7 bg-white/25" />A quieter way to stay
+            <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground dark:text-white/60">
+              <span className="h-px w-7 bg-border dark:bg-white/25" />A quieter
+              way to stay
             </div>
 
-            <h1 className="mt-5 max-w-[12ch] font-serif text-[clamp(2.75rem,8vw,3.75rem)] font-light leading-[0.96] tracking-[-0.04em] text-white">
+            <h1 className="mt-5 max-w-[12ch] font-serif text-[clamp(2.75rem,8vw,3.75rem)] font-light leading-[0.96] tracking-[-0.04em] text-foreground dark:text-white">
               {property.publicName}
             </h1>
 
-            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-white/75 sm:text-sm">
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-foreground/75 dark:text-white/75 sm:text-sm">
               <div className="inline-flex items-center gap-2">
-                <MapPin className="h-3.5 w-3.5 shrink-0 text-white/55" />
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-foreground/55 dark:text-white/55" />
                 <span className="tracking-[0.02em]">{location}</span>
               </div>
               {property.primaryPhone && (
                 <a
                   href={`tel:${property.primaryPhone}`}
-                  className="group inline-flex min-h-11 items-center gap-2 rounded-full px-1 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
+                  className="group inline-flex min-h-11 items-center gap-2 rounded-full px-1 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 motion-reduce:transition-none dark:hover:text-white dark:focus-visible:ring-white/70"
                 >
-                  <Phone className="h-3.5 w-3.5 shrink-0 text-white/55 transition-transform group-hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none" />
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-foreground/55 transition-transform group-hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none dark:text-white/55" />
                   <span>{property.primaryPhone}</span>
                 </a>
               )}
@@ -419,10 +420,10 @@ function PropertyHero({
             <ReadMoreText
               className="mt-6 max-w-[62ch]"
               collapsedClassName="max-h-[3.4rem]"
-              gradientClassName="from-[#06080d]"
-              buttonClassName="text-white/80 hover:text-white"
+              gradientClassName="hidden"
+              buttonClassName="text-foreground/80 hover:text-foreground dark:text-white/80 dark:hover:text-white"
             >
-              <p className="text-[15px] leading-[1.8] text-white/75 sm:text-base">
+              <p className="text-[15px] leading-[1.8] text-foreground/75 dark:text-white/75 sm:text-base">
                 {property.descriptionShort ??
                   `A thoughtfully located Zenvana stay in ${location}, designed for easy arrivals, quiet comfort, and a smoother city stay.`}
               </p>
@@ -438,10 +439,10 @@ function PropertyHero({
                     : `/book/${property.slug}`
                 }
                 sentLabel="Opening dates"
-                className="min-h-12 rounded-full bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(37,99,235,0.6)] transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#06080d]"
+                className="min-h-12 rounded-full bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(37,99,235,0.45)] transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-white/80 dark:focus-visible:ring-offset-[#06080d]"
               >
                 <CalendarCheck className="h-4 w-4" />
-                Check overnight availability
+                Check availability
               </PlaneButton>
 
               {property.googleMapPlaceUrl ? (
@@ -449,7 +450,7 @@ function PropertyHero({
                   href={property.googleMapPlaceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-medium text-white/90 backdrop-blur-xl transition duration-300 hover:border-white/30 hover:bg-white/[0.10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
+                  className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-border/70 bg-card/70 px-6 py-3.5 text-sm font-medium text-foreground backdrop-blur-xl transition duration-300 hover:border-foreground/25 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 motion-reduce:transition-none dark:border-white/15 dark:bg-white/[0.04] dark:text-white/90 dark:hover:border-white/30 dark:hover:bg-white/[0.10] dark:focus-visible:ring-white/70"
                 >
                   <MapPin className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none" />
                   View on map
@@ -543,19 +544,19 @@ function PropertyHero({
 
         {/* Preview strip — sharp images, editorial caption */}
         {previewImages.length > 0 && (
-          <div className="border-t border-white/10 pb-14 pt-10 sm:pb-20 sm:pt-12">
+          <div className="border-t border-border/70 pb-14 pt-10 dark:border-white/10 sm:pb-20 sm:pt-12">
             <div className="mb-4 flex items-end justify-between">
               <div>
-                <div className="text-[9.5px] font-medium uppercase tracking-[0.34em] text-white/55">
+                <div className="text-[9.5px] font-medium uppercase tracking-[0.34em] text-muted-foreground dark:text-white/55">
                   Plate&nbsp;01
                 </div>
-                <div className="mt-1.5 font-serif text-lg leading-none tracking-[-0.02em] text-white sm:text-xl">
+                <div className="mt-1.5 font-serif text-lg leading-none tracking-[-0.02em] text-foreground dark:text-white sm:text-xl">
                   Preview the stay
                 </div>
               </div>
               <a
                 href="#gallery"
-                className="group inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.24em] text-white/70 transition hover:text-white"
+                className="group inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.24em] text-foreground/70 transition hover:text-foreground dark:text-white/70 dark:hover:text-white"
               >
                 Full gallery
                 <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
@@ -567,7 +568,7 @@ function PropertyHero({
                 <a
                   key={`${img.url}-${index}`}
                   href="#gallery"
-                  className="border-white/8 group relative overflow-hidden rounded-[0.85rem] border bg-white/[0.04] backdrop-blur-xl"
+                  className="group relative overflow-hidden rounded-[0.85rem] border border-border/70 bg-card/50 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04]"
                 >
                   <div className="relative aspect-[1.05/1]">
                     <CloudinaryImage
@@ -586,10 +587,10 @@ function PropertyHero({
               ))}
             </div>
 
-            <div className="mt-5 flex items-center justify-center gap-2 text-[10px] font-medium uppercase tracking-[0.32em] text-white/40">
-              <span className="h-px w-8 bg-white/20" />
+            <div className="mt-5 flex items-center justify-center gap-2 text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground dark:text-white/40">
+              <span className="h-px w-8 bg-border dark:bg-white/20" />
               Rooms · spaces · surroundings
-              <span className="h-px w-8 bg-white/20" />
+              <span className="h-px w-8 bg-border dark:bg-white/20" />
             </div>
           </div>
         )}
@@ -629,23 +630,23 @@ function HeroFacts({
   ]
 
   return (
-    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 lg:col-start-1 lg:row-start-2 lg:self-start">
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/70 dark:border-white/10 dark:bg-white/10 lg:col-start-1 lg:row-start-2 lg:self-start">
       {items.map((item) => {
         const Icon = item.icon
         return (
           <div
             key={item.label}
-            className="group min-w-0 bg-[#080b11]/90 p-4 transition-colors duration-300 hover:bg-white/[0.07] motion-reduce:transition-none sm:p-5"
+            className="group min-w-0 bg-card/90 p-4 transition-colors duration-300 hover:bg-card motion-reduce:transition-none dark:bg-[#080b11]/90 dark:hover:bg-white/[0.07] sm:p-5"
           >
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 transition-colors group-hover:border-white/20 group-hover:text-white motion-reduce:transition-none">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-foreground/65 transition-colors group-hover:border-foreground/20 group-hover:text-foreground motion-reduce:transition-none dark:border-white/10 dark:bg-white/[0.05] dark:text-white/65 dark:group-hover:border-white/20 dark:group-hover:text-white">
                 <Icon className="h-3.5 w-3.5" aria-hidden />
               </span>
               <div className="min-w-0">
-                <dt className="text-[9px] font-medium uppercase tracking-[0.24em] text-white/50 sm:text-[9.5px]">
+                <dt className="text-[9px] font-medium uppercase tracking-[0.24em] text-muted-foreground dark:text-white/50 sm:text-[9.5px]">
                   {item.label}
                 </dt>
-                <dd className="mt-1 font-serif text-[15px] leading-snug tracking-[-0.01em] text-white sm:text-base">
+                <dd className="mt-1 font-serif text-[15px] leading-snug tracking-[-0.01em] text-foreground dark:text-white sm:text-base">
                   {item.value}
                 </dd>
               </div>
@@ -1011,7 +1012,7 @@ function RoomsSection({
                       className="flex items-center justify-center gap-2 rounded-full px-6 py-3"
                     >
                       <CalendarCheck className="h-4 w-4" />
-                      Check overnight availability
+                      Check availability
                     </Button>
 
                     {hourlyStayEnabled ? (
@@ -1251,7 +1252,7 @@ function BookingSidebar({
             className="flex w-full items-center justify-center gap-2 rounded-full py-3.5"
           >
             <CalendarCheck className="h-4 w-4" />
-            Check overnight availability
+            Check availability
           </Button>
 
           {/* Hourly stays stay deliberately quiet — one use-case line, no banner. */}

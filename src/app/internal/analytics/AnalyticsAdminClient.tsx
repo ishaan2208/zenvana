@@ -2,8 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { LogOut, RefreshCcw, ShieldCheck } from 'lucide-react'
+import { LogOut, ShieldCheck } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -136,14 +135,6 @@ export function AnalyticsAdminClient({ authorized: initialAuthorized }: Props) {
         >
           {rollupPending ? 'Rebuilding…' : 'Rebuild rollups'}
         </Button>
-        <Link
-          href="/internal/analytics"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          prefetch={false}
-        >
-          <RefreshCcw className="h-4 w-4" />
-          Refresh
-        </Link>
         <Button onClick={handleLogout} variant="outline" size="sm">
           <LogOut className="mr-1 h-4 w-4" />
           Logout

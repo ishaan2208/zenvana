@@ -63,63 +63,63 @@ export function HotelPropertyLoading() {
       aria-label="Loading hotel"
     >
       {/* Hero */}
-      <section className="relative isolate overflow-hidden bg-[#06080d]">
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,#06080d_0%,#0a1426_55%,#0b1f1a_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(6,8,13,0.35)_0%,rgba(6,8,13,0.75)_55%,rgba(6,8,13,0.96)_100%)]" />
+      <section className="relative isolate overflow-hidden bg-background dark:bg-[#06080d]">
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,#f6f7ed_0%,#eef2e7_55%,#e5eee6_100%)] dark:bg-[linear-gradient(135deg,#06080d_0%,#0a1426_55%,#0b1f1a_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(246,247,237,0.52)_0%,rgba(246,247,237,0.82)_58%,rgba(246,247,237,0.97)_100%)] dark:bg-[radial-gradient(ellipse_at_50%_30%,rgba(6,8,13,0.35)_0%,rgba(6,8,13,0.75)_55%,rgba(6,8,13,0.96)_100%)]" />
 
         <Container className="relative z-10">
           <div className="pt-5 sm:pt-6">
-            <Skeleton className="h-11 w-28 rounded-full bg-white/15" />
+            <Skeleton className="h-11 w-28 rounded-full bg-foreground/10 dark:bg-white/15" />
           </div>
 
           <div className="grid gap-8 pb-12 pt-8 sm:gap-10 sm:pb-16 sm:pt-12 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] lg:items-center lg:gap-x-12 lg:gap-y-8 lg:pb-20 lg:pt-14">
             <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:self-end">
-              <Skeleton className="bg-white/12 h-3 w-44 rounded-md" />
-              <Skeleton className="mt-5 h-14 w-full max-w-md rounded-md bg-white/15 sm:h-16" />
-              <Skeleton className="bg-white/12 mt-5 h-4 w-52 rounded-md" />
-              <Skeleton className="mt-6 h-4 w-full max-w-2xl rounded-md bg-white/10" />
-              <Skeleton className="mt-2 h-4 w-5/6 max-w-xl rounded-md bg-white/10" />
+              <Skeleton className="h-3 w-44 rounded-md bg-foreground/10 dark:bg-white/10" />
+              <Skeleton className="mt-5 h-14 w-full max-w-md rounded-md bg-foreground/15 dark:bg-white/15 sm:h-16" />
+              <Skeleton className="mt-5 h-4 w-52 rounded-md bg-foreground/10 dark:bg-white/10" />
+              <Skeleton className="mt-6 h-4 w-full max-w-2xl rounded-md bg-foreground/10 dark:bg-white/10" />
+              <Skeleton className="mt-2 h-4 w-5/6 max-w-xl rounded-md bg-foreground/10 dark:bg-white/10" />
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <Skeleton className="h-12 w-full rounded-full bg-white/15 sm:w-60" />
-                <Skeleton className="h-12 w-full rounded-full bg-white/10 sm:w-40" />
+                <Skeleton className="h-12 w-full rounded-full bg-foreground/15 dark:bg-white/15 sm:w-60" />
+                <Skeleton className="h-12 w-full rounded-full bg-foreground/10 dark:bg-white/10 sm:w-40" />
               </div>
             </div>
 
-            <Skeleton className="aspect-video w-full rounded-[1.25rem] bg-white/10 sm:rounded-[1.5rem] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:max-w-sm lg:justify-self-end" />
+            <Skeleton className="aspect-video w-full rounded-[1.25rem] bg-foreground/10 dark:bg-white/10 sm:rounded-[1.5rem] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:max-w-sm lg:justify-self-end" />
 
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 lg:col-start-1 lg:row-start-2 lg:self-start">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/70 dark:border-white/10 dark:bg-white/10 lg:col-start-1 lg:row-start-2 lg:self-start">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex min-w-0 items-start gap-3 bg-[#080b11]/90 p-4 sm:p-5"
+                  className="flex min-w-0 items-start gap-3 bg-card/90 p-4 dark:bg-[#080b11]/90 sm:p-5"
                 >
-                  <Skeleton className="h-8 w-8 shrink-0 rounded-full bg-white/10" />
+                  <Skeleton className="h-8 w-8 shrink-0 rounded-full bg-foreground/10 dark:bg-white/10" />
                   <div className="min-w-0 flex-1 space-y-2">
-                    <Skeleton className="h-2.5 w-16 bg-white/10" />
-                    <Skeleton className="h-4 w-4/5 bg-white/15" />
+                    <Skeleton className="h-2.5 w-16 bg-foreground/10 dark:bg-white/10" />
+                    <Skeleton className="h-4 w-4/5 bg-foreground/15 dark:bg-white/15" />
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="border-t border-white/10 pb-14 pt-10 sm:pb-20 sm:pt-12">
+          <div className="border-t border-border/70 pb-14 pt-10 dark:border-white/10 sm:pb-20 sm:pt-12">
             <div className="mb-4 flex items-end justify-between">
               <div className="space-y-2">
-                <Skeleton className="h-2.5 w-16 bg-white/10" />
-                <Skeleton className="h-5 w-36 bg-white/15" />
+                <Skeleton className="h-2.5 w-16 bg-foreground/10 dark:bg-white/10" />
+                <Skeleton className="h-5 w-36 bg-foreground/15 dark:bg-white/15" />
               </div>
-              <Skeleton className="h-4 w-28 bg-white/10" />
+              <Skeleton className="h-4 w-28 bg-foreground/10 dark:bg-white/10" />
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton
                   key={i}
-                  className="aspect-[1.05/1] rounded-[0.85rem] bg-white/10"
+                  className="aspect-[1.05/1] rounded-[0.85rem] bg-foreground/10 dark:bg-white/10"
                 />
               ))}
             </div>
-            <Skeleton className="mx-auto mt-5 h-2.5 w-52 bg-white/10" />
+            <Skeleton className="mx-auto mt-5 h-2.5 w-52 bg-foreground/10 dark:bg-white/10" />
           </div>
         </Container>
       </section>

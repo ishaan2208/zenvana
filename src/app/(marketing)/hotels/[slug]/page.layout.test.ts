@@ -44,9 +44,20 @@ describe('property hero layout contract', () => {
 
   it('limits the mobile hero description to two lines with expansion', () => {
     expect(pageSource).toContain('collapsedClassName="max-h-[3.4rem]"')
-    expect(pageSource).toContain('gradientClassName="from-[#06080d]"')
-    expect(pageSource).toContain('buttonClassName="text-white/80')
+    expect(pageSource).toContain('gradientClassName="hidden"')
+    expect(pageSource).toContain('buttonClassName="text-foreground/80')
     expect(readMoreSource).toContain('gradientClassName')
     expect(readMoreSource).toContain('buttonClassName')
+  })
+
+  it('uses semantic light-theme surfaces and concise availability copy', () => {
+    expect(pageSource).toContain(
+      'bg-background text-foreground dark:bg-[#06080d] dark:text-white',
+    )
+    expect(skeletonSource).toContain('bg-background dark:bg-[#06080d]')
+    expect(pageSource).not.toContain('Check overnight availability')
+    expect(
+      pageSource.match(/Check availability/g)?.length,
+    ).toBeGreaterThanOrEqual(3)
   })
 })

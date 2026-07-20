@@ -71,6 +71,7 @@ import type {
   TopProperty,
   UtmRow,
 } from '@/lib/analytics/queries'
+import { AnalyticsDashboardSkeleton } from './AnalyticsDashboardSkeleton'
 
 type Loaders = {
   activeUsers: () => Promise<ActiveUsersSnapshot>
@@ -183,7 +184,9 @@ function KpiCard({
           </p>
           {typeof delta === 'number' ? <DeltaBadge value={delta} invert={invertDelta} /> : null}
         </div>
-        <p className="mt-2 font-serif text-3xl tracking-tight text-foreground">{value}</p>
+        <p className="mt-2 font-sans text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+          {value}
+        </p>
         {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       </CardContent>
     </Card>
@@ -269,6 +272,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
   const [propertySlug, setPropertySlug] = useState<string>('all')
   const [channel, setChannel] = useState<string>('all')
   const [tab, setTab] = useState('overview')
+  const [initialLoading, setInitialLoading] = useState(true)
   const [pending, startTransition] = useTransition()
 
   const [activeUsers, setActiveUsers] = useState<ActiveUsersSnapshot | null>(null)
@@ -351,6 +355,8 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
         setAudit(auditData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load analytics')
+      } finally {
+        setInitialLoading(false)
       }
     })
   }, [loaders, range, filters])
@@ -370,30 +376,48 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
   }, [channels])
 
   const current = overview?.current
+  if (initialLoading) {
+    return <AnalyticsDashboardSkeleton />
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="relative space-y-6" aria-busy={pending}>
+      {pending ? (
+        <div
+          className="absolute inset-x-0 -top-3 h-0.5 overflow-hidden rounded-full bg-muted"
+          role="status"
+          aria-label="Refreshing analytics"
+        >
+          <div className="h-full w-full animate-pulse bg-primary/70 motion-reduce:animate-none" />
+        </div>
+      ) : null}
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
-            Analytics
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="font-serif text-3xl tracking-tight text-foreground sm:text-4xl">
+              Analytics
+            </h1>
+            {activeUsers ? (
+              <Badge variant="outline" className="gap-1.5 px-2.5 py-1">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:animate-none" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                {activeUsers.active5m} active · 5m
+              </Badge>
+            ) : null}
+          </div>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Decision views for acquisition, funnel drop-offs, property performance, on-site flow,
             and blog author output. Conversions = completed bookings.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {activeUsers ? (
-            <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
-              {activeUsers.active5m} active · 5m
-            </Badge>
-          ) : null}
-          <Select value={range} onValueChange={(v) => setRange(v as DashboardRange)}>
+        <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+          <Select
+            value={range}
+            onValueChange={(v) => setRange(v as DashboardRange)}
+            disabled={pending}
+          >
             <SelectTrigger className="w-[120px]">
               <SelectValue />
             </SelectTrigger>
@@ -405,7 +429,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
               ))}
             </SelectContent>
           </Select>
-          <Select value={propertySlug} onValueChange={setPropertySlug}>
+          <Select value={propertySlug} onValueChange={setPropertySlug} disabled={pending}>
             <SelectTrigger className="w-[180px]">
               <Filter className="mr-1.5 h-3.5 w-3.5" />
               <SelectValue placeholder="Property" />
@@ -418,7 +442,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
               ))}
             </SelectContent>
           </Select>
-          <Select value={channel} onValueChange={setChannel}>
+          <Select value={channel} onValueChange={setChannel} disabled={pending}>
             <SelectTrigger className="w-[170px]">
               <SelectValue placeholder="Channel" />
             </SelectTrigger>
@@ -430,7 +454,14 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={refresh} disabled={pending}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={refresh}
+            disabled={pending}
+            aria-label={pending ? 'Refreshing analytics' : 'Refresh analytics'}
+            title={pending ? 'Refreshing analytics' : 'Refresh analytics'}
+          >
             <RefreshCw className={`h-4 w-4 ${pending ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -443,26 +474,26 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
       ) : null}
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-5">
-        <TabsList className="flex h-auto flex-wrap gap-1 bg-muted/40 p-1">
-          <TabsTrigger value="overview" className="gap-1.5">
+        <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/40 p-1">
+          <TabsTrigger value="overview" className="shrink-0 gap-1 px-2 text-[13px] xl:gap-1.5 xl:px-3 xl:text-sm">
             <Flame className="h-3.5 w-3.5" /> Overview
           </TabsTrigger>
-          <TabsTrigger value="acquisition" className="gap-1.5">
+          <TabsTrigger value="acquisition" className="shrink-0 gap-1 px-2 text-[13px] xl:gap-1.5 xl:px-3 xl:text-sm">
             <Compass className="h-3.5 w-3.5" /> Acquisition
           </TabsTrigger>
-          <TabsTrigger value="funnel" className="gap-1.5">
+          <TabsTrigger value="funnel" className="shrink-0 gap-1 px-2 text-[13px] xl:gap-1.5 xl:px-3 xl:text-sm">
             <TrendingDown className="h-3.5 w-3.5" /> Funnel
           </TabsTrigger>
-          <TabsTrigger value="properties" className="gap-1.5">
+          <TabsTrigger value="properties" className="shrink-0 gap-1 px-2 text-[13px] xl:gap-1.5 xl:px-3 xl:text-sm">
             <Building2 className="h-3.5 w-3.5" /> Properties
           </TabsTrigger>
-          <TabsTrigger value="bookings" className="gap-1.5">
+          <TabsTrigger value="bookings" className="shrink-0 gap-1 px-2 text-[13px] xl:gap-1.5 xl:px-3 xl:text-sm">
             <Receipt className="h-3.5 w-3.5" /> Bookings
           </TabsTrigger>
-          <TabsTrigger value="behavior" className="gap-1.5">
+          <TabsTrigger value="behavior" className="shrink-0 gap-1 px-2 text-[13px] xl:gap-1.5 xl:px-3 xl:text-sm">
             <Waypoints className="h-3.5 w-3.5" /> Behavior
           </TabsTrigger>
-          <TabsTrigger value="blog" className="gap-1.5">
+          <TabsTrigger value="blog" className="shrink-0 gap-1 px-2 text-[13px] xl:gap-1.5 xl:px-3 xl:text-sm">
             <BookOpen className="h-3.5 w-3.5" /> Blog
           </TabsTrigger>
         </TabsList>
