@@ -302,12 +302,20 @@ type FunnelRawRow = {
   ordered6: bigint
   ordered7: bigint
   totalBookings: bigint
+  paidBookings: bigint
+  unpaidBookings: bigint
 }
 
 export type FunnelResult = {
   steps: FunnelStep[]
   /** All booking_completed events in range (matches Overview Bookings) */
   totalBookings: number
+  /** Bookings with an online payment recorded. */
+  paidBookings: number
+  /** Bookings confirmed without an online payment (pay at property). */
+  unpaidBookings: number
+  /** Legacy analytics events where payment mode was not recorded. */
+  unknownPaymentBookings: number
 }
 
 export async function getFunnel(
@@ -329,7 +337,15 @@ export async function getFunnel(
         MIN(e."occurredAt") FILTER (WHERE e.name = 'checkout_viewed') AS s5,
         MIN(e."occurredAt") FILTER (WHERE e.name = 'payment_initiated') AS s6,
         MIN(e."occurredAt") FILTER (WHERE e.name = 'booking_completed') AS s7,
-        COUNT(*) FILTER (WHERE e.name = 'booking_completed') AS booking_events
+        COUNT(*) FILTER (WHERE e.name = 'booking_completed') AS booking_events,
+        COUNT(*) FILTER (
+          WHERE e.name = 'booking_completed'
+            AND e.properties->>'paymentMode' = 'pay_now'
+        ) AS paid_booking_events,
+        COUNT(*) FILTER (
+          WHERE e.name = 'booking_completed'
+            AND e.properties->>'paymentMode' IN ('pay_later', 'pay_at_property')
+        ) AS unpaid_booking_events
       FROM "analytics"."event" e
       INNER JOIN "analytics"."session" s ON s.id = e."sessionId"
       WHERE e."occurredAt" >= ${since}
@@ -353,7 +369,9 @@ export async function getFunnel(
       COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s5 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3 AND s5 >= s4) AS ordered5,
       COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s5 IS NOT NULL AND s6 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3 AND s5 >= s4 AND s6 >= s5) AS ordered6,
       COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s5 IS NOT NULL AND s6 IS NOT NULL AND s7 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3 AND s5 >= s4 AND s6 >= s5 AND s7 >= s6) AS ordered7,
-      COALESCE(SUM(booking_events), 0) AS "totalBookings"
+      COALESCE(SUM(booking_events), 0) AS "totalBookings",
+      COALESCE(SUM(paid_booking_events), 0) AS "paidBookings",
+      COALESCE(SUM(unpaid_booking_events), 0) AS "unpaidBookings"
     FROM first_steps
   `
   const row = rows[0]
@@ -397,6 +415,14 @@ export async function getFunnel(
   return {
     steps,
     totalBookings: Number(row?.totalBookings ?? 0),
+    paidBookings: Number(row?.paidBookings ?? 0),
+    unpaidBookings: Number(row?.unpaidBookings ?? 0),
+    unknownPaymentBookings: Math.max(
+      0,
+      Number(row?.totalBookings ?? 0) -
+        Number(row?.paidBookings ?? 0) -
+        Number(row?.unpaidBookings ?? 0),
+    ),
   }
 }
 
@@ -414,7 +440,15 @@ export async function getFunnelWithPms(
     slug: normalized.propertySlug,
   })
   if (!pms) return funnel
-  return { ...funnel, totalBookings: pms.bookings }
+  const paidBookings = pms.paidBookings
+  const unpaidBookings = pms.unpaidBookings
+  return {
+    ...funnel,
+    totalBookings: pms.bookings,
+    paidBookings,
+    unpaidBookings,
+    unknownPaymentBookings: Math.max(0, pms.bookings - paidBookings - unpaidBookings),
+  }
 }
 
 export type TimeSeriesPoint = {

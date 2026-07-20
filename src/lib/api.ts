@@ -233,6 +233,10 @@ export async function getPublicBookingsCount(
 
 export type PublicWebsiteBookingStats = {
   bookings: number
+  /** Confirmed bookings with at least one payment recorded. */
+  paidBookings: number
+  /** Confirmed bookings with no payment recorded (typically pay at property). */
+  unpaidBookings: number
   totalAmount: number
   totalPaid: number
   from: string
@@ -295,6 +299,8 @@ export async function getPublicWebsiteBookingStats(params: {
     if (!data || typeof data.bookings !== 'number') return null
     return {
       bookings: data.bookings,
+      paidBookings: Number(data.paidBookings ?? 0),
+      unpaidBookings: Number(data.unpaidBookings ?? 0),
       totalAmount: Number(data.totalAmount ?? 0),
       totalPaid: Number(data.totalPaid ?? 0),
       from: String(data.from ?? ''),

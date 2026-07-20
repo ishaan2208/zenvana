@@ -104,8 +104,8 @@ const FUNNEL_LABELS: Record<string, string> = {
   availability_checked: 'Checked availability',
   room_selected: 'Picked room',
   checkout_viewed: 'Opened checkout',
-  payment_initiated: 'Started payment',
-  booking_completed: 'Booked',
+  payment_initiated: 'Started online payment',
+  booking_completed: 'Booked (all)',
 }
 
 const nfIN = new Intl.NumberFormat('en-IN')
@@ -226,6 +226,25 @@ function EmptyState({ message }: { message: string }) {
     <div className="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 text-sm text-muted-foreground">
       {message}
     </div>
+  )
+}
+
+function PaymentStatusBadge({ totalPaid }: { totalPaid: number | null | undefined }) {
+  if (totalPaid == null) {
+    return <Badge variant="outline">Unknown</Badge>
+  }
+  const paid = totalPaid > 0
+  return (
+    <Badge
+      variant="outline"
+      className={
+        paid
+          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+          : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300'
+      }
+    >
+      {paid ? 'Paid' : 'Unpaid'}
+    </Badge>
   )
 }
 
@@ -724,7 +743,8 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
               <CardTitle className="text-base">Booking funnel — where guests drop off</CardTitle>
               <p className="text-xs text-muted-foreground">
                 Bars = sessions that reached each step (any order). Ordered path = full sequence
-                without skipping. &quot;Booked&quot; is not total revenue — use Overview / Bookings for that.
+                without skipping. Pay-at-property bookings skip the online payment step, so payment
+                attempts and total bookings should not be compared as a linear funnel.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -732,23 +752,39 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
                 <EmptyState message="No funnel activity" />
               ) : (
                 <>
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                    Website bookings (PMS when available):{' '}
-                    <span className="font-medium text-foreground">
-                      {formatNumber(funnel.totalBookings)}
-                    </span>
-                    {' · '}
-                    Ordered path completions:{' '}
-                    <span className="font-medium text-foreground">
-                      {formatNumber(
-                        funnel.steps[funnel.steps.length - 1]?.orderedSessions ?? 0,
-                      )}
-                    </span>
-                    {' · '}
-                    Sessions that reached Booked:{' '}
-                    <span className="font-medium text-foreground">
-                      {formatNumber(funnel.steps[funnel.steps.length - 1]?.sessions ?? 0)}
-                    </span>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+                      <p className="text-xs text-muted-foreground">Online payment attempts</p>
+                      <p className="mt-1 font-sans text-xl font-semibold tabular-nums">
+                        {formatNumber(
+                          funnel.steps.find((step) => step.name === 'payment_initiated')?.sessions ??
+                            0,
+                        )}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-3">
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300">Paid bookings</p>
+                      <p className="mt-1 font-sans text-xl font-semibold tabular-nums">
+                        {formatNumber(funnel.paidBookings)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-3">
+                      <p className="text-xs text-amber-800 dark:text-amber-300">Unpaid bookings</p>
+                      <p className="mt-1 font-sans text-xl font-semibold tabular-nums">
+                        {formatNumber(funnel.unpaidBookings)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+                      <p className="text-xs text-muted-foreground">All confirmed bookings</p>
+                      <p className="mt-1 font-sans text-xl font-semibold tabular-nums">
+                        {formatNumber(funnel.totalBookings)}
+                      </p>
+                      {funnel.unknownPaymentBookings > 0 ? (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {formatNumber(funnel.unknownPaymentBookings)} payment status unknown
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="h-[240px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -867,6 +903,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
                   'Stay',
                   'Nights',
                   'Avg tariff',
+                  'Payment',
                   'Total',
                   'Created',
                   'Channel',
@@ -897,6 +934,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
                     </span>,
                     d ? formatNumber(d.nights) : '—',
                     d?.avgTariff != null ? formatMoney(d.avgTariff) : '—',
+                    <PaymentStatusBadge key="payment" totalPaid={d?.totalPaid} />,
                     formatMoney(d?.totalAmount ?? row.analyticsAmount ?? 0),
                     <span key="c" className="whitespace-nowrap text-xs sm:text-sm">
                       {formatDateTime(d?.createdAt ?? row.convertedAt)}
@@ -1259,14 +1297,17 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
           if (!open) setSelectedBooking(null)
         }}
       >
-        <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+        <SheetContent className="w-full overflow-y-auto p-6 sm:max-w-md sm:p-7">
           {selectedBooking ? (
             <>
-              <SheetHeader>
+              <SheetHeader className="pr-10">
                 <SheetTitle>{selectedBooking.detail?.guestName ?? 'Booking'}</SheetTitle>
                 <SheetDescription className="font-mono text-xs">
                   {selectedBooking.bookingReference}
                 </SheetDescription>
+                <div className="pt-2">
+                  <PaymentStatusBadge totalPaid={selectedBooking.detail?.totalPaid} />
+                </div>
               </SheetHeader>
               <dl className="mt-6 space-y-3 text-sm">
                 <DetailRow
@@ -1310,6 +1351,20 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
                   }
                 />
                 <DetailRow
+                  label="Amount due"
+                  value={
+                    selectedBooking.detail
+                      ? formatMoney(
+                          Math.max(
+                            0,
+                            selectedBooking.detail.totalAmount -
+                              selectedBooking.detail.totalPaid,
+                          ),
+                        )
+                      : '—'
+                  }
+                />
+                <DetailRow
                   label="Created (PMS)"
                   value={formatDateTime(selectedBooking.detail?.createdAt)}
                 />
@@ -1329,14 +1384,16 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
                   <DetailRow label="PMS note" value={selectedBooking.detailError} />
                 ) : null}
               </dl>
-              <div className="mt-6">
-                <Link
-                  href={`/internal/analytics/sessions/${selectedBooking.sessionId}`}
-                  className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
-                >
-                  Open analytics session →
-                </Link>
-              </div>
+              {selectedBooking.sessionId !== 'pms' ? (
+                <div className="mt-6">
+                  <Link
+                    href={`/internal/analytics/sessions/${selectedBooking.sessionId}`}
+                    className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+                  >
+                    Open analytics session →
+                  </Link>
+                </div>
+              ) : null}
             </>
           ) : null}
         </SheetContent>
