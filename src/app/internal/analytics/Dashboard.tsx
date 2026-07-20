@@ -60,7 +60,7 @@ import type {
   ChannelRow,
   DashboardFilters,
   DashboardRange,
-  FunnelStep,
+  FunnelResult,
   InsightCallout,
   LandingPageRow,
   OverviewComparison,
@@ -76,7 +76,7 @@ type Loaders = {
   activeUsers: () => Promise<ActiveUsersSnapshot>
   overview: (range: DashboardRange, filters?: DashboardFilters) => Promise<OverviewComparison>
   insights: (range: DashboardRange, filters?: DashboardFilters) => Promise<InsightCallout[]>
-  funnel: (range: DashboardRange, filters?: DashboardFilters) => Promise<FunnelStep[]>
+  funnel: (range: DashboardRange, filters?: DashboardFilters) => Promise<FunnelResult>
   timeSeries: (range: DashboardRange, filters?: DashboardFilters) => Promise<TimeSeriesPoint[]>
   topProperties: (range: DashboardRange, filters?: DashboardFilters) => Promise<TopProperty[]>
   utm: (range: DashboardRange, filters?: DashboardFilters) => Promise<UtmRow[]>
@@ -92,6 +92,7 @@ type Loaders = {
 
 const RANGE_OPTIONS: { value: DashboardRange; label: string }[] = [
   { value: '7d', label: '7 days' },
+  { value: '10d', label: '10 days' },
   { value: '30d', label: '30 days' },
   { value: '90d', label: '90 days' },
 ]
@@ -265,7 +266,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
   const [activeUsers, setActiveUsers] = useState<ActiveUsersSnapshot | null>(null)
   const [overview, setOverview] = useState<OverviewComparison | null>(null)
   const [insights, setInsights] = useState<InsightCallout[]>([])
-  const [funnel, setFunnel] = useState<FunnelStep[]>([])
+  const [funnel, setFunnel] = useState<FunnelResult | null>(null)
   const [series, setSeries] = useState<TimeSeriesPoint[]>([])
   const [properties, setProperties] = useState<TopProperty[]>([])
   const [utm, setUtm] = useState<UtmRow[]>([])
@@ -328,7 +329,7 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
         setActiveUsers(activeUsersData)
         setOverview(overviewData)
         setInsights(insightsData)
-        setFunnel(funnelData)
+        setFunnel(funnelData ?? null)
         setSeries(seriesData)
         setProperties(propertiesData)
         setUtm(utmData)
@@ -475,24 +476,48 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
             >
               <KpiCard
                 label="Bookings"
-                value={formatNumber(current?.bookings ?? 0)}
-                hint="Click to drill down →"
+                value={formatNumber(
+                  overview?.pms.current?.bookings ?? current?.bookings ?? 0,
+                )}
+                hint={
+                  overview?.pms.current
+                    ? `Website PMS · tracked ${formatNumber(current?.bookings ?? 0)} →`
+                    : 'Tracked events · click to drill down →'
+                }
                 delta={overview?.deltas.bookings}
               />
             </button>
             <KpiCard
               label="Conversion"
               value={formatPct(current?.conversionRate ?? 0)}
-              hint="Bookings ÷ sessions"
+              hint="Tracked bookings ÷ sessions"
               delta={overview?.deltas.conversionRate}
             />
             <KpiCard
               label="Revenue"
-              value={formatMoney(current?.revenue ?? 0)}
-              hint="From booking amounts"
+              value={formatMoney(
+                overview?.pms.current?.revenue ?? current?.revenue ?? 0,
+              )}
+              hint={
+                overview?.pms.current
+                  ? `Website PMS · tracked ${formatMoney(current?.revenue ?? 0)}`
+                  : 'From tracked booking amounts'
+              }
               delta={overview?.deltas.revenue}
             />
           </div>
+
+          {overview?.pms.current &&
+          (overview.pms.current.bookings !== (current?.bookings ?? 0) ||
+            Math.abs(overview.pms.current.revenue - (current?.revenue ?? 0)) > 1) ? (
+            <p className="text-xs text-muted-foreground">
+              PMS website bookings ({formatNumber(overview.pms.current.bookings)} ·{' '}
+              {formatMoney(overview.pms.current.revenue)}) are the money source of truth.
+              Tracked analytics ({formatNumber(current?.bookings ?? 0)} ·{' '}
+              {formatMoney(current?.revenue ?? 0)}) undercount when{' '}
+              <code className="text-[11px]">booking_completed</code> did not fire.
+            </p>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-3">
             <KpiCard
@@ -662,34 +687,77 @@ export function Dashboard({ loaders }: { loaders: Loaders }) {
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Booking funnel — where guests drop off</CardTitle>
               <p className="text-xs text-muted-foreground">
-                Ordered session progression. High drop % = fix that step (UX, pricing, availability).
+                Bars = sessions that reached each step (any order). Ordered path = full sequence
+                without skipping. &quot;Booked&quot; is not total revenue — use Overview / Bookings for that.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {funnel.length === 0 ? (
+              {!funnel || funnel.steps.length === 0 ? (
                 <EmptyState message="No funnel activity" />
               ) : (
                 <>
+                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                    Tracked bookings (all <code className="text-[11px]">booking_completed</code>):{' '}
+                    <span className="font-medium text-foreground">
+                      {formatNumber(funnel.totalBookings)}
+                    </span>
+                    {' · '}
+                    Ordered path completions:{' '}
+                    <span className="font-medium text-foreground">
+                      {formatNumber(
+                        funnel.steps[funnel.steps.length - 1]?.orderedSessions ?? 0,
+                      )}
+                    </span>
+                    {' · '}
+                    Sessions that booked:{' '}
+                    <span className="font-medium text-foreground">
+                      {formatNumber(funnel.steps[funnel.steps.length - 1]?.sessions ?? 0)}
+                    </span>
+                  </div>
                   <div className="h-[240px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={funnel.map((s) => ({ ...s, label: FUNNEL_LABELS[s.name] ?? s.name }))}>
+                      <BarChart
+                        data={funnel.steps.map((s) => ({
+                          ...s,
+                          label: FUNNEL_LABELS[s.name] ?? s.name,
+                        }))}
+                      >
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                        <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fontSize: 10 }}
+                          interval={0}
+                          angle={-20}
+                          textAnchor="end"
+                          height={60}
+                        />
                         <YAxis tick={{ fontSize: 11 }} width={40} />
                         <RechartsTooltip />
-                        <Bar dataKey="sessions" name="Sessions" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                        <Bar
+                          dataKey="sessions"
+                          name="Reached"
+                          fill="#6366f1"
+                          radius={[6, 6, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                   <DataTable
-                    headers={['Step', 'Sessions', 'Drop from previous']}
-                    rows={funnel.map((step, i) => [
+                    headers={['Step', 'Reached', 'Ordered path', 'Drop (reached)']}
+                    rows={funnel.steps.map((step, i) => [
                       <span key="n" className="font-medium">
                         {i + 1}. {FUNNEL_LABELS[step.name] ?? step.name}
                       </span>,
                       formatNumber(step.sessions),
-                      i === 0 ? '—' : (
-                        <span className={step.dropFromPrev > 0.4 ? 'font-medium text-rose-600' : ''}>
+                      formatNumber(step.orderedSessions),
+                      i === 0 ? (
+                        '—'
+                      ) : (
+                        <span
+                          className={
+                            step.dropFromPrev > 0.4 ? 'font-medium text-rose-600' : ''
+                          }
+                        >
                           {formatPct(step.dropFromPrev)}
                         </span>
                       ),

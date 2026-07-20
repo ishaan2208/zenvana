@@ -231,6 +231,47 @@ export async function getPublicBookingsCount(
   }
 }
 
+export type PublicWebsiteBookingStats = {
+  bookings: number
+  totalAmount: number
+  totalPaid: number
+  from: string
+  to: string
+  slug: string | null
+}
+
+/** WEBSITE-source PMS bookings for Zenvana (owner userId=1). */
+export async function getPublicWebsiteBookingStats(params: {
+  from: Date
+  to?: Date
+  slug?: string | null
+}): Promise<PublicWebsiteBookingStats | null> {
+  try {
+    const qs = new URLSearchParams({
+      from: params.from.toISOString(),
+      to: (params.to ?? new Date()).toISOString(),
+    })
+    if (params.slug) qs.set('slug', params.slug)
+    const res = await fetch(`${BACKEND_URL}/public/stats/website-bookings?${qs}`, {
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    const data = json?.data
+    if (!data || typeof data.bookings !== 'number') return null
+    return {
+      bookings: data.bookings,
+      totalAmount: Number(data.totalAmount ?? 0),
+      totalPaid: Number(data.totalPaid ?? 0),
+      from: String(data.from ?? ''),
+      to: String(data.to ?? ''),
+      slug: data.slug ?? null,
+    }
+  } catch {
+    return null
+  }
+}
+
 export async function getPublicDestinations(): Promise<
   Array<{ city: string; propertyCount: number }>
 > {

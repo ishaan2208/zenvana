@@ -2,10 +2,11 @@ import 'server-only'
 
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { getPublicWebsiteBookingStats } from '@/lib/api'
 
-export type DashboardRange = '7d' | '30d' | '90d'
+export type DashboardRange = '7d' | '10d' | '30d' | '90d'
 
-const RANGE_DAYS: Record<DashboardRange, number> = { '7d': 7, '30d': 30, '90d': 90 }
+const RANGE_DAYS: Record<DashboardRange, number> = { '7d': 7, '10d': 10, '30d': 30, '90d': 90 }
 
 const FUNNEL_STEPS = [
   'property_viewed',
@@ -176,8 +177,14 @@ export async function getDashboardSummary(
 }
 
 export type OverviewComparison = {
+  /** First-party tracked events (analytics DB) */
   current: DashboardSummary
   previous: DashboardSummary
+  /** Website PMS bookings (source of truth for money). Null if filter can't map to PMS. */
+  pms: {
+    current: { bookings: number; revenue: number } | null
+    previous: { bookings: number; revenue: number } | null
+  }
   deltas: {
     sessions: number
     bookings: number
@@ -191,41 +198,97 @@ export async function getOverviewComparison(
   filters?: DashboardFilters,
 ): Promise<OverviewComparison> {
   const since = rangeStart(range)
+  const now = new Date()
   const { since: prevSince, until: prevUntil } = previousRangeWindow(range)
-  const [current, previous] = await Promise.all([
+  const normalized = normalizeFilters(filters)
+  // PMS can filter by property slug only — not channel/UTM.
+  const canUsePms = !normalized.utmSource && !normalized.channel
+
+  const [current, previous, pmsCurrent, pmsPrevious] = await Promise.all([
     summarizeWindow(since, null, filters),
     summarizeWindow(prevSince, prevUntil, filters),
+    canUsePms
+      ? getPublicWebsiteBookingStats({
+          from: since,
+          to: now,
+          slug: normalized.propertySlug,
+        })
+      : Promise.resolve(null),
+    canUsePms
+      ? getPublicWebsiteBookingStats({
+          from: prevSince,
+          to: prevUntil,
+          slug: normalized.propertySlug,
+        })
+      : Promise.resolve(null),
   ])
+
+  const pms = {
+    current: pmsCurrent
+      ? { bookings: pmsCurrent.bookings, revenue: pmsCurrent.totalAmount }
+      : null,
+    previous: pmsPrevious
+      ? { bookings: pmsPrevious.bookings, revenue: pmsPrevious.totalAmount }
+      : null,
+  }
+
+  const bookCur = pms.current?.bookings ?? current.bookings
+  const bookPrev = pms.previous?.bookings ?? previous.bookings
+  const revCur = pms.current?.revenue ?? current.revenue
+  const revPrev = pms.previous?.revenue ?? previous.revenue
+
   const pct = (cur: number, prev: number) => (prev === 0 ? (cur > 0 ? 1 : 0) : (cur - prev) / prev)
   return {
     current,
     previous,
+    pms,
     deltas: {
       sessions: pct(current.sessions, previous.sessions),
-      bookings: pct(current.bookings, previous.bookings),
+      bookings: pct(bookCur, bookPrev),
       conversionRate: current.conversionRate - previous.conversionRate,
-      revenue: pct(current.revenue, previous.revenue),
+      revenue: pct(revCur, revPrev),
     },
   }
 }
 
 export type FunnelStep = {
   name: string
+  /** Sessions that fired this event (any order) — use for volume */
   sessions: number
+  /** Sessions that completed the full ordered path up to this step */
+  orderedSessions: number
   dropFromPrev: number
+  orderedDropFromPrev: number
 }
 
 type FunnelRawRow = {
-  step1: bigint
-  step2: bigint
-  step3: bigint
-  step4: bigint
-  step5: bigint
-  step6: bigint
-  step7: bigint
+  reached1: bigint
+  reached2: bigint
+  reached3: bigint
+  reached4: bigint
+  reached5: bigint
+  reached6: bigint
+  reached7: bigint
+  ordered1: bigint
+  ordered2: bigint
+  ordered3: bigint
+  ordered4: bigint
+  ordered5: bigint
+  ordered6: bigint
+  ordered7: bigint
+  totalBookings: bigint
 }
 
-export async function getFunnel(range: DashboardRange, filters?: DashboardFilters): Promise<FunnelStep[]> {
+export type FunnelResult = {
+  steps: FunnelStep[]
+  /** All booking_completed events in range (matches Overview Bookings) */
+  totalBookings: number
+}
+
+export async function getFunnel(
+  range: DashboardRange,
+  filters?: DashboardFilters,
+): Promise<FunnelResult> {
   const since = rangeStart(range)
   const normalized = normalizeFilters(filters)
   const { propertyFilter, utmFilter, channelFilter } = sessionJoinFilters(normalized)
@@ -240,7 +303,8 @@ export async function getFunnel(range: DashboardRange, filters?: DashboardFilter
         MIN(e."occurredAt") FILTER (WHERE e.name = 'room_selected') AS s4,
         MIN(e."occurredAt") FILTER (WHERE e.name = 'checkout_viewed') AS s5,
         MIN(e."occurredAt") FILTER (WHERE e.name = 'payment_initiated') AS s6,
-        MIN(e."occurredAt") FILTER (WHERE e.name = 'booking_completed') AS s7
+        MIN(e."occurredAt") FILTER (WHERE e.name = 'booking_completed') AS s7,
+        COUNT(*) FILTER (WHERE e.name = 'booking_completed') AS booking_events
       FROM "analytics"."event" e
       INNER JOIN "analytics"."session" s ON s.id = e."sessionId"
       WHERE e."occurredAt" >= ${since}
@@ -250,38 +314,65 @@ export async function getFunnel(range: DashboardRange, filters?: DashboardFilter
       GROUP BY e."sessionId"
     )
     SELECT
-      COUNT(*) FILTER (WHERE s1 IS NOT NULL) AS step1,
-      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s2 >= s1) AS step2,
-      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s2 >= s1 AND s3 >= s2) AS step3,
-      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3) AS step4,
-      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s5 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3 AND s5 >= s4) AS step5,
-      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s5 IS NOT NULL AND s6 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3 AND s5 >= s4 AND s6 >= s5) AS step6,
-      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s5 IS NOT NULL AND s6 IS NOT NULL AND s7 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3 AND s5 >= s4 AND s6 >= s5 AND s7 >= s6) AS step7
+      COUNT(*) FILTER (WHERE s1 IS NOT NULL) AS reached1,
+      COUNT(*) FILTER (WHERE s2 IS NOT NULL) AS reached2,
+      COUNT(*) FILTER (WHERE s3 IS NOT NULL) AS reached3,
+      COUNT(*) FILTER (WHERE s4 IS NOT NULL) AS reached4,
+      COUNT(*) FILTER (WHERE s5 IS NOT NULL) AS reached5,
+      COUNT(*) FILTER (WHERE s6 IS NOT NULL) AS reached6,
+      COUNT(*) FILTER (WHERE s7 IS NOT NULL) AS reached7,
+      COUNT(*) FILTER (WHERE s1 IS NOT NULL) AS ordered1,
+      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s2 >= s1) AS ordered2,
+      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s2 >= s1 AND s3 >= s2) AS ordered3,
+      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3) AS ordered4,
+      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s5 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3 AND s5 >= s4) AS ordered5,
+      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s5 IS NOT NULL AND s6 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3 AND s5 >= s4 AND s6 >= s5) AS ordered6,
+      COUNT(*) FILTER (WHERE s1 IS NOT NULL AND s2 IS NOT NULL AND s3 IS NOT NULL AND s4 IS NOT NULL AND s5 IS NOT NULL AND s6 IS NOT NULL AND s7 IS NOT NULL AND s2 >= s1 AND s3 >= s2 AND s4 >= s3 AND s5 >= s4 AND s6 >= s5 AND s7 >= s6) AS ordered7,
+      COALESCE(SUM(booking_events), 0) AS "totalBookings"
     FROM first_steps
   `
   const row = rows[0]
-  const counts = row
+  const reached = row
     ? [
-        Number(row.step1),
-        Number(row.step2),
-        Number(row.step3),
-        Number(row.step4),
-        Number(row.step5),
-        Number(row.step6),
-        Number(row.step7),
+        Number(row.reached1),
+        Number(row.reached2),
+        Number(row.reached3),
+        Number(row.reached4),
+        Number(row.reached5),
+        Number(row.reached6),
+        Number(row.reached7),
+      ]
+    : [0, 0, 0, 0, 0, 0, 0]
+  const ordered = row
+    ? [
+        Number(row.ordered1),
+        Number(row.ordered2),
+        Number(row.ordered3),
+        Number(row.ordered4),
+        Number(row.ordered5),
+        Number(row.ordered6),
+        Number(row.ordered7),
       ]
     : [0, 0, 0, 0, 0, 0, 0]
 
-  const output: FunnelStep[] = []
-  let prevCount = 0
+  const steps: FunnelStep[] = []
+  let prevReached = 0
+  let prevOrdered = 0
   for (let i = 0; i < FUNNEL_STEPS.length; i++) {
     const name = FUNNEL_STEPS[i]
-    const count = counts[i] ?? 0
-    const drop = i === 0 ? 0 : prevCount === 0 ? 0 : 1 - count / prevCount
-    output.push({ name, sessions: count, dropFromPrev: drop })
-    prevCount = count
+    const sessions = reached[i] ?? 0
+    const orderedSessions = ordered[i] ?? 0
+    const dropFromPrev = i === 0 ? 0 : prevReached === 0 ? 0 : 1 - sessions / prevReached
+    const orderedDropFromPrev =
+      i === 0 ? 0 : prevOrdered === 0 ? 0 : 1 - orderedSessions / prevOrdered
+    steps.push({ name, sessions, orderedSessions, dropFromPrev, orderedDropFromPrev })
+    prevReached = sessions
+    prevOrdered = orderedSessions
   }
-  return output
+  return {
+    steps,
+    totalBookings: Number(row?.totalBookings ?? 0),
+  }
 }
 
 export type TimeSeriesPoint = {
@@ -924,10 +1015,13 @@ export async function getInsightCallouts(
 
   if (comparison.deltas.bookings !== 0) {
     const up = comparison.deltas.bookings > 0
+    const cur = comparison.pms.current?.bookings ?? comparison.current.bookings
+    const prev = comparison.pms.previous?.bookings ?? comparison.previous.bookings
+    const source = comparison.pms.current ? 'website PMS' : 'tracked'
     callouts.push({
       kind: up ? 'up' : 'down',
       title: up ? 'Bookings are up' : 'Bookings are down',
-      detail: `${Math.abs(comparison.deltas.bookings * 100).toFixed(0)}% vs previous period (${comparison.previous.bookings} → ${comparison.current.bookings})`,
+      detail: `${Math.abs(comparison.deltas.bookings * 100).toFixed(0)}% vs previous period (${prev} → ${cur}, ${source})`,
     })
   }
 
@@ -940,12 +1034,14 @@ export async function getInsightCallouts(
     })
   }
 
-  const worstDrop = [...funnel].slice(1).sort((a, b) => b.dropFromPrev - a.dropFromPrev)[0]
-  if (worstDrop && worstDrop.dropFromPrev > 0.4) {
+  const worstDrop = [...funnel.steps]
+    .slice(1)
+    .sort((a, b) => b.orderedDropFromPrev - a.orderedDropFromPrev)[0]
+  if (worstDrop && worstDrop.orderedDropFromPrev > 0.4) {
     callouts.push({
       kind: 'down',
       title: `Biggest funnel drop before ${worstDrop.name.replace(/_/g, ' ')}`,
-      detail: `${(worstDrop.dropFromPrev * 100).toFixed(0)}% of sessions leave at this step — focus UX here`,
+      detail: `${(worstDrop.orderedDropFromPrev * 100).toFixed(0)}% leave on the ordered path — focus UX here (not total bookings)`,
     })
   }
 
