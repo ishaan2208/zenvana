@@ -15,11 +15,15 @@ export function ReadMoreText({
   children,
   collapsedClassName = 'max-h-[15.5rem]',
   className,
+  gradientClassName,
+  buttonClassName,
 }: {
   children: React.ReactNode
   /** Collapsed preview height (Tailwind max-h-* class). */
   collapsedClassName?: string
   className?: string
+  gradientClassName?: string
+  buttonClassName?: string
 }) {
   const [expanded, setExpanded] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -44,7 +48,8 @@ export function ReadMoreText({
         <div
           aria-hidden
           className={cn(
-            'pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background to-transparent transition-opacity duration-300 lg:hidden',
+            'pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background to-transparent transition-opacity duration-300 lg:hidden',
+            gradientClassName,
             expanded && 'opacity-0',
           )}
         />
@@ -55,7 +60,10 @@ export function ReadMoreText({
         aria-expanded={expanded}
         aria-controls={contentId}
         onClick={() => setExpanded((v) => !v)}
-        className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-foreground/80 transition hover:text-foreground lg:hidden"
+        className={cn(
+          'mt-1 inline-flex min-h-11 items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-foreground/80 transition hover:text-foreground lg:hidden',
+          buttonClassName,
+        )}
       >
         {expanded ? 'Read less' : 'Read more'}
         <ChevronDown

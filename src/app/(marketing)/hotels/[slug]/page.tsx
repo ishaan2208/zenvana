@@ -416,10 +416,17 @@ function PropertyHero({
               )}
             </div>
 
-            <p className="mt-6 max-w-[62ch] text-[15px] leading-[1.8] text-white/75 sm:text-base">
-              {property.descriptionShort ??
-                `A thoughtfully located Zenvana stay in ${location}, designed for easy arrivals, quiet comfort, and a smoother city stay.`}
-            </p>
+            <ReadMoreText
+              className="mt-6 max-w-[62ch]"
+              collapsedClassName="max-h-[3.4rem]"
+              gradientClassName="from-[#06080d]"
+              buttonClassName="text-white/80 hover:text-white"
+            >
+              <p className="text-[15px] leading-[1.8] text-white/75 sm:text-base">
+                {property.descriptionShort ??
+                  `A thoughtfully located Zenvana stay in ${location}, designed for easy arrivals, quiet comfort, and a smoother city stay.`}
+              </p>
+            </ReadMoreText>
 
             <div className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
               <PlaneButton

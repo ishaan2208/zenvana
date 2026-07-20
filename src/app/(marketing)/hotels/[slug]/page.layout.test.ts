@@ -14,6 +14,13 @@ const skeletonSource = readFileSync(
   ),
   'utf8',
 )
+const readMoreSource = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    '../../../../components/ReadMoreText.tsx',
+  ),
+  'utf8',
+)
 
 describe('property hero layout contract', () => {
   it('keeps all hero media landscape in an intrinsic right-third column', () => {
@@ -33,5 +40,13 @@ describe('property hero layout contract', () => {
     expect(skeletonSource).toContain('aspect-video')
     expect(skeletonSource).toContain('grid grid-cols-2 gap-px')
     expect(skeletonSource).not.toContain('min-h-[76svh]')
+  })
+
+  it('limits the mobile hero description to two lines with expansion', () => {
+    expect(pageSource).toContain('collapsedClassName="max-h-[3.4rem]"')
+    expect(pageSource).toContain('gradientClassName="from-[#06080d]"')
+    expect(pageSource).toContain('buttonClassName="text-white/80')
+    expect(readMoreSource).toContain('gradientClassName')
+    expect(readMoreSource).toContain('buttonClassName')
   })
 })
