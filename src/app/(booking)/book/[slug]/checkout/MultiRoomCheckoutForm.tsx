@@ -102,6 +102,7 @@ export default function MultiRoomCheckoutForm({
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
 
   const [paymentMode, setPaymentMode] = useState<'pay_later' | 'pay_now'>(
     'pay_now',
@@ -426,6 +427,7 @@ export default function MultiRoomCheckoutForm({
     if (!validateRequiredFields()) return
     setSubmitting(true)
     setError(null)
+    setPaymentLinkUrl(null)
 
     try {
       const data = await createPublicBookingWithRoomLines(slug, {
@@ -462,7 +464,9 @@ export default function MultiRoomCheckoutForm({
 
       pushConfirmation(data.bookingReference)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Booking failed')
+      const e = err as Error & { paymentLinkUrl?: string }
+      setError(e instanceof Error ? e.message : 'Booking failed')
+      setPaymentLinkUrl(e.paymentLinkUrl ?? null)
       setSubmitting(false)
     }
   }
@@ -958,7 +962,17 @@ export default function MultiRoomCheckoutForm({
               className="rounded-[1.35rem] border border-red-300/60 bg-red-50/80 px-4 py-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/20 dark:text-red-300"
               role="alert"
             >
-              {error}
+              <p>{error}</p>
+              {paymentLinkUrl && (
+                <a
+                  href={paymentLinkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block font-medium underline underline-offset-2"
+                >
+                  Complete payment for existing booking
+                </a>
+              )}
             </div>
           )}
 

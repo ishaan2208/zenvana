@@ -20,3 +20,9 @@ export function addDaysYmd(ymd: string, deltaDays: number): string {
   const t = Date.UTC(y, m - 1, d + deltaDays)
   return new Date(t).toISOString().slice(0, 10)
 }
+
+/** Local Date at midnight for a Kolkata YYYY-MM-DD (for date pickers). */
+export function ymdToLocalDate(ymd: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}

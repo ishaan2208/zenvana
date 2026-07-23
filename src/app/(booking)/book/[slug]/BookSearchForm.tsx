@@ -32,6 +32,7 @@ import {
   nextHourlyStartTime,
   toLocalDateString,
 } from '@/lib/hourly-start-times'
+import { addDaysYmd, kolkataYmd, ymdToLocalDate } from '@/lib/kolkata-calendar'
 import {
   Popover,
   PopoverContent,
@@ -127,8 +128,12 @@ export function BookSearchForm({
   initialStayKind = 'overnight',
 }: BookSearchFormProps) {
   const router = useAppRouter()
-  const today = useMemo(() => startOfDay(new Date()), [])
-  const tomorrow = useMemo(() => addDays(today, 1), [today])
+  const todayYmd = useMemo(() => kolkataYmd(), [])
+  const today = useMemo(() => ymdToLocalDate(todayYmd), [todayYmd])
+  const tomorrow = useMemo(
+    () => ymdToLocalDate(addDaysYmd(todayYmd, 1)),
+    [todayYmd],
+  )
 
   const hourlyEnabled = hourlyStay?.enabled === true
   const [stayMode, setStayMode] = useState<StayMode>(

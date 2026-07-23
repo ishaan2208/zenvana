@@ -93,6 +93,7 @@ export default function HourlyCheckoutForm({
   const [otpBusy, setOtpBusy] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
   const [paymentMode, setPaymentMode] = useState<'pay_now' | 'pay_at_property'>(
     DAY_USE_PAY_NOW_ENABLED ? 'pay_now' : 'pay_at_property',
   )
@@ -206,6 +207,7 @@ export default function HourlyCheckoutForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    setPaymentLinkUrl(null)
     if (!validateRequiredFields()) return
     if (!validateWhatsAppOtp()) return
 
@@ -243,8 +245,10 @@ export default function HourlyCheckoutForm({
 
       router.push(confirmationHref(data))
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Booking failed'
+      const e = err as Error & { paymentLinkUrl?: string }
+      const msg = e instanceof Error ? e.message : 'Booking failed'
       setError(msg)
+      setPaymentLinkUrl(e.paymentLinkUrl ?? null)
       toast.error(msg)
       setSubmitting(false)
     }
@@ -648,7 +652,17 @@ export default function HourlyCheckoutForm({
               className="rounded-[1.35rem] border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
               role="alert"
             >
-              {error}
+              <p>{error}</p>
+              {paymentLinkUrl ? (
+                <a
+                  href={paymentLinkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block font-medium underline underline-offset-2"
+                >
+                  Complete payment for existing booking
+                </a>
+              ) : null}
             </div>
           ) : null}
 

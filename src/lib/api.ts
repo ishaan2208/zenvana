@@ -727,7 +727,16 @@ export async function createPublicBooking(
   )
   const json = await res.json()
   if (!res.ok) {
-    throw new Error(json?.error ?? json?.message ?? 'Booking failed')
+    const msg = json?.message ?? json?.error ?? 'Booking failed'
+    const err = new Error(msg) as Error & {
+      code?: string
+      paymentLinkUrl?: string
+      bookingReference?: string
+    }
+    err.code = json?.error
+    err.paymentLinkUrl = json?.paymentLinkUrl
+    err.bookingReference = json?.bookingReference
+    throw err
   }
   return json?.data
 }
@@ -747,7 +756,16 @@ export async function createPublicHourlyBooking(
   )
   const json = await res.json()
   if (!res.ok) {
-    throw new Error(json?.error ?? json?.message ?? 'Booking failed')
+    const msg = json?.message ?? json?.error ?? 'Booking failed'
+    const err = new Error(msg) as Error & {
+      code?: string
+      paymentLinkUrl?: string
+      bookingReference?: string
+    }
+    err.code = json?.error
+    err.paymentLinkUrl = json?.paymentLinkUrl
+    err.bookingReference = json?.bookingReference
+    throw err
   }
   return json?.data
 }
@@ -855,7 +873,16 @@ export async function createPublicBookingWithRoomLines(
   )
   const json = await res.json()
   if (!res.ok) {
-    throw new Error(json?.error ?? json?.message ?? 'Booking failed')
+    const msg = json?.message ?? json?.error ?? 'Booking failed'
+    const err = new Error(msg) as Error & {
+      code?: string
+      paymentLinkUrl?: string
+      bookingReference?: string
+    }
+    err.code = json?.error
+    err.paymentLinkUrl = json?.paymentLinkUrl
+    err.bookingReference = json?.bookingReference
+    throw err
   }
   return json?.data
 }
