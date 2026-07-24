@@ -17,7 +17,6 @@ export type PublicHourlyStaySummary = {
   windowEnd: string
   durationsHours: number[]
   basePercentOfNight?: number
-  baseDurationHours?: number
   floorPrice?: number
 }
 

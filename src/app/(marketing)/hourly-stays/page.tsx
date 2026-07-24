@@ -57,24 +57,21 @@ export const metadata = {
 
 /**
  * Same "starting from" maths the backend quote uses, applied to the listing
- * night price: max(floor, night × basePercent × hours/baseDuration). Shown as
- * an approximate from-price; the exact quote is confirmed in the booking flow.
+ * night price: max(floor, night × basePercent × hours), where basePercent is
+ * a per-hour percentage of the night rate. Shown as an approximate
+ * from-price; the exact quote is confirmed in the booking flow.
  */
 function estimateHourlyFromPrice(
   nightAmount: number,
   hourlyStay: {
     basePercentOfNight?: number
-    baseDurationHours?: number
     floorPrice?: number
   },
   hours: number,
 ): number {
-  const percent = hourlyStay.basePercentOfNight ?? 0.25
-  const baseHours = hourlyStay.baseDurationHours ?? 3
+  const percent = hourlyStay.basePercentOfNight ?? 0.08
   const floor = hourlyStay.floorPrice ?? 0
-  return Math.round(
-    Math.max(floor, nightAmount * percent * (hours / baseHours)),
-  )
+  return Math.round(Math.max(floor, nightAmount * percent * hours))
 }
 
 const useCases = [
