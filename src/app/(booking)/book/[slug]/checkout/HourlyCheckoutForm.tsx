@@ -50,10 +50,11 @@ import {
 import { CheckoutDockBar } from './CheckoutDockBar'
 
 /**
- * Kill-switch for day-use online payment: the UI ships dark until the
- * backend's verified hourly Razorpay path is deployed, then flips on via env.
+ * Day-use online payment is ON by default (Pay now preselected). The env var
+ * is an emergency kill-switch only: set NEXT_PUBLIC_DAYUSE_PAYNOW=0 to fall
+ * back to pay-at-property-only if the payment path has an incident.
  */
-const DAY_USE_PAY_NOW_ENABLED = process.env.NEXT_PUBLIC_DAYUSE_PAYNOW === '1'
+const DAY_USE_PAY_NOW_ENABLED = process.env.NEXT_PUBLIC_DAYUSE_PAYNOW !== '0'
 
 type Props = {
   slug: string
