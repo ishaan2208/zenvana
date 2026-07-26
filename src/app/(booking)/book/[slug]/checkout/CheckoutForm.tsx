@@ -27,12 +27,19 @@ import { LiveBookingTotal, useCheckoutCouponState } from './CheckoutCouponState'
 import { CheckoutDockBar } from './CheckoutDockBar'
 import { couponErrorMessage } from '@/lib/coupon-errors'
 import {
-  createPublicBooking,
+  PRICE_CHANGED_TOAST_ID,
+  isPriceGuardCode,
+  priceChangedMessage,
+  priceGuardErrorMessage,
+} from '@/lib/price-guard-errors'
+import {
+  createPublicBookingWithRoomLines,
   createRazorpayOrder,
   sendPublicBookingOtp,
   validatePublicBookingCoupon,
   verifyPublicBookingOtp,
   verifyRazorpayAndCreateBooking,
+  type ApiError,
   type PublicBookingPayload,
 } from '@/lib/api'
 import {
