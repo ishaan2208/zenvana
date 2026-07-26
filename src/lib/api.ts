@@ -11,6 +11,60 @@ function getBackendBase(): string {
 
 const BACKEND_URL = getBackendBase()
 
+/** A room line priced by the backend's rate chart, returned alongside a rejection. */
+export type ServerPricedRoomLine = {
+  roomTypeId: number
+  ratePlanId?: number
+  occupancy: number
+  /** Per night. */
+  tariff: number
+  /** Whole stay, this line only. */
+  lineTotal: number
+}
+
+/**
+ * Backend errors carry more than a message. `code` is the machine-readable
+ * reason (PRICE_CHANGED, PHONE_NOT_VERIFIED, ...); price rejections also carry
+ * the server's own totals so the UI can re-render at the true price instead of
+ * dead-ending the guest.
+ */
+export type ApiError = Error & {
+  code?: string
+  status?: number
+  paymentLinkUrl?: string
+  bookingReference?: string
+  serverTotal?: number
+  serverRoomLines?: ServerPricedRoomLine[]
+  nights?: number
+}
+
+/** Build an ApiError from a non-2xx response body, keeping every field the UI may need. */
+function toApiError(
+  status: number,
+  json: Record<string, unknown> | null | undefined,
+  fallback: string,
+): ApiError {
+  const body = (json ?? {}) as Record<string, unknown>
+  const msg =
+    (typeof body.message === 'string' && body.message) ||
+    (typeof body.error === 'string' && body.error) ||
+    fallback
+  const err = new Error(msg) as ApiError
+  err.status = status
+  err.code = typeof body.error === 'string' ? body.error : undefined
+  err.paymentLinkUrl =
+    typeof body.paymentLinkUrl === 'string' ? body.paymentLinkUrl : undefined
+  err.bookingReference =
+    typeof body.bookingReference === 'string' ? body.bookingReference : undefined
+  err.serverTotal =
+    typeof body.serverTotal === 'number' ? body.serverTotal : undefined
+  err.serverRoomLines = Array.isArray(body.serverRoomLines)
+    ? (body.serverRoomLines as ServerPricedRoomLine[])
+    : undefined
+  err.nights = typeof body.nights === 'number' ? body.nights : undefined
+  return err
+}
+
 export type PublicHourlyStaySummary = {
   enabled: boolean
   windowStart: string
@@ -724,19 +778,8 @@ export async function createPublicBooking(
       body: JSON.stringify(payload),
     },
   )
-  const json = await res.json()
-  if (!res.ok) {
-    const msg = json?.message ?? json?.error ?? 'Booking failed'
-    const err = new Error(msg) as Error & {
-      code?: string
-      paymentLinkUrl?: string
-      bookingReference?: string
-    }
-    err.code = json?.error
-    err.paymentLinkUrl = json?.paymentLinkUrl
-    err.bookingReference = json?.bookingReference
-    throw err
-  }
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw toApiError(res.status, json, 'Booking failed')
   return json?.data
 }
 
@@ -753,19 +796,8 @@ export async function createPublicHourlyBooking(
       body: JSON.stringify(payload),
     },
   )
-  const json = await res.json()
-  if (!res.ok) {
-    const msg = json?.message ?? json?.error ?? 'Booking failed'
-    const err = new Error(msg) as Error & {
-      code?: string
-      paymentLinkUrl?: string
-      bookingReference?: string
-    }
-    err.code = json?.error
-    err.paymentLinkUrl = json?.paymentLinkUrl
-    err.bookingReference = json?.bookingReference
-    throw err
-  }
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw toApiError(res.status, json, 'Booking failed')
   return json?.data
 }
 
@@ -870,19 +902,8 @@ export async function createPublicBookingWithRoomLines(
       body: JSON.stringify(payload),
     },
   )
-  const json = await res.json()
-  if (!res.ok) {
-    const msg = json?.message ?? json?.error ?? 'Booking failed'
-    const err = new Error(msg) as Error & {
-      code?: string
-      paymentLinkUrl?: string
-      bookingReference?: string
-    }
-    err.code = json?.error
-    err.paymentLinkUrl = json?.paymentLinkUrl
-    err.bookingReference = json?.bookingReference
-    throw err
-  }
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw toApiError(res.status, json, 'Booking failed')
   return json?.data
 }
 
@@ -930,11 +951,9 @@ export async function createRazorpayOrder(
       }),
     },
   )
-  const json = await res.json()
+  const json = await res.json().catch(() => ({}))
   if (!res.ok)
-    throw new Error(
-      json?.error ?? json?.message ?? 'Could not create payment order',
-    )
+    throw toApiError(res.status, json, 'Could not create payment order')
   return json?.data
 }
 
@@ -962,11 +981,9 @@ export async function createPublicHourlyRazorpayOrder(
       }),
     },
   )
-  const json = await res.json()
+  const json = await res.json().catch(() => ({}))
   if (!res.ok)
-    throw new Error(
-      json?.error ?? json?.message ?? 'Could not create payment order',
-    )
+    throw toApiError(res.status, json, 'Could not create payment order')
   return json?.data
 }
 
@@ -994,9 +1011,9 @@ export async function verifyPublicHourlyRazorpay(
       }),
     },
   )
-  const json = await res.json()
+  const json = await res.json().catch(() => ({}))
   if (!res.ok)
-    throw new Error(json?.error ?? 'Payment verification or booking failed')
+    throw toApiError(res.status, json, 'Payment verification or booking failed')
   return json?.data
 }
 
@@ -1131,9 +1148,9 @@ export async function verifyRazorpayAndCreateBooking(
       }),
     },
   )
-  const json = await res.json()
+  const json = await res.json().catch(() => ({}))
   if (!res.ok)
-    throw new Error(json?.error ?? 'Payment verification or booking failed')
+    throw toApiError(res.status, json, 'Payment verification or booking failed')
   return json?.data
 }
 

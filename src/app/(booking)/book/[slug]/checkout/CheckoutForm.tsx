@@ -138,6 +138,9 @@ export default function CheckoutForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
+  // Set when the backend re-prices this stay and rejects our total. From then on
+  // the form quotes the server's number, so the guest confirms the real price.
+  const [serverTotal, setServerTotal] = useState<number | null>(null)
 
   const [otp, setOtp] = useState('')
   const [otpSent, setOtpSent] = useState(false)
@@ -330,30 +333,42 @@ export default function CheckoutForm({
     }
   }, [_numRooms, occupancy])
 
-  const payload = () => ({
-    guestName,
-    guestPhone,
-    guestEmail: guestEmail || undefined,
-    checkIn,
-    checkOut,
-    roomTypeId: parseInt(roomTypeId, 10),
-    totalAmount: parseFloat(totalAmount),
-    numRooms: _numRooms ?? 1,
-    ratePlan: _ratePlan,
-    ratePlanId:
-      _ratePlan && _ratePlan !== 'default' && !Number.isNaN(Number(_ratePlan))
-        ? Number(_ratePlan)
-        : undefined,
-    occupancy: occupancy ?? 1,
-    couponCode: appliedCoupon?.code,
-    pointsToRedeem: pointsToRedeem > 0 ? pointsToRedeem : 0,
-  })
+  const roomsSelected = Math.max(1, Math.floor(_numRooms ?? 1))
+  const ratePlanIdNum =
+    _ratePlan && _ratePlan !== 'default' && !Number.isNaN(Number(_ratePlan))
+      ? Number(_ratePlan)
+      : undefined
+  /** Prefer the nights the backend priced with over re-deriving them locally. */
+  const stayNights = useMemo(() => {
+    const fromParam = Number(nights)
+    return Number.isFinite(fromParam) && fromParam > 0
+      ? fromParam
+      : countStayNights(checkIn, checkOut)
+  }, [checkIn, checkOut, nights])
+
+  /** Whole-stay, all rooms — the server's number once it has told us one. */
+  const baseTotalAmount = serverTotal ?? Number(totalAmount)
+
+  /**
+   * One line per room. `totalAmount` covers every room selected, so it is split
+   * before being expressed as a per-room nightly tariff — sending a single line
+   * at the aggregate rate would book one room at N× the rate.
+   */
+  const buildRoomLines = () => {
+    const perRoomPerNight =
+      Math.round((baseTotalAmount / roomsSelected / stayNights) * 100) / 100
+    return Array.from({ length: roomsSelected }, () => ({
+      roomTypeId: parseInt(roomTypeId, 10),
+      occupancy: occupancy ?? 1,
+      tariff: perRoomPerNight,
+      ...(ratePlanIdNum != null ? { ratePlanId: ratePlanIdNum } : {}),
+    }))
+  }
 
   const effectiveTotalAmount = useMemo(() => {
-    const base = Number(totalAmount)
     const discount = appliedCoupon?.discountAmount ?? 0
-    return Math.max(0, base - discount)
-  }, [appliedCoupon?.discountAmount, totalAmount])
+    return Math.max(0, baseTotalAmount - discount)
+  }, [appliedCoupon?.discountAmount, baseTotalAmount])
 
   async function applyCouponByCode(codeRaw: string) {
     const code = codeRaw.trim().toUpperCase()
@@ -368,13 +383,6 @@ export default function CheckoutForm({
     setCouponBusy(true)
     setCouponError(null)
     try {
-      const nightsNum = countStayNights(checkIn, checkOut)
-      const perNight =
-        Math.round((parseFloat(totalAmount) / nightsNum) * 100) / 100
-      const ratePlanIdNum =
-        _ratePlan && _ratePlan !== 'default' && !Number.isNaN(Number(_ratePlan))
-          ? Number(_ratePlan)
-          : undefined
       const bookingPayload: PublicBookingPayload = {
         guest: {
           name: guestName.trim() || 'Guest',
@@ -384,14 +392,7 @@ export default function CheckoutForm({
         checkIn,
         checkOut,
         paymentIntent: paymentMode === 'pay_now' ? 'pay_now' : 'pay_later',
-        roomLines: [
-          {
-            roomTypeId: parseInt(roomTypeId, 10),
-            occupancy: occupancy ?? 1,
-            tariff: perNight,
-            ...(ratePlanIdNum != null ? { ratePlanId: ratePlanIdNum } : {}),
-          },
-        ],
+        roomLines: buildRoomLines(),
         couponCode: code,
         pointsToRedeem: 0,
       }
@@ -481,19 +482,33 @@ export default function CheckoutForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCouponCode])
 
-  async function confirmBooking(transactionId?: string) {
-    const data = await createPublicBooking(slug, {
-      ...payload(),
-      payment: transactionId ? { paid: true, transactionId } : { paid: false },
+  /**
+   * Pay-at-property only. Uses the roomLines shape so this path gets the same
+   * server-side re-pricing and OTP handling as every other booking route; the
+   * legacy single-room shape (with its client-asserted `payment.paid`) is gone.
+   */
+  async function confirmBooking() {
+    const data = await createPublicBookingWithRoomLines(slug, {
+      guest: {
+        name: guestName.trim(),
+        phone: guestPhone.trim(),
+        email: guestEmail.trim() || undefined,
+      },
+      checkIn,
+      checkOut,
+      paymentIntent: 'pay_later',
+      roomLines: buildRoomLines(),
+      couponCode: appliedCoupon?.code,
+      pointsToRedeem: pointsToRedeem > 0 ? pointsToRedeem : 0,
     })
     trackBookingCompletedAction({
       bookingReference: data.bookingReference,
       propertySlug: slug,
-      paymentMode: transactionId ? 'pay_now' : 'pay_at_property',
+      paymentMode: 'pay_at_property',
       amount: effectiveTotalAmount,
       meta: {
         couponCode: appliedCoupon?.code ?? null,
-        transactionId: transactionId ?? null,
+        transactionId: null,
         roomTypeName,
       },
     }).catch(() => {})
@@ -513,6 +528,45 @@ export default function CheckoutForm({
     )
   }
 
+  /**
+   * Turn a backend rejection into something the guest can act on. A price
+   * rejection is not a dead end: the server sends back what the stay actually
+   * costs, so we re-quote in place and the next attempt confirms the real total.
+   * Returns true when it recognised and handled the error.
+   */
+  function handleApiError(err: unknown, fallback: string): boolean {
+    const e = err as ApiError
+    setPaymentLinkUrl(e?.paymentLinkUrl ?? null)
+
+    if (e?.code === 'PRICE_CHANGED') {
+      if (typeof e.serverTotal === 'number') setServerTotal(e.serverTotal)
+      const msg = priceChangedMessage(e.serverTotal)
+      setError(msg)
+      toast.error(msg, { id: PRICE_CHANGED_TOAST_ID, duration: 8000 })
+      track(
+        'price_changed',
+        {
+          clientTotal: baseTotalAmount,
+          serverTotal: e.serverTotal ?? null,
+          roomTypeId,
+          nights: stayNights,
+        },
+        slug,
+      )
+      return true
+    }
+
+    if (isPriceGuardCode(e?.code)) {
+      const msg = priceGuardErrorMessage(e.code, e?.message)
+      setError(msg)
+      toast.error(msg, { id: PRICE_CHANGED_TOAST_ID, duration: 8000 })
+      return true
+    }
+
+    setError(err instanceof Error ? err.message : fallback)
+    return false
+  }
+
   async function handlePayAtProperty(e: React.FormEvent) {
     e.preventDefault()
 
@@ -526,9 +580,7 @@ export default function CheckoutForm({
     try {
       await confirmBooking()
     } catch (err) {
-      const e = err as Error & { paymentLinkUrl?: string }
-      setError(e instanceof Error ? e.message : 'Booking failed')
-      setPaymentLinkUrl(e.paymentLinkUrl ?? null)
+      handleApiError(err, 'Booking failed')
       setSubmitting(false)
     }
   }
@@ -555,14 +607,6 @@ export default function CheckoutForm({
         )
       }
 
-      const nightsNum = countStayNights(checkIn, checkOut)
-      const perNight =
-        Math.round((parseFloat(totalAmount) / nightsNum) * 100) / 100
-      const ratePlanIdNum =
-        _ratePlan && _ratePlan !== 'default' && !Number.isNaN(Number(_ratePlan))
-          ? Number(_ratePlan)
-          : undefined
-
       const bookingPayload: PublicBookingPayload = {
         guest: {
           name: guestName.trim(),
@@ -576,14 +620,7 @@ export default function CheckoutForm({
         pointsToRedeem: appliedCoupon
           ? 0
           : Math.floor(pointsToRedeem / 10) * 10,
-        roomLines: [
-          {
-            roomTypeId: parseInt(roomTypeId, 10),
-            occupancy: occupancy ?? 1,
-            tariff: perNight,
-            ...(ratePlanIdNum != null ? { ratePlanId: ratePlanIdNum } : {}),
-          },
-        ],
+        roomLines: buildRoomLines(),
       }
 
       const pts = appliedCoupon ? 0 : Math.floor(pointsToRedeem / 10) * 10
@@ -632,7 +669,7 @@ export default function CheckoutForm({
                 }),
             )
           } catch (err) {
-            setError(err instanceof Error ? err.message : 'Booking failed')
+            handleApiError(err, 'Booking failed')
             setSubmitting(false)
           }
         },
@@ -665,7 +702,7 @@ export default function CheckoutForm({
         meta: { amountPaise, orderId, couponCode: appliedCoupon?.code ?? null },
       }).catch(() => {})
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed')
+      handleApiError(err, 'Payment failed')
       setSubmitting(false)
     }
   }

@@ -9,6 +9,7 @@ export const ANALYTICS_EVENT_NAMES = [
   'coupon_failed',
   'payment_initiated',
   'payment_failed',
+  'price_changed',
   'booking_completed',
   'cta_clicked',
   'whatsapp_clicked',
