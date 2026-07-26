@@ -546,7 +546,12 @@ export default function CheckoutForm({
     setPaymentLinkUrl(e?.paymentLinkUrl ?? null)
 
     if (e?.code === 'PRICE_CHANGED') {
-      if (typeof e.serverTotal === 'number') setServerTotal(e.serverTotal)
+      if (typeof e.serverTotal === 'number') {
+        setServerTotal(e.serverTotal)
+        // Also correct the page-level totals (hero chip, sidebar, dock bar),
+        // which were server-rendered from the now-stale URL amount.
+        couponCtx?.setRepricedTotal(e.serverTotal)
+      }
       const msg = priceChangedMessage(e.serverTotal)
       setError(msg)
       toast.error(msg, { id: PRICE_CHANGED_TOAST_ID, duration: 8000 })
@@ -749,7 +754,7 @@ export default function CheckoutForm({
                   label="Total"
                   value={
                     <BookingTotalDisplay
-                      totalAmount={Number(totalAmount)}
+                      totalAmount={baseTotalAmount}
                       marketAmount={marketTotal}
                       couponDiscount={appliedCoupon?.discountAmount ?? 0}
                       couponCode={appliedCoupon?.code ?? null}
@@ -1167,7 +1172,7 @@ export default function CheckoutForm({
               <CouponCelebration
                 applied={appliedCoupon}
                 appliedKey={couponAppliedKey}
-                originalAmount={Number(totalAmount)}
+                originalAmount={baseTotalAmount}
                 originRef={applyButtonRef}
                 onRemove={() => {
                   setAppliedCoupon(null)
@@ -1272,7 +1277,7 @@ export default function CheckoutForm({
           }
         >
           <LiveBookingTotal
-            baseTotal={Number(totalAmount)}
+            baseTotal={baseTotalAmount}
             marketAmount={marketTotal}
             variant="mobile-bar"
           />

@@ -30,11 +30,20 @@ import { CheckoutDockBar } from './CheckoutDockBar'
 import {
   createPublicBookingWithRoomLines,
   createRazorpayOrder,
+  sendPublicBookingOtp,
   validatePublicBookingCoupon,
+  verifyPublicBookingOtp,
   verifyRazorpayAndCreateBooking,
+  type ApiError,
   type PublicBookingPayload,
 } from '@/lib/api'
 import { couponErrorMessage } from '@/lib/coupon-errors'
+import {
+  PRICE_CHANGED_TOAST_ID,
+  isPriceGuardCode,
+  priceChangedMessage,
+  priceGuardErrorMessage,
+} from '@/lib/price-guard-errors'
 import {
   checkGuestAccountExists,
   formatZenvanaGuestSalutationName,
@@ -51,8 +60,12 @@ import {
 import {
   GUEST_REQUIRED_TOAST_ID,
   InputField,
+  OTP_REQUIRED_TOAST_ID,
   PaymentOptionCard,
   SummaryCard,
+  WhatsAppIcon,
+  focusCheckoutField,
+  formatCountdown,
   loadRazorpayScript,
 } from './checkout-fields'
 
@@ -103,6 +116,19 @@ export default function MultiRoomCheckoutForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null)
+
+  // WhatsApp OTP for pay-at-property, matching the single-room form. The backend
+  // requires a verified phone on this route.
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [maskedPhone, setMaskedPhone] = useState('')
+  const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(null)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [phoneVerified, setPhoneVerified] = useState(false)
+  const [verifiedPhone, setVerifiedPhone] = useState('')
+  const [otpBusy, setOtpBusy] = useState(false)
+  const [isSignedInGuest, setIsSignedInGuest] = useState(false)
+  const [registeredPhone10, setRegisteredPhone10] = useState('')
 
   const [paymentMode, setPaymentMode] = useState<'pay_later' | 'pay_now'>(
     'pay_now',
@@ -168,9 +194,11 @@ export default function MultiRoomCheckoutForm({
       try {
         const me = await getZenvanaGuestMe()
         if (cancelled || !me) return
+        setIsSignedInGuest(true)
         setPointsBalance(me.pointsBalance ?? 0)
         const d = me.phoneE164.replace(/\D/g, '').slice(-10)
         if (d.length === 10) {
+          setRegisteredPhone10(d)
           setGuestPhone((prev) => (prev.trim() ? prev : d))
         }
         if (me.email) setGuestEmail((prev) => (prev.trim() ? prev : me.email!))
@@ -184,6 +212,12 @@ export default function MultiRoomCheckoutForm({
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const t = setTimeout(() => setResendCooldown((v) => v - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendCooldown])
 
   const byOcc = useMemo(() => {
     if (!payload) return {} as Record<number, { count: number; tariff: number }>
@@ -254,6 +288,65 @@ export default function MultiRoomCheckoutForm({
     totalAmount - (appliedCoupon?.discountAmount ?? 0),
   )
 
+  /**
+   * A price rejection is recoverable: the backend returns what the stay actually
+   * costs, so the stored payload is re-quoted in place (everything on this page
+   * derives from it) and the guest confirms the real total on the next attempt.
+   */
+  function handleApiError(err: unknown, fallback: string): void {
+    const e = err as ApiError
+    setPaymentLinkUrl(e?.paymentLinkUrl ?? null)
+
+    if (e?.code === 'PRICE_CHANGED') {
+      const lines = e.serverRoomLines
+      // Correct the page-level totals too — they were server-rendered from the
+      // stale amount this checkout started with.
+      if (typeof e.serverTotal === 'number')
+        couponCtx?.setRepricedTotal(e.serverTotal)
+      setPayload((prev) =>
+        prev
+          ? {
+              ...prev,
+              totalAmount: e.serverTotal ?? prev.totalAmount,
+              roomLines: lines?.length
+                ? lines.map((l, i) => ({
+                    roomTypeId: l.roomTypeId,
+                    ratePlanId: l.ratePlanId ?? prev.roomLines[i]?.ratePlanId,
+                    occupancy: l.occupancy,
+                    tariff: l.tariff,
+                  }))
+                : prev.roomLines,
+              // A re-price invalidates the struck-through comparison rate.
+              marketTotal: undefined,
+            }
+          : prev,
+      )
+      const msg = priceChangedMessage(e.serverTotal)
+      setError(msg)
+      toast.error(msg, { id: PRICE_CHANGED_TOAST_ID, duration: 8000 })
+      track(
+        'price_changed',
+        {
+          clientTotal: totalAmount,
+          serverTotal: e.serverTotal ?? null,
+          roomLineCount: roomLines.length,
+          nights,
+        },
+        slug,
+      )
+      return
+    }
+
+    if (isPriceGuardCode(e?.code)) {
+      const msg = priceGuardErrorMessage(e.code, e?.message)
+      setError(msg)
+      toast.error(msg, { id: PRICE_CHANGED_TOAST_ID, duration: 8000 })
+      return
+    }
+
+    setError(err instanceof Error ? err.message : fallback)
+  }
+
   function handleGuestNameChange(value: string) {
     setGuestName(value)
     setFieldErrors((prev) => ({ ...prev, guestName: undefined }))
@@ -266,6 +359,84 @@ export default function MultiRoomCheckoutForm({
     setFieldErrors((prev) => ({ ...prev, guestPhone: undefined }))
     setError(null)
     toast.dismiss(GUEST_REQUIRED_TOAST_ID)
+
+    // Changing the number invalidates any verification already obtained for it.
+    const normalized = value.replace(/\D/g, '').slice(-10)
+    if (normalized !== verifiedPhone.replace(/\D/g, '').slice(-10)) {
+      setPhoneVerified(false)
+      setVerifiedPhone('')
+      setOtp('')
+      setOtpSent(false)
+      setMaskedPhone('')
+      setOtpExpiresAt(null)
+      setResendCooldown(0)
+    }
+  }
+
+  const phoneReadyForOtp = guestPhone.replace(/\D/g, '').length >= 10
+  const guestPhone10 = guestPhone.replace(/\D/g, '').slice(-10)
+  const sameAsRegisteredPhone =
+    isSignedInGuest &&
+    Boolean(registeredPhone10) &&
+    guestPhone10 === registeredPhone10
+  const otpRequiredForPayAtProperty =
+    paymentMode === 'pay_later' && !sameAsRegisteredPhone
+  const payAtPropertyVerificationDone =
+    !otpRequiredForPayAtProperty || phoneVerified
+  const expiresInSeconds = otpExpiresAt
+    ? Math.max(
+        0,
+        Math.floor((new Date(otpExpiresAt).getTime() - Date.now()) / 1000),
+      )
+    : null
+
+  function validateWhatsAppOtp() {
+    if (!otpRequiredForPayAtProperty || phoneVerified) return true
+
+    const msg = otpSent
+      ? 'Please enter the 6-digit OTP sent to your WhatsApp.'
+      : 'Please verify your phone number via WhatsApp before confirming your booking.'
+    const focusId = otpSent ? 'guestPhoneOtp' : 'sendWhatsappOtp'
+
+    setError(msg)
+    toast.error(msg, { id: OTP_REQUIRED_TOAST_ID, duration: 8000 })
+    focusCheckoutField(focusId)
+    return false
+  }
+
+  async function handleSendOtp() {
+    try {
+      setOtpBusy(true)
+      setError(null)
+      const data = await sendPublicBookingOtp(slug, guestPhone)
+      setOtpSent(true)
+      setMaskedPhone(data.maskedPhone ?? '')
+      setOtpExpiresAt(data.expiresAt ?? null)
+      setResendCooldown(60)
+      setOtp('')
+      toast.dismiss(OTP_REQUIRED_TOAST_ID)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send OTP')
+    } finally {
+      setOtpBusy(false)
+    }
+  }
+
+  async function handleVerifyOtp() {
+    try {
+      setOtpBusy(true)
+      setError(null)
+      await verifyPublicBookingOtp(slug, guestPhone, otp)
+      setPhoneVerified(true)
+      setVerifiedPhone(guestPhone)
+      setOtp('')
+      setOtpSent(false)
+      toast.dismiss(OTP_REQUIRED_TOAST_ID)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'OTP verification failed')
+    } finally {
+      setOtpBusy(false)
+    }
   }
 
   function validateRequiredFields() {
@@ -425,6 +596,7 @@ export default function MultiRoomCheckoutForm({
   async function handlePayLater(e: React.FormEvent) {
     e.preventDefault()
     if (!validateRequiredFields()) return
+    if (!validateWhatsAppOtp()) return
     setSubmitting(true)
     setError(null)
     setPaymentLinkUrl(null)
@@ -464,9 +636,7 @@ export default function MultiRoomCheckoutForm({
 
       pushConfirmation(data.bookingReference)
     } catch (err) {
-      const e = err as Error & { paymentLinkUrl?: string }
-      setError(e instanceof Error ? e.message : 'Booking failed')
-      setPaymentLinkUrl(e.paymentLinkUrl ?? null)
+      handleApiError(err, 'Booking failed')
       setSubmitting(false)
     }
   }
@@ -540,7 +710,7 @@ export default function MultiRoomCheckoutForm({
             setSubmitting(false)
             pushConfirmation(data.bookingReference)
           } catch (err) {
-            setError(err instanceof Error ? err.message : 'Booking failed')
+            handleApiError(err, 'Booking failed')
             setSubmitting(false)
           }
         },
@@ -569,7 +739,7 @@ export default function MultiRoomCheckoutForm({
         meta: { amountPaise, orderId, couponCode: appliedCoupon?.code ?? null },
       }).catch(() => {})
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed')
+      handleApiError(err, 'Payment failed')
       setSubmitting(false)
     }
   }
@@ -740,6 +910,125 @@ export default function MultiRoomCheckoutForm({
                     icon={<Mail className="h-4 w-4" />}
                   />
                 </div>
+
+                {paymentMode === 'pay_later' && (
+                  <div
+                    id="whatsappVerification"
+                    className={`rounded-[1.35rem] border p-4 ${
+                      payAtPropertyVerificationDone
+                        ? 'border-emerald-300/60 bg-emerald-50/80 text-emerald-800 dark:border-emerald-700/40 dark:bg-emerald-950/25 dark:text-emerald-300'
+                        : 'border-[#25D366]/20 bg-[linear-gradient(180deg,rgba(37,211,102,0.10),rgba(37,211,102,0.04))] text-foreground dark:bg-[linear-gradient(180deg,rgba(37,211,102,0.12),rgba(37,211,102,0.03))]'
+                    }`}
+                  >
+                    {payAtPropertyVerificationDone ? (
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-5 w-5" />
+                          <span className="text-sm font-medium">
+                            {sameAsRegisteredPhone
+                              ? 'Using your registered phone number — no extra WhatsApp verification needed.'
+                              : 'Phone verified successfully on WhatsApp.'}
+                          </span>
+                        </div>
+
+                        {!sameAsRegisteredPhone && (
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-foreground hover:underline dark:text-white"
+                            onClick={() => {
+                              setPhoneVerified(false)
+                              setVerifiedPhone('')
+                            }}
+                          >
+                            Verify another number
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_12px_28px_rgba(37,211,102,0.28)]">
+                            <WhatsAppIcon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                              WhatsApp verification
+                            </div>
+                            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                              We verify the guest phone on WhatsApp before
+                              confirming pay-at-property bookings.
+                            </p>
+                          </div>
+                        </div>
+
+                        {!otpSent ? (
+                          <button
+                            id="sendWhatsappOtp"
+                            type="button"
+                            disabled={!phoneReadyForOtp || otpBusy}
+                            onClick={handleSendOtp}
+                            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-[1rem] border border-[#25D366]/70 bg-[#25D366]  px-4 text-sm font-medium text-white shadow-[0_16px_30px_rgba(37,211,102,0.22)] transition hover:bg-[#1fbe5a] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                          >
+                            <WhatsAppIcon className="h-5 w-5" />
+                            {otpBusy ? 'Sending OTP…' : 'Send OTP on WhatsApp'}
+                          </button>
+                        ) : (
+                          <div className="space-y-3">
+                            <p className="text-xs text-muted-foreground">
+                              OTP sent to {maskedPhone || guestPhone}
+                              {expiresInSeconds != null
+                                ? ` • Expires in ${formatCountdown(
+                                    expiresInSeconds,
+                                  )}`
+                                : ''}
+                            </p>
+
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <input
+                                id="guestPhoneOtp"
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={6}
+                                value={otp}
+                                onChange={(e) => {
+                                  setOtp(
+                                    e.target.value.replace(/\D/g, '').slice(0, 6),
+                                  )
+                                  setError(null)
+                                  toast.dismiss(OTP_REQUIRED_TOAST_ID)
+                                }}
+                                className="h-12 w-full rounded-[1rem] border border-border/70 bg-background/70 px-4 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-background/50"
+                                placeholder="Enter 6-digit OTP"
+                              />
+
+                              <button
+                                type="button"
+                                disabled={otp.length !== 6 || otpBusy}
+                                onClick={handleVerifyOtp}
+                                className="inline-flex h-12 items-center justify-center gap-2 rounded-[1rem] bg-[#25D366] px-5 text-sm font-medium text-white shadow-[0_16px_30px_rgba(37,211,102,0.22)] transition hover:bg-[#1fbe5a] disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[160px]"
+                              >
+                                <WhatsAppIcon className="h-5 w-5" />
+                                {otpBusy ? 'Verifying…' : 'Verify'}
+                              </button>
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={resendCooldown > 0 || otpBusy}
+                              onClick={handleSendOtp}
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-[0.95rem] border border-[#25D366]/35 bg-[#25D366]/10 px-4 text-[12px] font-medium text-[#1f9d4d] transition hover:bg-[#25D366]/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-[#59e08c]"
+                            >
+                              <WhatsAppIcon className="h-4 w-4" />
+                              {resendCooldown > 0
+                                ? `Resend in ${resendCooldown}s`
+                                : 'Resend OTP'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </section>

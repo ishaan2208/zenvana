@@ -22,6 +22,13 @@ type CouponState = {
   setAppliedCoupon: (c: AppliedCoupon) => void
   couponAppliedKey: number
   bumpAppliedKey: () => void
+  /**
+   * Set when the backend re-prices the stay and rejects the total this page was
+   * opened with. The URL amount is then stale everywhere on the page, so every
+   * page-level total defers to this instead.
+   */
+  repricedTotal: number | null
+  setRepricedTotal: (n: number | null) => void
 }
 
 const CouponStateContext = createContext<CouponState | null>(null)
@@ -29,6 +36,7 @@ const CouponStateContext = createContext<CouponState | null>(null)
 export function CheckoutCouponProvider({ children }: { children: ReactNode }) {
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon>(null)
   const [couponAppliedKey, setCouponAppliedKey] = useState(0)
+  const [repricedTotal, setRepricedTotal] = useState<number | null>(null)
   const bumpAppliedKey = useCallback(
     () => setCouponAppliedKey((k) => k + 1),
     [],
@@ -39,8 +47,10 @@ export function CheckoutCouponProvider({ children }: { children: ReactNode }) {
       setAppliedCoupon,
       couponAppliedKey,
       bumpAppliedKey,
+      repricedTotal,
+      setRepricedTotal,
     }),
-    [appliedCoupon, couponAppliedKey, bumpAppliedKey],
+    [appliedCoupon, couponAppliedKey, bumpAppliedKey, repricedTotal],
   )
   return (
     <CouponStateContext.Provider value={value}>
@@ -129,8 +139,8 @@ type LiveTotalVariant = 'sidebar' | 'mobile-bar' | 'chip'
  *  - `chip`        — inline pill for the hero chip row
  */
 export function LiveBookingTotal({
-  baseTotal,
-  marketAmount,
+  baseTotal: baseTotalProp,
+  marketAmount: marketAmountProp,
   variant,
 }: {
   baseTotal: number
@@ -144,6 +154,11 @@ export function LiveBookingTotal({
   const couponDiscount = appliedCoupon?.discountAmount ?? 0
   const couponCode = appliedCoupon?.code ?? null
   const hasCoupon = couponDiscount > 0
+  // A server re-price supersedes the URL amount this page was rendered with,
+  // and invalidates the struck-through comparison rate along with it.
+  const baseTotal = ctx?.repricedTotal ?? baseTotalProp
+  const marketAmount =
+    ctx?.repricedTotal != null ? undefined : marketAmountProp
   const effective = Math.max(0, baseTotal - couponDiscount)
 
   const [animateFrom, setAnimateFrom] = useState(effective)
